@@ -1,6 +1,6 @@
 """
-Render.comデプロイ時の初期化スクリプト
-初回起動時にDBの初期化とマスタデータのセットアップを行う
+Render.comããã­ã¤æã®åæåã¹ã¯ãªãã
+ååèµ·åæã«DBã®åæåã¨ãã¹ã¿ãã¼ã¿ã®ã»ããã¢ãããè¡ã
 """
 import os
 import shutil
@@ -11,7 +11,7 @@ SEED_DB = os.path.join(os.path.dirname(__file__), 'seed_data', 'estimation.db')
 
 
 def ensure_db():
-    """永続ディスクにDBがなければシードDBをコピーして初期化"""
+    """æ°¸ç¶ãã£ã¹ã¯ã«DBããªããã°ã·ã¼ãDBãã³ãã¼ãã¦åæå"""
     db_dir = os.path.dirname(DB_PATH)
     if db_dir:
         os.makedirs(db_dir, exist_ok=True)
@@ -21,25 +21,25 @@ def ensure_db():
     os.makedirs(upload_dir, exist_ok=True)
 
     if not os.path.exists(DB_PATH):
-        # 初回デプロイ: シードDBをコピー
+        # ååããã­ã¤: ã·ã¼ãDBãã³ãã¼
         if os.path.exists(SEED_DB):
             shutil.copy2(SEED_DB, DB_PATH)
-            print(f"[startup] シードDBをコピー: {SEED_DB} -> {DB_PATH}")
+            print(f"[startup] ã·ã¼ãDBãã³ãã¼: {SEED_DB} -> {DB_PATH}")
         else:
-            print(f"[startup] シードDBなし。空DBを作成します")
+            print(f"[startup] ã·ã¼ãDBãªããç©ºDBãä½æãã¾ã")
 
-        # テーブル作成（シードDBにない追加テーブルを補完）
+        # ãã¼ãã«ä½æï¼ã·ã¼ãDBã«ãªãè¿½å ãã¼ãã«ãè£å®ï¼
         from models import init_db, create_admin_user
         init_db()
-        create_admin_user('admin@system.local', 'admin123', '管理者')
-        print("[startup] DB初期化完了、管理者ユーザー作成済")
+        create_admin_user('admin@system.local', 'admin123', 'ç®¡çè')
+        print("[startup] DBåæåå®äºãç®¡çèã¦ã¼ã¶ã¼ä½ææ¸")
     else:
-        # 既存DB: テーブルが足りなければ補完
+        # æ¢å­DB: ãã¼ãã«ãè¶³ããªããã°è£e®
         from models import init_db
         init_db()
-        print(f"[startup] 既存DB確認済: {DB_PATH}")
+        print(f"[startup] æ¢å­DBç¢ºèªæ¸: {DB_PATH}")
 
-    # DB統計情報
+    # DBçµ±è¨æå ±
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     c.execute("SELECT COUNT(*) FROM estimate_master")
@@ -47,7 +47,7 @@ def ensure_db():
     c.execute("SELECT COUNT(*) FROM users")
     user_count = c.fetchone()[0]
     conn.close()
-    print(f"[startup] マスタ: {master_count}件, ユーザー: {user_count}名")
+    print(f"[startup] ãã¹ã¿: {master_count}ä»¶, ã¦ã¼ã¶ã¼: {user_count}å")
 
 
 if __name__ == '__main__':
