@@ -1,0 +1,246 @@
+{% extends "base.html" %}
+
+{% block title %}設定 - 電気設備積算・見積システム{% endblock %}
+
+{% block content %}
+<!-- Breadcrumb -->
+<nav aria-label="breadcrumb" class="mb-4">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="/dashboard">ダッシュボード</a></li>
+        <li class="breadcrumb-item active">設定</li>
+    </ol>
+</nav>
+
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h1 class="h2">
+            <i class="bi bi-sliders"></i> システム設定
+        </h1>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <form id="settingsForm">
+            <!-- Company Info Section -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-building"></i> 自社情報
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label for="companyName" class="form-label required">自社名</label>
+                        <input type="text" class="form-control" id="companyName" name="company_name" value="{{ settings.company_name or '' }}" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="companyAddress" class="form-label">住所</label>
+                        <input type="text" class="form-control" id="companyAddress" name="company_address" value="{{ settings.company_address or '' }}">
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="companyPhone" class="form-label">TEL</label>
+                            <input type="tel" class="form-control" id="companyPhone" name="company_phone" value="{{ settings.company_phone or '' }}">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="companyFax" class="form-label">FAX</label>
+                            <input type="tel" class="form-control" id="companyFax" name="company_fax" value="{{ settings.company_fax or '' }}">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Estimate Defaults Section -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-calculator"></i> 見積デフォルト値
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label for="laborUnitPrice" class="form-label required">工事単価(デフォルト)</label>
+                        <div class="input-group">
+                            <span class="input-group-text">¥</span>
+                            <input type="number" class="form-control" id="laborUnitPrice" name="labor_unit_price" value="{{ settings.labor_unit_price or 0 }}" step="0.01" required>
+                            <span class="input-group-text">円/人日</span>
+                        </div>
+                        <small class="form-text text-muted">新規案件の労務単価初期値</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="estimateTitle" class="form-label">見積タイトル</label>
+                        <input type="text" class="form-control" id="estimateTitle" name="estimate_title" value="{{ settings.estimate_title or '' }}" placeholder="見積書">
+                        <small class="form-text text-muted">PDF/Excel出力時に使用されます</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="estimateTerms" class="form-label">見積条件</label>
+                        <textarea class="form-control" id="estimateTerms" name="estimate_terms" rows="3">{{ settings.estimate_terms or '' }}</textarea>
+                        <small class="form-text text-muted">PDF/Excel出力時に含まれます</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Matching Parameters Section -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-sliders"></i> 照合パラメータ
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="autoMatchThreshold" class="form-label required">自動採用しきい値</label>
+                            <div class="input-group">
+                                <input type="number" class="form-control" id="autoMatchThreshold" name="auto_match_threshold" value="{{ settings.auto_match_threshold or 0.75 }}" min="0" max="1" step="0.05" required>
+                                <span class="input-group-text">%</span>
+                            </div>
+                            <small class="form-text text-muted">
+                                この信頼度以上なら自動採用(0.0-1.0)
+                            </small>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="fuzzyMatchThreshold" class="form-label required">あいまい照合しきい値</label>
+                            <div class="input-group">
+                                <input type="number" class="form-control" id="fuzzyMatchThreshold" name="fuzzy_match_threshold" value="{{ settings.fuzzy_match_threshold or 0.50 }}" min="0" max="1" step="0.05" required>
+                                <span class="input-group-text">%</span>
+                            </div>
+                            <small class="form-text text-muted">
+                                この信頼度以上なら候補として表示(0.0-1.0)
+                            </small>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="maxCandidates" class="form-label required">最大候補数</label>
+                        <input type="number" class="form-control" id="maxCandidates" name="max_candidates" value="{{ settings.max_candidates or 5 }}" min="1" max="20" required>
+                        <small class="form-text text-muted">
+                            照合時に表示される最大候補数
+                        </small>
+                    </div>
+
+                    <div class="alert alert-info" role="alert">
+                        <i class="bi bi-info-circle"></i>
+                        <strong>パラメータ説明:</strong>
+                        <ul class="mb-0 mt-2">
+                            <li><strong>自動採用しきい値:</strong> この値以上の信頼度なら自動採用します</li>
+                            <li><strong>あいまい照合しきい値:</strong> この値以上なら候補として表示します</li>
+                            <li><strong>最大候補数:</strong> 一つの入力に対して表示する最大候補数</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary btn-lg">
+                    <i class="bi bi-check-circle"></i> 保存
+                    <span class="loading-spinner ms-2"></span>
+                </button>
+                <button type="reset" class="btn btn-outline-secondary btn-lg">
+                    <i class="bi bi-arrow-clockwise"></i> リセット
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card bg-light">
+            <div class="card-body">
+                <h5 class="card-title mb-3">
+                    <i class="bi bi-lightbulb"></i> ヒント
+                </h5>
+                <ul class="small">
+                    <li class="mb-2">
+                        <strong>自社情報:</strong> 見積書に記載される会社情報です
+                    </li>
+                    <li class="mb-2">
+                        <strong>工事単価:</strong> 労務費の計算に使用されます
+                    </li>
+                    <li class="mb-2">
+                        <strong>見積条件:</strong> 出力される見積書に記載されます
+                    </li>
+                    <li class="mb-2">
+                        <strong>照合パラメータ:</strong> マスタとの自動照合の精度を調整します
+                    </li>
+                    <li>
+                        パラメータを変更したら、既存の案件の照合を再実行する必要があります
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-body">
+                <h6 class="card-title">
+                    <i class="bi bi-info-circle"></i> システム情報
+                </h6>
+                <dl class="small mb-0">
+                    <dt>バージョン</dt>
+                    <dd>v1.0</dd>
+                    <dt>最終更新</dt>
+                    <dd>{{ last_updated[:10] if last_updated else '未更新' }}</dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('settingsForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const formData = new FormData(e.target);
+    const data = Object.fromEntries(formData);
+
+    // Convert numeric values
+    data.labor_unit_price = parseFloat(data.labor_unit_price);
+    data.auto_match_threshold = parseFloat(data.auto_match_threshold);
+    data.fuzzy_match_threshold = parseFloat(data.fuzzy_match_threshold);
+    data.max_candidates = parseInt(data.max_candidates);
+
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    showLoading(submitBtn.parentElement);
+
+    try {
+        const response = await fetch('/admin/settings', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        if (response.ok) {
+            showAlert('設定を保存しました', 'success');
+        } else {
+            showAlert('保存に失敗しました', 'danger');
+        }
+    } catch (error) {
+        showAlert('エラーが発生しました', 'danger');
+        console.error(error);
+    } finally {
+        hideLoading(submitBtn.parentElement);
+    }
+});
+
+// Validate thresholds
+function validateThreshold(input) {
+    let value = parseFloat(input.value);
+    if (value < 0) value = 0;
+    if (value > 1) value = 1;
+    input.value = value;
+}
+
+document.getElementById('autoMatchThreshold').addEventListener('change', function() {
+    validateThreshold(this);
+});
+
+document.getElementById('fuzzyMatchThreshold').addEventListener('change', function() {
+    validateThreshold(this);
+});
+</script>
+{% endblock %}

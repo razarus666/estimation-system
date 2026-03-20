@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+
+{% block title %}エラーログ - 電気設備積算・見積システム{% endblock %}
+
+{% block content %}
+<!-- Breadcrumb -->
+<nav aria-label="breadcrumb" class="mb-4">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="/dashboard">ダッシュボード</a></li>
+        <li class="breadcrumb-item active">エラーログ</li>
+    </ol>
+</nav>
+
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h1 class="h2">
+            <i class="bi bi-exclamation-triangle"></i> エラーログ
+        </h1>
+    </div>
+    <div class="col-md-4 text-end">
+        <button type="button" class="btn btn-outline-secondary" onclick="exportErrorLog()">
+            <i class="bi bi-download"></i> エクスポート
+        </button>
+        {% if error_logs %}
+        <button type="button" class="btn btn-outline-danger" onclick="clearErrorLog()">
+            <i class="bi bi-trash"></i> クリア
+        </button>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">エラー一覧</h5>
+    </div>
+    <div class="card-body">
+        {% if error_logs %}
+            <div class="table-responsive">
+                <table class="table table-hover table-sm">
+                    <thead>
+                        <tr>
+                            <th>日時</th>
+                            <th>ユーザー</th>
+                            <th>エラー種別</th>
+                            <th>メッセージ</th>
+                            <th>URL</th>
+                            <th style="width: 80px;">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for log in error_logs %}
+                        <tr>
+                            <td>{{ log.timestamp[:19] }}</td>
+                            <td>{{ log.user_name or '-' }}</td>
+                            <td>
+                                <span class="badge bg-danger">{{ log.error_type }}</span>
+                            </td>
+                            <td>
+                                <small>{{ log.message }}</small>
+                            </td>
+                            <td>
+                                <small class="text-muted">{{ log.url or '-' }}</small>
+                            </td>
+                            <td>
+                                <button type="button" class="btn btn-sm btn-outline-info" data-bs-toggle="modal" data-bs-target="#detailModal" onclick="showErrorDetail({{ log.id }})">
+                                    <i class="bi bi-info-circle"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            <nav aria-label="Page navigation" class="mt-3">
+                <ul class="pagination justify-content-center">
+                    {% if page > 1 %}
+                        <li class="page-item">
+                            <a class="page-link" href="/admin/error-log?page=1">最初</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="/admin/error-log?page={{ page - 1 }}">前へ</a>
+                        </li>
+                    {% endif %}
+
+                    <li class="page-item active">
+                        <span class="page-link">{{ page }} / {{ total_pages }}</span>
+                    </li>
+
+                    {% if page < total_pages %}
+                        <li class="page-item">
+                            <a class="page-link" href="/admin/error-log?page={{ page + 1 }}">次へ</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="/admin/error-log?page={{ total_pages }}">最後</a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        {% else %}
+            <div class="text-center py-5">
+                <i class="bi bi-check-circle" style="font-size: 3rem; color: #4caf50;"></i>
+                <p class="text-muted mt-3">エラーはありません</p>
+                <p class="text-muted small">システムが正常に動作しています</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Detail Modal -->
+<div class="modal fade" id="detailModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">エラー詳細</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="detailContent"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">閉じる</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const detailModal = new bootstrap.Modal(document.getElementById('detailModal'));
+
+async function showErrorDetail(errorId) {
+    try {
+        const response = await fetch(`/admin/error-log/${errorId}/detail`);
+        const html = await response.text();
+        document.getElementById('detailContent').innerHTML = html;
+        detailModal.show();
+    } catch (error) {
+        showAlert('詳細情報の取得に失敗しました', 'danger');
+        console.error(error);
+    }
+}
+
+function exportErrorLog() {
+    window.location.href = '/admin/error-log/export';
+}
+
+function clearErrorLog() {
+    if (confirmAction('すべてのエラーログを削除してもよろしいですか？')) {
+        fetch('/admin/error-log/clear', {
+            method: 'POST'
+        }).then(response => {
+            if (response.ok) {
+                showAlert('エラーログをクリアしました', 'success');
+                setTimeout(() => location.reload(), 1000);
+            }
+        }).catch(error => {
+            showAlert('クリアに失敗しました', 'danger');
+            console.error(error);
+        });
+    }
+}
+</script>
+{% endblock %}

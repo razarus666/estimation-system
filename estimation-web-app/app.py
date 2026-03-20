@@ -1,0 +1,2028 @@
+import os
+import uuid
+import csv
+import json
+from datetime import datetime
+from functools import wraps
+from io import BytesIO
+
+import bcrypt
+import pdfplumber
+from flask import (
+    Flask, render_template, request, redirect, url_for, session, jsonify, send_file
+)
+from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
+from openpyxl import Workbook
+from openpyxl.styles import Font, PatternFill, Alignment
+from openpyxl.utils import get_column_letter
+from werkzeug.utils import secure_filename
+
+from models import (
+    get_db, init_db, create_admin_user, add_audit_log, add_error_log
+)
+from matching_engine import run_project_matching, load_master_data
+
+# Initialize Flask app
+app = Flask(__name__)
+app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY', os.getenv('SECRET_KEY', os.urandom(24).hex()))
+app.config['UPLOAD_FOLDER'] = os.getenv('UPLOAD_FOLDER', os.path.join(os.path.dirname(__file__), 'uploads'))
+app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100MB max file size
+ALLOWED_EXTENSIONS = {'pdf', 'xlsx', 'csv'}
+
+# Initialize Flask-Login
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'login'
+
+# Create upload folder
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+
+# Initialize database (startup handles seed DB copy on Render)
+from startup import ensure_db
+ensure_db()
+
+
+class User(UserMixin):
+    """User class for Flask-Login"""
+    def __init__(self, user_id, email, full_name, role, active):
+        self.id = user_id
+        self.email = email
+        self.full_name = full_name
+        self.role = role
+        self._active = bool(active)
+
+    @property
+    def is_active(self):
+        return self._active
+
+    def is_admin(self):
+        return self.role == 'admin'
+
+    def is_approved(self):
+        return self.role != 'pending'
+
+
+@login_manager.user_loader
+def load_user(user_id):
+    """Load user from database"""
+    db = get_db()
+    cursor = db.cursor()
+    cursor.execute(
+        'SELECT id, email, full_name, role, is_active FROM users WHERE id = ?',
+        (user_id,)
+    )
+    user_data = cursor.fetchone()
+    if user_data:
+        return User(user_data[0], user_data[1], user_data[2], user_data[3], user_data[4])
+    return None
+
+
+def admin_required(f):
+    """Decorator for admin-only routes"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user or not current_user.is_authenticated:
+            return redirect(url_for('login'))
+        if not current_user.is_admin():
+            add_audit_log(
+                current_user.id,
+                'UNAUTHORIZED_ACCESS',
+                'route',
+                request.path,
+                'WARNING',
+                f'Unauthorized admin access attempt: {request.path}',
+                request.remote_addr
+            )
+            return render_template('error.html', error='管理者権限が必要です'), 403
+        return f(*args, **kwargs)
+    return decorated_function
+
+
+def allowed_file(filename):
+    """Check if file extension is allowed"""
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+def get_user_ip():
+    """Get client IP address"""
+    return request.headers.get('X-Forwarded-For', request.remote_addr).split(',')[0].strip()
+
+
+def extract_pdf_text(file_path):
+    """Extract text from PDF using pdfplumber"""
+    try:
+        text_content = []
+        with pdfplumber.open(file_path) as pdf:
+            for page_num, page in enumerate(pdf.pages, 1):
+                text = page.extract_text() or ""
+                text_content.append({
+                    'page': page_num,
+                    'text': text
+                })
+        return text_content
+    except Exception as e:
+        raise Exception(f'PDF解析エラー: {str(e)}')
+
+
+def parse_material_list_excel(file_path):
+    """Parse material list from Excel file"""
+    try:
+        from openpyxl import load_workbook
+
+        wb = load_workbook(file_path)
+        ws = wb.active
+
+        # Find header row by looking for '名称' or 'name'
+        header_row = None
+        for row_idx, row in enumerate(ws.iter_rows(values_only=True), 1):
+            row_lower = [str(v).lower() if v else '' for v in row]
+            if any(name in row_lower for name in ['名称', 'name', 'material']):
+                header_row = row_idx
+                break
+
+        if not header_row:
+            raise Exception('ヘッダー行が見つかりません')
+
+        # Get headers
+        headers = []
+        for cell in ws[header_row]:
+            headers.append(str(cell.value).strip() if cell.value else '')
+
+        # Expected columns (Japanese)
+        column_mapping = {
+            '行番号': 'row_no',
+            '名称': 'material_name',
+            '規格': 'spec',
+            'サイズ': 'size',
+            '数量': 'quantity',
+            '単位': 'unit',
+            '施工条件': 'construction_method',
+            '分野': 'field_category',
+            '図面参照': 'drawing_ref',
+            '備考': 'remarks'
+        }
+
+        # Map columns
+        column_indices = {}
+        for col_idx, header in enumerate(headers):
+            for jp_name, py_name in column_mapping.items():
+                if jp_name.lower() in header.lower() or py_name in header.lower():
+                    column_indices[py_name] = col_idx
+                    break
+
+        # Parse rows
+        materials = []
+        for row_idx, row in enumerate(ws.iter_rows(values_only=True), 1):
+            if row_idx <= header_row:
+                continue
+            if all(cell is None for cell in row):
+                continue
+
+            material = {}
+            for py_name, col_idx in column_indices.items():
+                if col_idx < len(row):
+                    value = row[col_idx]
+                    if py_name == 'quantity':
+                        try:
+                            material[py_name] = float(value) if value else 0
+                        except:
+                            material[py_name] = 0
+                    else:
+                        material[py_name] = str(value).strip() if value else ''
+                else:
+                    material[py_name] = '' if py_name != 'quantity' else 0
+
+            if material.get('material_name'):
+                materials.append(material)
+
+        return materials
+    except Exception as e:
+        raise Exception(f'Excel解析エラー: {str(e)}')
+
+
+def parse_material_list_csv(file_path):
+    """Parse material list from CSV file"""
+    try:
+        materials = []
+        with open(file_path, 'r', encoding='utf-8') as f:
+            reader = csv.DictReader(f)
+            if not reader.fieldnames:
+                raise Exception('CSVが空です')
+
+            column_mapping = {
+                '行番号': 'row_no',
+                '名称': 'material_name',
+                '規格': 'spec',
+                'サイズ': 'size',
+                '数量': 'quantity',
+                '単位': 'unit',
+                '施工条件': 'construction_method',
+                '分野': 'field_category',
+                '図面参照': 'drawing_ref',
+                '備考': 'remarks'
+            }
+
+            for row in reader:
+                material = {}
+                for py_name in column_mapping.values():
+                    material[py_name] = ''
+
+                for jp_name, py_name in column_mapping.items():
+                    for csv_col in reader.fieldnames:
+                        if jp_name.lower() in csv_col.lower() or py_name in csv_col.lower():
+                            value = row.get(csv_col, '')
+                            if py_name == 'quantity':
+                                try:
+                                    material[py_name] = float(value) if value else 0
+                                except:
+                                    material[py_name] = 0
+                            else:
+                                material[py_name] = str(value).strip() if value else ''
+                            break
+
+                if material.get('material_name'):
+                    materials.append(material)
+
+        return materials
+    except Exception as e:
+        raise Exception(f'CSV解析エラー: {str(e)}')
+
+
+# ==================== AUTH ROUTES ====================
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    """Login page"""
+    if request.method == 'POST':
+        try:
+            email = request.form.get('email', '').strip()
+            password = request.form.get('password', '').strip()
+
+            if not email or not password:
+                return render_template('login.html', error='メールアドレスとパスワードを入力してください'), 400
+
+            db = get_db()
+            cursor = db.cursor()
+            cursor.execute(
+                'SELECT id, email, password_hash, full_name, role, is_active FROM users WHERE email = ?',
+                (email,)
+            )
+            user_data = cursor.fetchone()
+
+            if not user_data:
+                add_audit_log(
+                    None,
+                    'LOGIN_FAILED',
+                    'user',
+                    email,
+                    'WARNING',
+                    'ユーザーが見つかりません',
+                    get_user_ip()
+                )
+                return render_template('login.html', error='メールアドレスまたはパスワードが正しくありません'), 401
+
+            user_id, db_email, password_hash, full_name, role, is_active = user_data
+
+            if not is_active:
+                add_audit_log(
+                    user_id,
+                    'LOGIN_FAILED',
+                    'user',
+                    email,
+                    'WARNING',
+                    'アカウントが無効化されています',
+                    get_user_ip()
+                )
+                return render_template('login.html', error='アカウントが無効化されています'), 403
+
+            if role == 'pending':
+                add_audit_log(
+                    user_id,
+                    'LOGIN_FAILED',
+                    'user',
+                    email,
+                    'WARNING',
+                    'アカウント承認待ち',
+                    get_user_ip()
+                )
+                return render_template('login.html', error='管理者による承認待ちです'), 403
+
+            pw_hash_bytes = password_hash.encode('utf-8') if isinstance(password_hash, str) else password_hash
+            if not bcrypt.checkpw(password.encode('utf-8'), pw_hash_bytes):
+                add_audit_log(
+                    user_id,
+                    'LOGIN_FAILED',
+                    'user',
+                    email,
+                    'WARNING',
+                    'パスワード不正',
+                    get_user_ip()
+                )
+                return render_template('login.html', error='メールアドレスまたはパスワードが正しくありません'), 401
+
+            user = User(user_id, db_email, full_name, role, is_active)
+            login_user(user)
+
+            add_audit_log(
+                user_id,
+                'LOGIN',
+                'user',
+                email,
+                'INFO',
+                'ログイン成功',
+                get_user_ip()
+            )
+
+            return redirect(url_for('dashboard'))
+
+        except Exception as e:
+            add_error_log(
+                current_user.id if current_user.is_authenticated else None,
+                'LOGIN_ERROR',
+                str(e),
+                str(e),
+                request.url
+            )
+            return render_template('login.html', error='ログイン処理中にエラーが発生しました'), 500
+
+    return render_template('login.html')
+
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    """Register new user"""
+    if request.method == 'POST':
+        try:
+            email = request.form.get('email', '').strip()
+            password = request.form.get('password', '').strip()
+            full_name = request.form.get('full_name', '').strip()
+
+            if not all([email, password, full_name]):
+                return render_template('register.html', error='すべてのフィールドを入力してください'), 400
+
+            if len(password) < 8:
+                return render_template('register.html', error='パスワードは8文字以上である必要があります'), 400
+
+            db = get_db()
+            cursor = db.cursor()
+
+            cursor.execute('SELECT id FROM users WHERE email = ?', (email,))
+            if cursor.fetchone():
+                return render_template('register.html', error='このメールアドレスは既に登録されています'), 400
+
+            password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
+
+            cursor.execute(
+                '''INSERT INTO users (email, password_hash, full_name, role, is_active, created_at)
+                   VALUES (?, ?, ?, ?, ?, ?)''',
+                (email, password_hash, full_name, 'pending', True, datetime.utcnow())
+            )
+            db.commit()
+
+            new_user_id = cursor.lastrowid
+            add_audit_log(
+                new_user_id,
+                'REGISTER',
+                'user',
+                email,
+                'INFO',
+                f'ユーザー登録完了（承認待ち）',
+                get_user_ip()
+            )
+
+            return render_template(
+                'register.html',
+                success='登録完了しました。管理者の承認をお待ちください。'
+            )
+
+        except Exception as e:
+            add_error_log(
+                current_user.id if current_user.is_authenticated else None,
+                'REGISTER_ERROR',
+                str(e),
+                str(e),
+                request.url
+            )
+            return render_template('register.html', error='登録処理中にエラーが発生しました'), 500
+
+    return render_template('register.html')
+
+
+@app.route('/logout')
+@login_required
+def logout():
+    """Logout"""
+    add_audit_log(
+        current_user.id,
+        'LOGOUT',
+        'user',
+        current_user.email,
+        'INFO',
+        'ログアウト',
+        get_user_ip()
+    )
+    logout_user()
+    return redirect(url_for('login'))
+
+
+# ==================== DASHBOARD ROUTES ====================
+
+@app.route('/')
+def index():
+    """Redirect to dashboard"""
+    if current_user.is_authenticated:
+        return redirect(url_for('dashboard'))
+    return redirect(url_for('login'))
+
+
+@app.route('/dashboard')
+@login_required
+def dashboard():
+    """Dashboard - show projects list"""
+    try:
+        db = get_db()
+        cursor = db.cursor()
+
+        cursor.execute(
+            '''SELECT id, name, description, client_name, status, created_at, updated_at
+               FROM projects
+               WHERE created_by = ?
+               ORDER BY updated_at DESC''',
+            (current_user.id,)
+        )
+        projects = cursor.fetchall()
+
+        project_list = []
+        for project in projects:
+            project_list.append({
+                'id': project[0],
+                'name': project[1],
+                'description': project[2],
+                'client_name': project[3],
+                'status': project[4],
+                'created_at': project[5],
+                'updated_at': project[6]
+            })
+
+        add_audit_log(
+            current_user.id,
+            'VIEW_DASHBOARD',
+            'dashboard',
+            None,
+            'INFO',
+            'ダッシュボード表示',
+            get_user_ip()
+        )
+
+        return render_template('dashboard.html', projects=project_list)
+
+    except Exception as e:
+        add_error_log(
+            current_user.id,
+            'DASHBOARD_ERROR',
+            str(e),
+            str(e),
+            request.url
+        )
+        return render_template('error.html', error='ダッシュボード読み込みエラーが発生しました'), 500
+
+
+# ==================== PROJECT ROUTES ====================
+
+@app.route('/projects/new', methods=['GET', 'POST'])
+@login_required
+def create_project():
+    """Create new project"""
+    if request.method == 'POST':
+        try:
+            name = request.form.get('name', '').strip()
+            description = request.form.get('description', '').strip()
+            client_name = request.form.get('client_name', '').strip()
+
+            if not name:
+                return render_template('project_form.html', error='プロジェクト名は必須です'), 400
+
+            db = get_db()
+            cursor = db.cursor()
+
+            cursor.execute(
+                '''INSERT INTO projects (name, description, client_name, created_by, created_at, updated_at, status)
+                   VALUES (?, ?, ?, ?, ?, ?, ?)''',
+                (name, description, client_name, current_user.id, datetime.utcnow(), datetime.utcnow(), 'draft')
+            )
+            db.commit()
+
+            project_id = cursor.lastrowid
+
+            add_audit_log(
+                current_user.id,
+                'CREATE_PROJECT',
+                'project',
+                project_id,
+                'INFO',
+                f'プロジェクト作成: {name}',
+                get_user_ip()
+            )
+
+            return redirect(url_for('project_detail', project_id=project_id))
+
+        except Exception as e:
+            add_error_log(
+                current_user.id,
+                'CREATE_PROJECT_ERROR',
+                str(e),
+                str(e),
+                request.url
+            )
+            return render_template('project_form.html', error='プロジェクト作成エラーが発生しました'), 500
+
+    return render_template('project_form.html')
+
+
+@app.route('/projects/<int:project_id>')
+@login_required
+def project_detail(project_id):
+    """Project detail page"""
+    try:
+        db = get_db()
+        cursor = db.cursor()
+
+        # Check project ownership
+        cursor.execute(
+            'SELECT id, name, description, client_name, status, created_at, created_by FROM projects WHERE id = ?',
+            (project_id,)
+        )
+        project = cursor.fetchone()
+
+        if not project:
+            return render_template('error.html', error='プロジェクトが見つかりません'), 404
+
+        if project[6] != current_user.id and not current_user.is_admin():
+            return render_template('error.html', error='アクセス権限がありません'), 403
+
+        # Get project files
+        cursor.execute(
+            '''SELECT id, file_type, original_name, file_size, uploaded_at
+               FROM project_files
+               WHERE project_id = ?
+               ORDER BY uploaded_at DESC''',
+            (project_id,)
+        )
+        files = cursor.fetchall()
+
+        # Get material list
+        cursor.execute(
+            '''SELECT id, row_no, material_name, spec, size, quantity, unit, construction_method, field_category
+               FROM material_list
+               WHERE project_id = ?
+               ORDER BY row_no''',
+            (project_id,)
+        )
+        materials = cursor.fetchall()
+
+        # Get estimate details count and totals
+        cursor.execute(
+            'SELECT COUNT(*), COALESCE(SUM(amount),0), COALESCE(SUM(productivity_total),0) FROM estimate_details WHERE project_id = ?',
+            (project_id,)
+        )
+        est_row = cursor.fetchone()
+        estimate_count = est_row[0]
+        total_amount = est_row[1]
+        total_productivity = est_row[2]
+
+        # Get labor unit price setting
+        cursor.execute("SELECT setting_value FROM estimate_settings WHERE setting_key='labor_unit_price'")
+        lup_row = cursor.fetchone()
+        labor_unit_price = float(lup_row[0]) if lup_row else 25000
+
+        # Get match results for display
+        cursor.execute(
+            '''SELECT id, material_id, candidate_rank, master_id, match_type,
+               confidence, reason, is_adopted, master_name, master_spec,
+               master_method, composite_unit_price, removal_productivity, source_page
+            FROM match_results WHERE project_id = ? ORDER BY material_id, candidate_rank''',
+            (project_id,)
+        )
+        match_results = cursor.fetchall()
+
+        add_audit_log(
+            current_user.id,
+            'VIEW_PROJECT',
+            'project',
+            str(project_id),
+            'INFO',
+            'プロジェクト詳細表示',
+            get_user_ip()
+        )
+
+        return render_template(
+            'project_detail.html',
+            project={
+                'id': project[0],
+                'name': project[1],
+                'description': project[2],
+                'client_name': project[3],
+                'status': project[4],
+                'created_at': project[5]
+            },
+            files=files,
+            materials=materials,
+            estimate_count=estimate_count,
+            total_amount=total_amount,
+            total_productivity=total_productivity,
+            labor_unit_price=labor_unit_price,
+            match_results=match_results
+        )
+
+    except Exception as e:
+        add_error_log(
+            current_user.id,
+            'PROJECT_DETAIL_ERROR',
+            str(e),
+            str(e),
+            request.url
+        )
+        return render_template('error.html', error='プロジェクト詳細読み込みエラーが発生しました'), 500
+
+
+@app.route('/projects/<int:project_id>/upload', methods=['POST'])
+@login_required
+def upload_file(project_id):
+    """Upload project file"""
+    try:
+        db = get_db()
+        cursor = db.cursor()
+
+        # Check project ownership
+        cursor.execute('SELECT created_by FROM projects WHERE id = ?', (project_id,))
+        project = cursor.fetchone()
+        if not project or (project[0] != current_user.id and not current_user.is_admin()):
+            return jsonify({'error': 'アクセス権限がありません'}), 403
+
+        if 'file' not in request.files:
+            return jsonify({'error': 'ファイルが選択されていません'}), 400
+
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'error': 'ファイルが選択されていません'}), 400
+
+        if not allowed_file(file.filename):
+            return jsonify({'error': '許可されないファイル形式です（PDF, Excel, CSVのみ）'}), 400
+
+        # Create project upload directory
+        project_upload_dir = os.path.join(app.config['UPLOAD_FOLDER'], str(project_id))
+        os.makedirs(project_upload_dir, exist_ok=True)
+
+        # Save file
+        filename = secure_filename(file.filename)
+        file_ext = filename.rsplit('.', 1)[1].lower()
+        unique_filename = f"{uuid.uuid4().hex}.{file_ext}"
+        file_path = os.path.join(project_upload_dir, unique_filename)
+        file.save(file_path)
+
+        file_size = os.path.getsize(file_path)
+
+        # Determine file type and process
+        if file_ext == 'pdf':
+            file_type = 'estimate_pdf'
+            # Extract PDF text
+            text_content = extract_pdf_text(file_path)
+            stored_path = file_path
+        elif file_ext == 'xlsx':
+            file_type = 'material_list'
+            # Parse Excel and import materials
+            materials = parse_material_list_excel(file_path)
+            for material in materials:
+                cursor.execute(
+                    '''INSERT INTO material_list
+                       (project_id, row_no, material_name, spec, size, quantity, unit, construction_method, field_category, drawing_ref, remarks)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+                    (
+                        project_id,
+                        material.get('row_no', ''),
+                        material.get('material_name', ''),
+                        material.get('spec', ''),
+                        material.get('size', ''),
+                        material.get('quantity', 0),
+                        material.get('unit', ''),
+                        material.get('construction_method', ''),
+                        material.get('field_category', ''),
+                        material.get('drawing_ref', ''),
+                        material.get('remarks', '')
+                    )
+                )
+            db.commit()
+            stored_path = file_path
+        elif file_ext == 'csv':
+            file_type = 'material_list'
+            # Parse CSV and import materials
+            materials = parse_material_list_csv(file_path)
+            for material in materials:
+                cursor.execute(
+                    '''INSERT INTO material_list
+                       (project_id, row_no, material_name, spec, size, quantity, unit, construction_method, field_category, drawing_ref, remarks)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+                    (
+                        project_id,
+                        material.get('row_no', ''),
+                        material.get('material_name', ''),
+                        material.get('spec', ''),
+                        material.get('size', ''),
+                        material.get('quantity', 0),
+                        material.get('unit', ''),
+                        material.get('construction_method', ''),
+                        material.get('field_category', ''),
+                        material.get('drawing_ref', ''),
+                        material.get('remarks', '')
+                    )
+                )
+            db.commit()
+            stored_path = file_path
+        else:
+            file_type = 'other'
+            stored_path = file_path
+
+        # Record in database
+        cursor.execute(
+            '''INSERT INTO project_files
+               (project_id, file_type, original_name, stored_path, file_size, uploaded_by, uploaded_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?)''',
+            (project_id, file_type, filename, stored_path, file_size, current_user.id, datetime.utcnow())
+        )
+        db.commit()
+
+        add_audit_log(
+            current_user.id,
+            'UPLOAD_FILE',
+            'project_file',
+            cursor.lastrowid,
+            'INFO',
+            f'ファイルアップロード: {filename} ({file_type})',
+            get_user_ip()
+        )
+
+        return jsonify({
+            'success': True,
+            'message': 'ファイルがアップロードされました',
+            'file_id': cursor.lastrowid
+        }), 200
+
+    except Exception as e:
+        add_error_log(
+            current_user.id,
+            'UPLOAD_FILE_ERROR',
+            str(e),
+            str(e),
+            request.url
+        )
+        return jsonify({'error': f'ファイルアップロードエラー: {str(e)}'}), 500
+
+
+@app.route('/projects/<int:project_id>/run-matching', methods=['POST'])
+@login_required
+def run_matching(project_id):
+    """Execute matching engine"""
+    try:
+        db = get_db()
+        cursor = db.cursor()
+
+        # Check project ownership
+        cursor.execute('SELECT created_by FROM projects WHERE id = ?', (project_id,))
+        project = cursor.fetchone()
+        if not project or (project[0] != current_user.id and not current_user.is_admin()):
+            return jsonify({'error': 'アクセス権限がありません'}), 403
+
+        # Load master data
+        load_master_data()
+
+        # Run matching
+        results = run_project_matching(project_id, current_user.id)
+
+        add_audit_log(
+            current_user.id,
+            'RUN_MATCHING',
+            'project',
+            project_id,
+            'INFO',
+            f'マッチング実行完了: {len(results)}件',
+            get_user_ip()
+        )
+
+        # Update project status
+        cursor.execute(
+            'UPDATE projects SET status = ?, updated_at = ? WHERE id = ?',
+            ('matched', datetime.utcnow(), project_id)
+        )
+        db.commit()
+
+        return jsonify({
+            'success': True,
+            'message': 'マッチング完了しました',
+            'match_count': len(results)
+        }), 200
+
+    except Exception as e:
+        add_error_log(
+            current_user.id,
+            'MATCHING_ERROR',
+            str(e),
+            str(e),
+            request.url
+        )
+        return jsonify({'error': f'マッチングエラー: {str(e)}'}), 500
+
+
+@app.route('/projects/<int:project_id>/estimates')
+@login_required
+def get_estimates(project_id):
+    """Get estimate details as JSON"""
+    try:
+        db = get_db()
+        cursor = db.cursor()
+
+        # Check project ownership
+        cursor.execute('SELECT created_by FROM projects WHERE id = ?', (project_id,))
+        project = cursor.fetchone()
+        if not project or (project[0] != current_user.id and not current_user.is_admin()):
+            return jsonify({'error': 'アクセス権限がありません'}), 403
+
+        cursor.execute(
+            '''SELECT id, row_no, field_category, material_name, spec, construction_method, unit,
+                      quantity, composite_unit_price, amount, productivity, productivity_total,
+                      source_pdf, source_page, match_type, confidence, match_reason, remarks,
+                      is_manual_added, material_id, master_id
+               FROM estimate_details
+               WHERE project_id = ?
+               ORDER BY row_no''',
+            (project_id,)
+        )
+
+        estimates = []
+        for row in cursor.fetchall():
+            estimates.append({
+                'id': row[0],
+                'row_no': row[1],
+                'field_category': row[2],
+                'material_name': row[3],
+                'spec': row[4],
+                'construction_method': row[5],
+                'unit': row[6],
+                'quantity': row[7],
+                'composite_unit_price': row[8],
+                'amount': row[9],
+                'productivity': row[10],
+                'productivity_total': row[11],
+                'source_pdf': row[12],
+                'source_page': row[13],
+                'match_type': row[14],
+                'confidence': row[15],
+                'match_reason': row[16],
+                'remarks': row[17],
+                'is_manual_added': row[18],
+                'material_id': row[19],
+                'master_id': row[20]
+            })
+
+        return jsonify({'estimates': estimates}), 200
+
+    except Exception as e:
+        add_error_log(
+            current_user.id,
+            'GET_ESTIMATES_ERROR',
+            str(e),
+            str(e),
+            request.url
+        )
+        return jsonify({'error': f'見積取得エラー: {str(e)}'}), 500
+
+
+@app.route('/projects/<int:project_id>/estimates/<int:detail_id>/edit', methods=['POST'])
+@login_required
+def edit_estimate_detail(project_id, detail_id):
+    """Edit estimate detail and record history"""
+    try:
+        db = get_db()
+        cursor = db.cursor()
+
+        # Check project ownership
+        cursor.execute('SELECT created_by FROM projects WHERE id = ?', (project_id,))
+        project = cursor.fetchone()
+        if not project or (project[0] != current_user.id and not current_user.is_admin()):
+            return jsonify({'error': 'アクセス権限がありません'}), 403
+
+        data = request.get_json()
+        column_name = data.get('column')
+        new_value = data.get('value')
+
+        if not column_name:
+            return jsonify({'error': 'カラム名が必須です'}), 400
+
+        # Get old value
+        cursor.execute(
+            f'SELECT {column_name} FROM estimate_details WHERE id = ? AND project_id = ?',
+            (detail_id, project_id)
+        )
+        result = cursor.fetchone()
+        if not result:
+            return jsonify({'error': '見積詳細が見つかりません'}), 404
+
+        old_value = result[0]
+
+        # Update
+        cursor.execute(
+            f'UPDATE estimate_details SET {column_name} = ? WHERE id = ? AND project_id = ?',
+            (new_value, detail_id, project_id)
+        )
+        db.commit()
+
+        # Record edit history
+        cursor.execute(
+            '''INSERT INTO edit_history
+               (project_id, detail_id, column_name, old_value, new_value, edited_by, edited_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?)''',
+            (project_id, detail_id, column_name, str(old_value), str(new_value), current_user.id, datetime.utcnow())
+        )
+        db.commit()
+
+        add_audit_log(
+            current_user.id,
+            'EDIT_ESTIMATE',
+            'estimate_detail',
+            detail_id,
+            'INFO',
+            f'見積詳細編集: {column_name}',
+            get_user_ip()
+        )
+
+        return jsonify({
+            'success': True,
+            'message': '更新しました'
+        }), 200
+
+    except Exception as e:
+        add_error_log(
+            current_user.id,
+            'EDIT_ESTIMATE_ERROR',
+            str(e),
+            str(e),
+            request.url
+        )
+        return jsonify({'error': f'編集エラー: {str(e)}'}), 500
+
+
+@app.route('/projects/<int:project_id>/estimates/add-row', methods=['POST'])
+@login_required
+def add_estimate_row(project_id):
+    """Add manual estimate row"""
+    try:
+        db = get_db()
+        cursor = db.cursor()
+
+        # Check project ownership
+        cursor.execute('SELECT created_by FROM projects WHERE id = ?', (project_id,))
+        project = cursor.fetchone()
+        if not project or (project[0] != current_user.id and not current_user.is_admin()):
+            return jsonify({'error': 'アクセス権限がありません'}), 403
+
+        data = request.get_json()
+
+        # Get next row number
+        cursor.execute(
+            'SELECT MAX(row_no) FROM estimate_details WHERE project_id = ?',
+            (project_id,)
+        )
+        result = cursor.fetchone()
+        next_row_no = (result[0] or 0) + 1
+
+        cursor.execute(
+            '''INSERT INTO estimate_details
+               (project_id, row_no, field_category, material_name, spec, construction_method, unit,
+                quantity, composite_unit_price, amount, is_manual_added, edited_by)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+            (
+                project_id,
+                next_row_no,
+                data.get('field_category', ''),
+                data.get('material_name', ''),
+                data.get('spec', ''),
+                data.get('construction_method', ''),
+                data.get('unit', ''),
+                data.get('quantity', 0),
+                data.get('composite_unit_price', 0),
+                data.get('amount', 0),
+                True,
+                current_user.id
+            )
+        )
+        db.commit()
+
+        new_detail_id = cursor.lastrowid
+
+        add_audit_log(
+            current_user.id,
+            'ADD_ESTIMATE_ROW',
+            'estimate_detail',
+            new_detail_id,
+            'INFO',
+            f'見積行追加（手動）',
+            get_user_ip()
+        )
+
+        return jsonify({
+            'success': True,
+            'message': '行を追加しました',
+            'detail_id': new_detail_id,
+            'row_no': next_row_no
+        }), 200
+
+    except Exception as e:
+        add_error_log(
+            current_user.id,
+            'ADD_ROW_ERROR',
+            str(e),
+            str(e),
+            request.url
+        )
+        return jsonify({'error': f'行追加エラー: {str(e)}'}), 500
+
+
+@app.route('/projects/<int:project_id>/export-excel')
+@login_required
+def export_excel(project_id):
+    """Export project to Excel"""
+    try:
+        db = get_db()
+        cursor = db.cursor()
+
+        # Check project ownership
+        cursor.execute('SELECT created_by, name FROM projects WHERE id = ?', (project_id,))
+        project = cursor.fetchone()
+        if not project or (project[0] != current_user.id and not current_user.is_admin()):
+            return jsonify({'error': 'アクセス権限がありません'}), 403
+
+        project_name = project[1]
+
+        # Create workbook
+        wb = Workbook()
+
+        # Sheet 1: 見積明細
+        ws1 = wb.active
+        ws1.title = '見積明細'
+
+        headers_1 = [
+            '行番号', '分野', '名称', '規格', '施工条件', '単位',
+            '数量', '単価', '金額', '生産性', '生産性合計',
+            'ソースPDF', 'ページ', 'マッチ種別', '信頼度', 'マッチ理由', '備考'
+        ]
+        ws1.append(headers_1)
+
+        # Format header
+        header_fill = PatternFill(start_color='0070C0', end_color='0070C0', fill_type='solid')
+        header_font = Font(color='FFFFFF', bold=True)
+        for cell in ws1[1]:
+            cell.fill = header_fill
+            cell.font = header_font
+
+        cursor.execute(
+            '''SELECT row_no, field_category, material_name, spec, construction_method, unit,
+                      quantity, composite_unit_price, amount, productivity, productivity_total,
+                      source_pdf, source_page, match_type, confidence, match_reason, remarks
+               FROM estimate_details
+               WHERE project_id = ?
+               ORDER BY row_no''',
+            (project_id,)
+        )
+
+        for row_data in cursor.fetchall():
+            ws1.append(list(row_data))
+
+        # Auto-filter
+        ws1.auto_filter.ref = f'A1:{get_column_letter(len(headers_1))}1'
+
+        # Sheet 2: 照合結果
+        ws2 = wb.create_sheet('照合結果')
+
+        headers_2 = [
+            'プロジェクトID', '素材ID', '候補順位', 'マスターID', 'マッチ種別',
+            '信頼度', '理由', '採用済', 'マスター名', 'マスター規格', 'マスター施工条件',
+            'マスター単位', '単価', '生産性', 'ソースページ', '分野'
+        ]
+        ws2.append(headers_2)
+
+        for cell in ws2[1]:
+            cell.fill = header_fill
+            cell.font = header_font
+
+        cursor.execute(
+            '''SELECT project_id, material_id, candidate_rank, master_id, match_type,
+                      confidence, reason, is_adopted, master_name, master_spec, master_method,
+                      master_unit, composite_unit_price, removal_productivity, source_page, field_category
+               FROM match_results
+               WHERE project_id = ?''',
+            (project_id,)
+        )
+
+        for row_data in cursor.fetchall():
+            ws2.append(list(row_data))
+
+        ws2.auto_filter.ref = f'A1:{get_column_letter(len(headers_2))}1'
+
+        # Sheet 3: 修正履歴
+        ws3 = wb.create_sheet('修正履歴')
+
+        headers_3 = [
+            'プロジェクトID', '見積詳細ID', 'カラム名', '旧値', '新値', '編集者ID', '編集日時'
+        ]
+        ws3.append(headers_3)
+
+        for cell in ws3[1]:
+            cell.fill = header_fill
+            cell.font = header_font
+
+        cursor.execute(
+            '''SELECT project_id, detail_id, column_name, old_value, new_value, edited_by, edited_at
+               FROM edit_history
+               WHERE project_id = ?
+               ORDER BY edited_at DESC''',
+            (project_id,)
+        )
+
+        for row_data in cursor.fetchall():
+            ws3.append(list(row_data))
+
+        ws3.auto_filter.ref = f'A1:{get_column_letter(len(headers_3))}1'
+
+        # Save to BytesIO
+        output = BytesIO()
+        wb.save(output)
+        output.seek(0)
+
+        add_audit_log(
+            current_user.id,
+            'EXPORT_EXCEL',
+            'project',
+            project_id,
+            'INFO',
+            'Excel エクスポート',
+            get_user_ip()
+        )
+
+        return send_file(
+            output,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            as_attachment=True,
+            download_name=f'{project_name}_見積.xlsx'
+        )
+
+    except Exception as e:
+        add_error_log(
+            current_user.id,
+            'EXPORT_EXCEL_ERROR',
+            str(e),
+            str(e),
+            request.url
+        )
+        return render_template('error.html', error='Excel エクスポートエラーが発生しました'), 500
+
+
+@app.route('/projects/<int:project_id>/match-candidates/<int:material_id>')
+@login_required
+def get_match_candidates(project_id, material_id):
+    """Get match candidates for material as JSON"""
+    try:
+        db = get_db()
+        cursor = db.cursor()
+
+        # Check project ownership
+        cursor.execute('SELECT created_by FROM projects WHERE id = ?', (project_id,))
+        project = cursor.fetchone()
+        if not project or (project[0] != current_user.id and not current_user.is_admin()):
+            return jsonify({'error': 'アクセス権限がありません'}), 403
+
+        cursor.execute(
+            '''SELECT id, candidate_rank, master_id, match_type, confidence, reason, is_adopted,
+                      master_name, master_spec, master_method, master_unit, composite_unit_price,
+                      removal_productivity, source_page, field_category
+               FROM match_results
+               WHERE project_id = ? AND material_id = ?
+               ORDER BY candidate_rank''',
+            (project_id, material_id)
+        )
+
+        candidates = []
+        for row in cursor.fetchall():
+            candidates.append({
+                'id': row[0],
+                'candidate_rank': row[1],
+                'master_id': row[2],
+                'match_type': row[3],
+                'confidence': row[4],
+                'reason': row[5],
+                'is_adopted': row[6],
+                'master_name': row[7],
+                'master_spec': row[8],
+                'master_method': row[9],
+                'master_unit': row[10],
+                'composite_unit_price': row[11],
+                'removal_productivity': row[12],
+                'source_page': row[13],
+                'field_category': row[14]
+            })
+
+        return jsonify({'candidates': candidates}), 200
+
+    except Exception as e:
+        add_error_log(
+            current_user.id,
+            'GET_CANDIDATES_ERROR',
+            str(e),
+            str(e),
+            request.url
+        )
+        return jsonify({'error': f'候補取得エラー: {str(e)}'}), 500
+
+
+# ==================== ADMIN ROUTES ====================
+
+@app.route('/admin/users')
+@admin_required
+def admin_users():
+    """User management page"""
+    try:
+        db = get_db()
+        cursor = db.cursor()
+
+        cursor.execute(
+            '''SELECT id, email, full_name, role, is_active, created_at, approved_at, approved_by
+               FROM users
+               ORDER BY created_at DESC''',
+            ()
+        )
+
+        users = []
+        for row in cursor.fetchall():
+            users.append({
+                'id': row[0],
+                'email': row[1],
+                'full_name': row[2],
+                'role': row[3],
+                'is_active': row[4],
+                'created_at': row[5],
+                'approved_at': row[6],
+                'approved_by': row[7]
+            })
+
+        add_audit_log(
+            current_user.id,
+            'VIEW_USER_MANAGEMENT',
+            'admin',
+            None,
+            'INFO',
+            'ユーザー管理ページ表示',
+            get_user_ip()
+        )
+
+        return render_template('admin_users.html', users=users)
+
+    except Exception as e:
+        add_error_log(
+            current_user.id,
+            'ADMIN_USERS_ERROR',
+            str(e),
+            str(e),
+            request.url
+        )
+        return render_template('error.html', error='ユーザー管理読み込みエラーが発生しました'), 500
+
+
+@app.route('/admin/users/<int:user_id>/approve', methods=['POST'])
+@admin_required
+def approve_user(user_id):
+    """Approve pending user"""
+    try:
+        db = get_db()
+        cursor = db.cursor()
+
+        cursor.execute(
+            'UPDATE users SET role = ?, approved_at = ?, approved_by = ? WHERE id = ? AND role = ?',
+            ('user', datetime.utcnow(), current_user.id, user_id, 'pending')
+        )
+        db.commit()
+
+        add_audit_log(
+            current_user.id,
+            'APPROVE_USER',
+            'user',
+            user_id,
+            'INFO',
+            'ユーザー承認',
+            get_user_ip()
+        )
+
+        return jsonify({'success': True, 'message': 'ユーザーを承認しました'}), 200
+
+    except Exception as e:
+        add_error_log(
+            current_user.id,
+            'APPROVE_USER_ERROR',
+            str(e),
+            str(e),
+            request.url
+        )
+        return jsonify({'error': f'承認エラー: {str(e)}'}), 500
+
+
+@app.route('/admin/users/<int:user_id>/reject', methods=['POST'])
+@admin_required
+def reject_user(user_id):
+    """Reject pending user"""
+    try:
+        db = get_db()
+        cursor = db.cursor()
+
+        cursor.execute(
+            'DELETE FROM users WHERE id = ? AND role = ?',
+            (user_id, 'pending')
+        )
+        db.commit()
+
+        add_audit_log(
+            current_user.id,
+            'REJECT_USER',
+            'user',
+            user_id,
+            'INFO',
+            'ユーザー拒否',
+            get_user_ip()
+        )
+
+        return jsonify({'success': True, 'message': 'ユーザーを拒否しました'}), 200
+
+    except Exception as e:
+        add_error_log(
+            current_user.id,
+            'REJECT_USER_ERROR',
+            str(e),
+            str(e),
+            request.url
+        )
+        return jsonify({'error': f'拒否エラー: {str(e)}'}), 500
+
+
+@app.route('/admin/users/<int:user_id>/toggle-active', methods=['POST'])
+@admin_required
+def toggle_user_active(user_id):
+    """Toggle user active status"""
+    try:
+        db = get_db()
+        cursor = db.cursor()
+
+        cursor.execute('SELECT is_active FROM users WHERE id = ?', (user_id,))
+        result = cursor.fetchone()
+        if not result:
+            return jsonify({'error': 'ユーザーが見つかりません'}), 404
+
+        new_status = not result[0]
+        cursor.execute(
+            'UPDATE users SET is_active = ? WHERE id = ?',
+            (new_status, user_id)
+        )
+        db.commit()
+
+        status_text = 'アクティブ化' if new_status else '無効化'
+        add_audit_log(
+            current_user.id,
+            'TOGGLE_USER_ACTIVE',
+            'user',
+            user_id,
+            'INFO',
+            f'ユーザー{status_text}',
+            get_user_ip()
+        )
+
+        return jsonify({'success': True, 'message': f'ユーザーを{status_text}しました', 'is_active': new_status}), 200
+
+    except Exception as e:
+        add_error_log(
+            current_user.id,
+            'TOGGLE_ACTIVE_ERROR',
+            str(e),
+            str(e),
+            request.url
+        )
+        return jsonify({'error': f'状態変更エラー: {str(e)}'}), 500
+
+
+@app.route('/admin/users/<int:user_id>/change-role', methods=['POST'])
+@admin_required
+def change_user_role(user_id):
+    """Change user role"""
+    try:
+        db = get_db()
+        cursor = db.cursor()
+
+        data = request.get_json()
+        new_role = data.get('role')
+
+        if new_role not in ['user', 'admin']:
+            return jsonify({'error': '無効なロールです'}), 400
+
+        cursor.execute(
+            'UPDATE users SET role = ? WHERE id = ?',
+            (new_role, user_id)
+        )
+        db.commit()
+
+        add_audit_log(
+            current_user.id,
+            'CHANGE_USER_ROLE',
+            'user',
+            user_id,
+            'INFO',
+            f'ロール変更: {new_role}',
+            get_user_ip()
+        )
+
+        return jsonify({'success': True, 'message': 'ロールを変更しました'}), 200
+
+    except Exception as e:
+        add_error_log(
+            current_user.id,
+            'CHANGE_ROLE_ERROR',
+            str(e),
+            str(e),
+            request.url
+        )
+        return jsonify({'error': f'ロール変更エラー: {str(e)}'}), 500
+
+
+@app.route('/admin/audit-log')
+@admin_required
+def admin_audit_log():
+    """Audit log viewer"""
+    try:
+        db = get_db()
+        cursor = db.cursor()
+
+        # Get filters
+        user_id = request.args.get('user_id', '')
+        action = request.args.get('action', '')
+        level = request.args.get('level', '')
+
+        query = '''SELECT a.id, a.user_id, a.action, a.entity_type, a.entity_id,
+                   a.level, a.details, a.created_at, COALESCE(u.full_name,'システム') as user_name
+                   FROM audit_log a LEFT JOIN users u ON a.user_id=u.id'''
+        params = []
+
+        conditions = []
+        if user_id:
+            conditions.append('a.user_id = ?')
+            params.append(user_id)
+        if action:
+            conditions.append('a.action LIKE ?')
+            params.append(f'%{action}%')
+        if level:
+            conditions.append('a.level = ?')
+            params.append(level)
+
+        if conditions:
+            query += ' WHERE ' + ' AND '.join(conditions)
+
+        # Pagination
+        page = int(request.args.get('page', 1))
+        per_page = 50
+        count_query = query.replace(
+            'SELECT a.id, a.user_id, a.action, a.entity_type, a.entity_id,\n                   a.level, a.details, a.created_at, COALESCE(u.full_name,\'システム\') as user_name\n                   FROM audit_log a LEFT JOIN users u ON a.user_id=u.id',
+            'SELECT COUNT(*) FROM audit_log a LEFT JOIN users u ON a.user_id=u.id'
+        )
+        cursor.execute(count_query, params)
+        total = cursor.fetchone()[0]
+        total_pages = max(1, (total + per_page - 1) // per_page)
+
+        query += f' ORDER BY a.created_at DESC LIMIT {per_page} OFFSET {(page-1)*per_page}'
+
+        cursor.execute(query, params)
+
+        logs = []
+        for row in cursor.fetchall():
+            logs.append({
+                'id': row[0],
+                'user_id': row[1],
+                'action': row[2],
+                'target': f"{row[3] or ''} {row[4] or ''}".strip(),
+                'level': row[5],
+                'details': row[6],
+                'timestamp': row[7],
+                'user_name': row[8]
+            })
+
+        add_audit_log(
+            current_user.id,
+            'VIEW_AUDIT_LOG',
+            'admin',
+            None,
+            'INFO',
+            '監査ログ表示',
+            get_user_ip()
+        )
+
+        return render_template('admin_audit.html', logs=logs, page=page, total_pages=total_pages)
+
+    except Exception as e:
+        add_error_log(
+            current_user.id,
+            'AUDIT_LOG_ERROR',
+            str(e),
+            str(e),
+            request.url
+        )
+        return render_template('error.html', error='監査ログ読み込みエラーが発生しました'), 500
+
+
+@app.route('/admin/error-log')
+@admin_required
+def admin_error_log():
+    """Error log viewer"""
+    try:
+        db = get_db()
+        cursor = db.cursor()
+
+        cursor.execute(
+            '''SELECT e.id, e.user_id, e.error_type, e.error_message, e.traceback, e.url, e.created_at,
+                      COALESCE(u.full_name,'システム') as user_name
+               FROM error_log e LEFT JOIN users u ON e.user_id=u.id
+               ORDER BY e.created_at DESC
+               LIMIT 500'''
+        )
+
+        logs = []
+        for row in cursor.fetchall():
+            logs.append({
+                'id': row[0],
+                'user_id': row[1],
+                'error_type': row[2],
+                'message': row[3],
+                'traceback': row[4],
+                'url': row[5],
+                'timestamp': row[6],
+                'user_name': row[7]
+            })
+
+        add_audit_log(
+            current_user.id,
+            'VIEW_ERROR_LOG',
+            'admin',
+            None,
+            'INFO',
+            'エラーログ表示',
+            get_user_ip()
+        )
+
+        return render_template('admin_error.html', logs=logs)
+
+    except Exception as e:
+        add_error_log(
+            current_user.id,
+            'ERROR_LOG_VIEW_ERROR',
+            str(e),
+            str(e),
+            request.url
+        )
+        return render_template('error.html', error='エラーログ読み込みエラーが発生しました'), 500
+
+
+@app.route('/admin/learning')
+@admin_required
+def admin_learning():
+    """Learning dictionary management"""
+    try:
+        db = get_db()
+        cursor = db.cursor()
+
+        status_filter = request.args.get('status', 'candidate')
+
+        cursor.execute(
+            '''SELECT id, input_name, canonical_name, input_spec, canonical_spec, input_method,
+                      canonical_method, confidence, status, confirmed_by, confirmed_at, source_project_id
+               FROM learning_dictionary
+               WHERE status = ?
+               ORDER BY confidence DESC''',
+            (status_filter,)
+        )
+
+        entries = []
+        for row in cursor.fetchall():
+            entries.append({
+                'id': row[0],
+                'input_name': row[1],
+                'canonical_name': row[2],
+                'input_spec': row[3],
+                'canonical_spec': row[4],
+                'input_method': row[5],
+                'canonical_method': row[6],
+                'confidence': row[7],
+                'status': row[8],
+                'confirmed_by': row[9],
+                'confirmed_at': row[10],
+                'source_project_id': row[11]
+            })
+
+        add_audit_log(
+            current_user.id,
+            'VIEW_LEARNING_DICTIONARY',
+            'admin',
+            None,
+            'INFO',
+            f'学習辞書表示 ({status_filter})',
+            get_user_ip()
+        )
+
+        return render_template('admin_learning.html', entries=entries, status_filter=status_filter)
+
+    except Exception as e:
+        add_error_log(
+            current_user.id,
+            'LEARNING_DICT_ERROR',
+            str(e),
+            str(e),
+            request.url
+        )
+        return render_template('error.html', error='学習辞書読み込みエラーが発生しました'), 500
+
+
+@app.route('/admin/learning/<int:entry_id>/confirm', methods=['POST'])
+@admin_required
+def confirm_learning_entry(entry_id):
+    """Confirm learning dictionary entry"""
+    try:
+        db = get_db()
+        cursor = db.cursor()
+
+        cursor.execute(
+            '''UPDATE learning_dictionary
+               SET status = ?, confirmed_by = ?, confirmed_at = ?
+               WHERE id = ?''',
+            ('confirmed', current_user.id, datetime.utcnow(), entry_id)
+        )
+        db.commit()
+
+        add_audit_log(
+            current_user.id,
+            'CONFIRM_LEARNING_ENTRY',
+            'learning_dictionary',
+            entry_id,
+            'INFO',
+            '学習辞書エントリ確認',
+            get_user_ip()
+        )
+
+        return jsonify({'success': True, 'message': 'エントリを確認しました'}), 200
+
+    except Exception as e:
+        add_error_log(
+            current_user.id,
+            'CONFIRM_LEARNING_ERROR',
+            str(e),
+            str(e),
+            request.url
+        )
+        return jsonify({'error': f'確認エラー: {str(e)}'}), 500
+
+
+@app.route('/admin/learning/<int:entry_id>/reject', methods=['POST'])
+@admin_required
+def reject_learning_entry(entry_id):
+    """Reject learning dictionary entry"""
+    try:
+        db = get_db()
+        cursor = db.cursor()
+
+        cursor.execute(
+            '''UPDATE learning_dictionary
+               SET status = ?, confirmed_by = ?, confirmed_at = ?
+               WHERE id = ?''',
+            ('rejected', current_user.id, datetime.utcnow(), entry_id)
+        )
+        db.commit()
+
+        add_audit_log(
+            current_user.id,
+            'REJECT_LEARNING_ENTRY',
+            'learning_dictionary',
+            entry_id,
+            'INFO',
+            '学習辞書エントリ拒否',
+            get_user_ip()
+        )
+
+        return jsonify({'success': True, 'message': 'エントリを拒否しました'}), 200
+
+    except Exception as e:
+        add_error_log(
+            current_user.id,
+            'REJECT_LEARNING_ERROR',
+            str(e),
+            str(e),
+            request.url
+        )
+        return jsonify({'error': f'拒否エラー: {str(e)}'}), 500
+
+
+@app.route('/admin/master')
+@admin_required
+def admin_master():
+    """Master data management"""
+    try:
+        db = get_db()
+        cursor = db.cursor()
+
+        # Get latest update log
+        cursor.execute(
+            '''SELECT id, action, source_file, records_added, records_updated, status, updated_by, updated_at
+               FROM master_update_log
+               ORDER BY updated_at DESC
+               LIMIT 50''',
+            ()
+        )
+
+        logs = []
+        for row in cursor.fetchall():
+            logs.append({
+                'id': row[0],
+                'action': row[1],
+                'source_file': row[2],
+                'records_added': row[3],
+                'records_updated': row[4],
+                'status': row[5],
+                'updated_by': row[6],
+                'updated_at': row[7]
+            })
+
+        # Get master data stats
+        cursor.execute(
+            '''SELECT COUNT(*), COUNT(DISTINCT category_no), COUNT(DISTINCT field_category)
+               FROM estimate_master'''
+        )
+        stats = cursor.fetchone()
+
+        add_audit_log(
+            current_user.id,
+            'VIEW_MASTER_DATA',
+            'admin',
+            None,
+            'INFO',
+            'マスターデータ管理ページ表示',
+            get_user_ip()
+        )
+
+        return render_template(
+            'admin_master.html',
+            logs=logs,
+            total_records=stats[0] if stats else 0,
+            total_categories=stats[1] if stats else 0,
+            total_fields=stats[2] if stats else 0
+        )
+
+    except Exception as e:
+        add_error_log(
+            current_user.id,
+            'MASTER_DATA_ERROR',
+            str(e),
+            str(e),
+            request.url
+        )
+        return render_template('error.html', error='マスターデータ読み込みエラーが発生しました'), 500
+
+
+@app.route('/admin/master/upload', methods=['POST'])
+@admin_required
+def upload_master_data():
+    """Upload master data (Excel)"""
+    try:
+        if 'file' not in request.files:
+            return jsonify({'error': 'ファイルが選択されていません'}), 400
+
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'error': 'ファイルが選択されていません'}), 400
+
+        if not file.filename.endswith('.xlsx'):
+            return jsonify({'error': 'Excelファイル（.xlsx）のみサポートしています'}), 400
+
+        # Save temp file
+        temp_filename = f"master_import_{uuid.uuid4().hex}.xlsx"
+        temp_path = os.path.join(app.config['UPLOAD_FOLDER'], temp_filename)
+        file.save(temp_path)
+
+        # Parse and import
+        from openpyxl import load_workbook
+        db = get_db()
+        cursor = db.cursor()
+
+        wb = load_workbook(temp_path)
+        ws = wb.active
+
+        records_added = 0
+        records_updated = 0
+
+        # Skip header row
+        for row_idx, row in enumerate(ws.iter_rows(values_only=True), 1):
+            if row_idx == 1:
+                continue
+            if all(cell is None for cell in row):
+                continue
+
+            # Expected columns: source_page, category_no, field_category, material_name, spec_summary, etc.
+            try:
+                # Prepare insert data
+                data = {
+                    'source_page': row[0] if row and len(row) > 0 else '',
+                    'category_no': row[1] if row and len(row) > 1 else '',
+                    'field_category': row[2] if row and len(row) > 2 else '',
+                    'material_name': row[3] if row and len(row) > 3 else '',
+                    'spec_summary': row[4] if row and len(row) > 4 else '',
+                    'remarks': row[5] if row and len(row) > 5 else '',
+                    'construction_method': row[6] if row and len(row) > 6 else '',
+                    'unit': row[7] if row and len(row) > 7 else '',
+                    'material_unit_price': float(row[8]) if row and len(row) > 8 and row[8] else 0,
+                    'material_cost': float(row[9]) if row and len(row) > 9 and row[9] else 0,
+                    'labor_cost': float(row[10]) if row and len(row) > 10 and row[10] else 0,
+                    'expense_cost': float(row[11]) if row and len(row) > 11 and row[11] else 0,
+                    'composite_unit_price': float(row[12]) if row and len(row) > 12 and row[12] else 0,
+                    'removal_productivity': float(row[13]) if row and len(row) > 13 and row[13] else 0,
+                    'removal_cost': float(row[14]) if row and len(row) > 14 and row[14] else 0,
+                    'master_version': 1,
+                }
+
+                # Check if exists
+                cursor.execute(
+                    'SELECT id FROM estimate_master WHERE category_no = ? AND material_name = ?',
+                    (data['category_no'], data['material_name'])
+                )
+                if cursor.fetchone():
+                    records_updated += 1
+                else:
+                    cursor.execute(
+                        '''INSERT INTO estimate_master
+                           (source_page, category_no, field_category, material_name, spec_summary, remarks,
+                            construction_method, unit, material_unit_price, material_cost, labor_cost,
+                            expense_cost, composite_unit_price, removal_productivity, removal_cost, master_version)
+                           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+                        tuple(data.values())
+                    )
+                    records_added += 1
+
+            except Exception as row_error:
+                continue
+
+        db.commit()
+        os.remove(temp_path)
+
+        # Record update log
+        cursor.execute(
+            '''INSERT INTO master_update_log
+               (action, source_file, records_added, records_updated, status, updated_by, updated_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?)''',
+            ('IMPORT', file.filename, records_added, records_updated, 'success', current_user.id, datetime.utcnow())
+        )
+        db.commit()
+
+        add_audit_log(
+            current_user.id,
+            'UPLOAD_MASTER_DATA',
+            'master_data',
+            None,
+            'INFO',
+            f'マスターデータアップロード: {records_added} 追加, {records_updated} 更新',
+            get_user_ip()
+        )
+
+        return jsonify({
+            'success': True,
+            'message': 'マスターデータをアップロードしました',
+            'records_added': records_added,
+            'records_updated': records_updated
+        }), 200
+
+    except Exception as e:
+        add_error_log(
+            current_user.id,
+            'UPLOAD_MASTER_ERROR',
+            str(e),
+            str(e),
+            request.url
+        )
+        return jsonify({'error': f'マスターデータアップロードエラー: {str(e)}'}), 500
+
+
+@app.route('/admin/settings')
+@admin_required
+def admin_settings():
+    """Estimate settings management"""
+    try:
+        db = get_db()
+        cursor = db.cursor()
+
+        cursor.execute(
+            '''SELECT id, setting_key, setting_value, description
+               FROM estimate_settings
+               ORDER BY setting_key''',
+            ()
+        )
+
+        settings = {}
+        for row in cursor.fetchall():
+            settings[row[1]] = {
+                'id': row[0],
+                'value': row[2],
+                'description': row[3]
+            }
+
+        add_audit_log(
+            current_user.id,
+            'VIEW_SETTINGS',
+            'admin',
+            None,
+            'INFO',
+            '設定管理ページ表示',
+            get_user_ip()
+        )
+
+        return render_template('admin_settings.html', settings=settings)
+
+    except Exception as e:
+        add_error_log(
+            current_user.id,
+            'SETTINGS_ERROR',
+            str(e),
+            str(e),
+            request.url
+        )
+        return render_template('error.html', error='設定読み込みエラーが発生しました'), 500
+
+
+@app.route('/admin/settings', methods=['POST'])
+@admin_required
+def update_settings():
+    """Update estimate settings"""
+    try:
+        db = get_db()
+        cursor = db.cursor()
+
+        data = request.get_json()
+
+        for setting_key, setting_value in data.items():
+            cursor.execute(
+                '''UPDATE estimate_settings
+                   SET setting_value = ?, updated_by = ?, updated_at = ?
+                   WHERE setting_key = ?''',
+                (str(setting_value), current_user.id, datetime.utcnow(), setting_key)
+            )
+
+        db.commit()
+
+        add_audit_log(
+            current_user.id,
+            'UPDATE_SETTINGS',
+            'admin',
+            None,
+            'INFO',
+            '設定更新',
+            get_user_ip()
+        )
+
+        return jsonify({'success': True, 'message': '設定を更新しました'}), 200
+
+    except Exception as e:
+        add_error_log(
+            current_user.id,
+            'UPDATE_SETTINGS_ERROR',
+            str(e),
+            str(e),
+            request.url
+        )
+        return jsonify({'error': f'設定更新エラー: {str(e)}'}), 500
+
+
+# ==================== ERROR HANDLERS ====================
+
+@app.errorhandler(404)
+def not_found(error):
+    """404 error handler"""
+    return render_template('error.html', error='ページが見つかりません'), 404
+
+
+@app.errorhandler(500)
+def internal_error(error):
+    """500 error handler"""
+    return render_template('error.html', error='サーバーエラーが発生しました'), 500
+
+
+@app.errorhandler(403)
+def forbidden(error):
+    """403 error handler"""
+    return render_template('error.html', error='アクセスが禁止されています'), 403
+
+
+if __name__ == '__main__':
+    app.run(debug=True, host='0.0.0.0', port=5000)

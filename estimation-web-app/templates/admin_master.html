@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+
+{% block title %}マスタ管理 - 電気設備積算・見積システム{% endblock %}
+
+{% block content %}
+<!-- Breadcrumb -->
+<nav aria-label="breadcrumb" class="mb-4">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="/dashboard">ダッシュボード</a></li>
+        <li class="breadcrumb-item active">マスタ管理</li>
+    </ol>
+</nav>
+
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h1 class="h2">
+            <i class="bi bi-database"></i> マスタ管理
+        </h1>
+    </div>
+</div>
+
+<!-- Master Stats -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-light">
+            <div class="card-body text-center">
+                <h6 class="text-muted mb-2">総レコード数</h6>
+                <h3 class="mb-0" style="color: #1a73e8;">{{ total_records }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-light">
+            <div class="card-body text-center">
+                <h6 class="text-muted mb-2">前回更新日</h6>
+                <p class="mb-0">{{ last_updated[:16] if last_updated else '未更新' }}</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-light">
+            <div class="card-body text-center">
+                <h6 class="text-muted mb-2">バージョン</h6>
+                <p class="mb-0">{{ master_version or 'v1.0' }}</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-light">
+            <div class="card-body text-center">
+                <h6 class="text-muted mb-2">ファイルサイズ</h6>
+                <p class="mb-0">{{ (master_file_size / 1024 / 1024) | round(2) if master_file_size else 0 }} MB</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Upload Form -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0">
+            <i class="bi bi-cloud-upload"></i> 新しいマスタデータをアップロード
+        </h5>
+    </div>
+    <div class="card-body">
+        <form id="uploadForm" enctype="multipart/form-data">
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="mb-3">
+                        <label for="masterFile" class="form-label required">マスタファイル(Excel)</label>
+                        <input type="file" class="form-control" id="masterFile" name="master_file" accept=".xlsx,.xls" required>
+                        <small class="form-text text-muted">
+                            Excel形式のファイルをアップロードしてください
+                        </small>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">&nbsp;</label>
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-upload"></i> アップロード
+                        <span class="loading-spinner ms-2"></span>
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Update History -->
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">
+            <i class="bi bi-clock-history"></i> 更新履歴
+        </h5>
+    </div>
+    <div class="card-body">
+        {% if update_history %}
+            <div class="table-responsive">
+                <table class="table table-hover table-sm">
+                    <thead>
+                        <tr>
+                            <th>更新日時</th>
+                            <th>ファイル名</th>
+                            <th>レコード数</th>
+                            <th>アップロード者</th>
+                            <th style="width: 80px;">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for record in update_history %}
+                        <tr>
+                            <td>{{ record.updated_at[:19] }}</td>
+                            <td>{{ record.filename }}</td>
+                            <td>{{ record.record_count }}</td>
+                            <td>{{ record.uploaded_by }}</td>
+                            <td>
+                                {% if not loop.first %}
+                                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="restoreVersion({{ record.id }})">
+                                        <i class="bi bi-arrow-counterclockwise"></i> 復元
+                                    </button>
+                                {% else %}
+                                    <span class="badge bg-success">現在</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <i class="bi bi-inbox" style="font-size: 3rem; color: #ccc;"></i>
+                <p class="text-muted mt-3">更新履歴がありません</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const fileInput = document.getElementById('masterFile');
+    const file = fileInput.files[0];
+
+    if (!file) {
+        showAlert('ファイルを選択してください', 'warning');
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('master_file', file);
+
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    showLoading(submitBtn.parentElement);
+
+    try {
+        const response = await fetch('/admin/master/upload', {
+            method: 'POST',
+            body: formData
+        });
+
+        if (response.ok) {
+            showAlert('マスタデータをアップロードしました', 'success');
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            const error = await response.text();
+            showAlert(`アップロードに失敗しました: ${error}`, 'danger');
+        }
+    } catch (error) {
+        showAlert('エラーが発生しました', 'danger');
+        console.error(error);
+    } finally {
+        hideLoading(submitBtn.parentElement);
+    }
+});
+
+async function restoreVersion(versionId) {
+    if (confirmAction('このバージョンに復元しますか？')) {
+        try {
+            const response = await fetch(`/admin/master/restore/${versionId}`, {
+                method: 'POST'
+            });
+
+            if (response.ok) {
+                showAlert('バージョンを復元しました', 'success');
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                showAlert('復元に失敗しました', 'danger');
+            }
+        } catch (error) {
+            showAlert('エラーが発生しました', 'danger');
+            console.error(error);
+        }
+    }
+}
+</script>
+{% endblock %}

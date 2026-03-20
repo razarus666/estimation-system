@@ -1,0 +1,241 @@
+{% extends "base.html" %}
+
+{% block title %}ユーザー管理 - 電気設備積算・見積システム{% endblock %}
+
+{% block content %}
+<!-- Breadcrumb -->
+<nav aria-label="breadcrumb" class="mb-4">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="/dashboard">ダッシュボード</a></li>
+        <li class="breadcrumb-item active">ユーザー管理</li>
+    </ol>
+</nav>
+
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h1 class="h2">
+            <i class="bi bi-people"></i> ユーザー管理
+        </h1>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">
+            <i class="bi bi-list"></i> ユーザー一覧
+        </h5>
+    </div>
+    <div class="card-body">
+        {% if users %}
+            <div class="table-responsive">
+                <table class="table table-hover table-sm">
+                    <thead>
+                        <tr>
+                            <th>氏名</th>
+                            <th>メール</th>
+                            <th>権限</th>
+                            <th style="width: 120px;">ステータス</th>
+                            <th style="width: 100px;">登録日</th>
+                            <th style="width: 150px;">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in users %}
+                        <tr {% if user.status == 'pending' %}class="table-warning"{% endif %}>
+                            <td><strong>{{ user.full_name }}</strong></td>
+                            <td>{{ user.email }}</td>
+                            <td>
+                                {% if user.role == 'admin' %}
+                                    <span class="badge bg-danger">管理者</span>
+                                {% elif user.role == 'user' %}
+                                    <span class="badge bg-primary">ユーザー</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">{{ user.role }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if user.status == 'pending' %}
+                                    <span class="badge bg-warning text-dark">承認待機中</span>
+                                {% elif user.status == 'active' %}
+                                    <span class="badge bg-success">有効</span>
+                                {% elif user.status == 'inactive' %}
+                                    <span class="badge bg-secondary">利用停止</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ user.created_at[:10] }}</td>
+                            <td>
+                                {% if user.status == 'pending' %}
+                                    <button type="button" class="btn btn-sm btn-success" onclick="approveUser({{ user.id }})">
+                                        <i class="bi bi-check"></i> 承認
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-danger" onclick="rejectUser({{ user.id }})">
+                                        <i class="bi bi-x"></i> 却下
+                                    </button>
+                                {% elif user.status == 'active' %}
+                                    <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#roleModal" onclick="setUserIdForRole({{ user.id }})">
+                                        <i class="bi bi-pencil"></i> 権限変更
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="deactivateUser({{ user.id }})">
+                                        <i class="bi bi-slash-circle"></i> 利用停止
+                                    </button>
+                                {% elif user.status == 'inactive' %}
+                                    <button type="button" class="btn btn-sm btn-outline-success" onclick="reactivateUser({{ user.id }})">
+                                        <i class="bi bi-arrow-clockwise"></i> 復活
+                                    </button>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <i class="bi bi-inbox" style="font-size: 3rem; color: #ccc;"></i>
+                <p class="text-muted mt-3">ユーザーがいません</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Role Change Modal -->
+<div class="modal fade" id="roleModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">権限を変更</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="roleForm">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="roleSelect" class="form-label">新しい権限</label>
+                        <select class="form-select" id="roleSelect" required>
+                            <option value="">選択してください</option>
+                            <option value="user">ユーザー</option>
+                            <option value="admin">管理者</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+                    <button type="submit" class="btn btn-primary">変更</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentUserId = null;
+const roleModal = new bootstrap.Modal(document.getElementById('roleModal'));
+
+function setUserIdForRole(userId) {
+    currentUserId = userId;
+}
+
+document.getElementById('roleForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const newRole = document.getElementById('roleSelect').value;
+
+    try {
+        const response = await fetch(`/admin/users/${currentUserId}/role`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ role: newRole })
+        });
+
+        if (response.ok) {
+            showAlert('権限を変更しました', 'success');
+            roleModal.hide();
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            showAlert('権限の変更に失敗しました', 'danger');
+        }
+    } catch (error) {
+        showAlert('エラーが発生しました', 'danger');
+        console.error(error);
+    }
+});
+
+async function approveUser(userId) {
+    if (confirmAction('このユーザーを承認しますか？')) {
+        try {
+            const response = await fetch(`/admin/users/${userId}/approve`, {
+                method: 'POST'
+            });
+
+            if (response.ok) {
+                showAlert('ユーザーを承認しました', 'success');
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                showAlert('承認に失敗しました', 'danger');
+            }
+        } catch (error) {
+            showAlert('エラーが発生しました', 'danger');
+            console.error(error);
+        }
+    }
+}
+
+async function rejectUser(userId) {
+    if (confirmAction('このユーザーを却下しますか？')) {
+        try {
+            const response = await fetch(`/admin/users/${userId}/reject`, {
+                method: 'POST'
+            });
+
+            if (response.ok) {
+                showAlert('ユーザーを却下しました', 'success');
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                showAlert('却下に失敗しました', 'danger');
+            }
+        } catch (error) {
+            showAlert('エラーが発生しました', 'danger');
+            console.error(error);
+        }
+    }
+}
+
+async function deactivateUser(userId) {
+    if (confirmAction('このユーザーを利用停止にしますか？')) {
+        try {
+            const response = await fetch(`/admin/users/${userId}/deactivate`, {
+                method: 'POST'
+            });
+
+            if (response.ok) {
+                showAlert('ユーザーを利用停止にしました', 'success');
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                showAlert('利用停止に失敗しました', 'danger');
+            }
+        } catch (error) {
+            showAlert('エラーが発生しました', 'danger');
+            console.error(error);
+        }
+    }
+}
+
+async function reactivateUser(userId) {
+    if (confirmAction('このユーザーを復活させますか？')) {
+        try {
+            const response = await fetch(`/admin/users/${userId}/reactivate`, {
+                method: 'POST'
+            });
+
+            if (response.ok) {
+                showAlert('ユーザーを復活させました', 'success');
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                showAlert('復活に失敗しました', 'danger');
+            }
+        } catch (error) {
+            showAlert('エラーが発生しました', 'danger');
+            console.error(error);
+        }
+    }
+}
+</script>
+{% endblock %}

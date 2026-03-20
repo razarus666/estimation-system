@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}電気設備積算・見積システム{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <style>
+        :root {
+            --primary-color: #1a73e8;
+            --header-bg: #f8f9fa;
+        }
+
+        body {
+            background-color: #ffffff;
+            color: #333;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+
+        .navbar {
+            background-color: var(--header-bg);
+            border-bottom: 2px solid var(--primary-color);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .navbar-brand {
+            font-weight: 600;
+            font-size: 1.3rem;
+            color: var(--primary-color) !important;
+        }
+
+        .nav-link {
+            color: #666 !important;
+            font-weight: 500;
+        }
+
+        .nav-link:hover {
+            color: var(--primary-color) !important;
+        }
+
+        .navbar .dropdown-toggle::after {
+            display: none;
+        }
+
+        .dropdown-menu {
+            border: 1px solid #e0e0e0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .dropdown-item:hover {
+            background-color: #f0f7ff;
+            color: var(--primary-color);
+        }
+
+        .btn-primary {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+
+        .btn-primary:hover {
+            background-color: #1557b0;
+            border-color: #1557b0;
+        }
+
+        .alert {
+            border: none;
+            border-radius: 6px;
+            margin-bottom: 1.5rem;
+        }
+
+        .alert-success {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+        }
+
+        .alert-danger {
+            background-color: #ffebee;
+            color: #c62828;
+        }
+
+        .alert-warning {
+            background-color: #fff3e0;
+            color: #e65100;
+        }
+
+        .alert-info {
+            background-color: #e1f5fe;
+            color: #01579b;
+        }
+
+        .main-container {
+            min-height: calc(100vh - 200px);
+            padding: 2rem 0;
+        }
+
+        footer {
+            background-color: var(--header-bg);
+            border-top: 1px solid #e0e0e0;
+            padding: 2rem 0;
+            margin-top: 4rem;
+            text-align: center;
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .card {
+            border: 1px solid #e0e0e0;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            border-radius: 6px;
+        }
+
+        .card-header {
+            background-color: var(--header-bg);
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        table {
+            font-size: 0.95rem;
+        }
+
+        th {
+            background-color: var(--header-bg);
+            font-weight: 600;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .badge {
+            font-size: 0.85rem;
+            padding: 0.4rem 0.6rem;
+        }
+
+        .badge-success {
+            background-color: #4caf50;
+        }
+
+        .badge-warning {
+            background-color: #ff9800;
+        }
+
+        .badge-danger {
+            background-color: #f44336;
+        }
+
+        .badge-info {
+            background-color: #2196f3;
+        }
+
+        .loading-spinner {
+            display: none;
+        }
+
+        .loading-spinner.active {
+            display: inline-block;
+        }
+
+        .modal-header {
+            background-color: var(--header-bg);
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .form-label {
+            font-weight: 500;
+            color: #333;
+            margin-top: 0.5rem;
+            margin-bottom: 0.3rem;
+        }
+
+        .form-control:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 0.2rem rgba(26, 115, 232, 0.15);
+        }
+
+        .form-select:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 0.2rem rgba(26, 115, 232, 0.15);
+        }
+
+        .required::after {
+            content: "*";
+            color: #f44336;
+            margin-left: 0.3rem;
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg sticky-top">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/dashboard">
+                <i class="bi bi-lightning-fill"></i> 電気設備積算システム
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/dashboard">ダッシュボード</a>
+                    </li>
+                    {% if current_user.role == 'admin' %}
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="adminMenu" role="button" data-bs-toggle="dropdown">
+                            <i class="bi bi-gear"></i> 管理者メニュー
+                        </a>
+                        <ul class="dropdown-menu" aria-labelledby="adminMenu">
+                            <li><a class="dropdown-item" href="/admin/users">ユーザー管理</a></li>
+                            <li><a class="dropdown-item" href="/admin/audit-log">監査ログ</a></li>
+                            <li><a class="dropdown-item" href="/admin/error-log">エラーログ</a></li>
+                            <li><a class="dropdown-item" href="/admin/learning">学習辞書</a></li>
+                            <li><a class="dropdown-item" href="/admin/master">マスタ管理</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="/admin/settings">設定</a></li>
+                        </ul>
+                    </li>
+                    {% endif %}
+                </ul>
+                <ul class="navbar-nav">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="userMenu" role="button" data-bs-toggle="dropdown">
+                            <i class="bi bi-person-circle"></i> {{ current_user.full_name }}
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenu">
+                            <li><a class="dropdown-item" href="/logout">ログアウト</a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="main-container">
+        <div class="container-fluid">
+            <!-- Flash Messages -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        {% set alert_class = 'alert-success' if category == 'success' else 'alert-danger' if category == 'danger' else 'alert-warning' if category == 'warning' else 'alert-info' %}
+                        <div class="alert {{ alert_class }} alert-dismissible fade show" role="alert">
+                            <i class="bi bi-info-circle"></i> {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            {% block content %}{% endblock %}
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        <p>&copy; 電気設備積算・見積システム v1.0</p>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Global utility functions
+        function showLoading(element) {
+            const spinner = element.querySelector('.loading-spinner');
+            if (spinner) {
+                spinner.classList.add('active');
+            }
+        }
+
+        function hideLoading(element) {
+            const spinner = element.querySelector('.loading-spinner');
+            if (spinner) {
+                spinner.classList.remove('active');
+            }
+        }
+
+        function confirmAction(message) {
+            return confirm(message);
+        }
+
+        function showAlert(message, type = 'info') {
+            const alertHtml = `<div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                <i class="bi bi-info-circle"></i> ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>`;
+            const container = document.querySelector('.main-container');
+            const alertElement = document.createElement('div');
+            alertElement.innerHTML = alertHtml;
+            container.insertBefore(alertElement.firstChild, container.firstChild);
+        }
+    </script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

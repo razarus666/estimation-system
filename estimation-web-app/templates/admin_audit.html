@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+
+{% block title %}監査ログ - 電気設備積算・見積システム{% endblock %}
+
+{% block content %}
+<!-- Breadcrumb -->
+<nav aria-label="breadcrumb" class="mb-4">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="/dashboard">ダッシュボード</a></li>
+        <li class="breadcrumb-item active">監査ログ</li>
+    </ol>
+</nav>
+
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h1 class="h2">
+            <i class="bi bi-file-text"></i> 監査ログ
+        </h1>
+    </div>
+    <div class="col-md-4 text-end">
+        <button type="button" class="btn btn-outline-secondary" onclick="exportAuditLog()">
+            <i class="bi bi-download"></i> エクスポート
+        </button>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <div class="row">
+            <div class="col-md-6">
+                <h5 class="mb-0">ログ一覧</h5>
+            </div>
+            <div class="col-md-6">
+                <div class="input-group input-group-sm">
+                    <input type="text" class="form-control" id="searchInput" placeholder="検索...">
+                    <button class="btn btn-outline-secondary" type="button" id="searchBtn">
+                        <i class="bi bi-search"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="card-body">
+        {% if audit_logs %}
+            <div class="table-responsive">
+                <table class="table table-hover table-sm" id="auditTable">
+                    <thead>
+                        <tr>
+                            <th>日時</th>
+                            <th>ユーザー</th>
+                            <th>アクション</th>
+                            <th>対象</th>
+                            <th>レベル</th>
+                            <th>詳細</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for log in audit_logs %}
+                        <tr>
+                            <td>{{ log.timestamp[:19] }}</td>
+                            <td>{{ log.user_name }}</td>
+                            <td>{{ log.action }}</td>
+                            <td>{{ log.target or '-' }}</td>
+                            <td>
+                                {% if log.level == 'INFO' %}
+                                    <span class="badge bg-info">INFO</span>
+                                {% elif log.level == 'WARN' %}
+                                    <span class="badge bg-warning text-dark">WARN</span>
+                                {% elif log.level == 'ERROR' %}
+                                    <span class="badge bg-danger">ERROR</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <small>{{ log.details or '-' }}</small>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            <nav aria-label="Page navigation" class="mt-3">
+                <ul class="pagination justify-content-center">
+                    {% if page > 1 %}
+                        <li class="page-item">
+                            <a class="page-link" href="/admin/audit-log?page=1">最初</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="/admin/audit-log?page={{ page - 1 }}">前へ</a>
+                        </li>
+                    {% endif %}
+
+                    <li class="page-item active">
+                        <span class="page-link">{{ page }} / {{ total_pages }}</span>
+                    </li>
+
+                    {% if page < total_pages %}
+                        <li class="page-item">
+                            <a class="page-link" href="/admin/audit-log?page={{ page + 1 }}">次へ</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="/admin/audit-log?page={{ total_pages }}">最後</a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        {% else %}
+            <div class="text-center py-5">
+                <i class="bi bi-inbox" style="font-size: 3rem; color: #ccc;"></i>
+                <p class="text-muted mt-3">ログがありません</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+document.getElementById('searchBtn').addEventListener('click', function() {
+    const searchTerm = document.getElementById('searchInput').value;
+    if (searchTerm) {
+        window.location.href = `/admin/audit-log?search=${encodeURIComponent(searchTerm)}`;
+    }
+});
+
+document.getElementById('searchInput').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        document.getElementById('searchBtn').click();
+    }
+});
+
+function exportAuditLog() {
+    window.location.href = '/admin/audit-log/export';
+}
+</script>
+{% endblock %}

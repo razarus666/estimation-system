@@ -1,0 +1,188 @@
+{% extends "base.html" %}
+
+{% block title %}学習辞書 - 電気設備積算・見積システム{% endblock %}
+
+{% block content %}
+<!-- Breadcrumb -->
+<nav aria-label="breadcrumb" class="mb-4">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="/dashboard">ダッシュボード</a></li>
+        <li class="breadcrumb-item active">学習辞書</li>
+    </ol>
+</nav>
+
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h1 class="h2">
+            <i class="bi bi-book"></i> 学習辞書
+        </h1>
+    </div>
+</div>
+
+<ul class="nav nav-tabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="candidates-tab" data-bs-toggle="tab" data-bs-target="#candidates" type="button" role="tab">
+            <i class="bi bi-hourglass-split"></i> 候補項目
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="confirmed-tab" data-bs-toggle="tab" data-bs-target="#confirmed" type="button" role="tab">
+            <i class="bi bi-check-circle"></i> 確定済み
+        </button>
+    </li>
+</ul>
+
+<div class="tab-content">
+    <!-- Tab 1: 候補項目 -->
+    <div class="tab-pane fade show active" id="candidates" role="tabpanel">
+        {% if candidate_items %}
+            <div class="table-responsive mt-3">
+                <table class="table table-hover table-sm">
+                    <thead>
+                        <tr>
+                            <th>入力名</th>
+                            <th>正規名称候補</th>
+                            <th style="width: 80px;">信頼度</th>
+                            <th style="width: 100px;">ステータス</th>
+                            <th style="width: 150px;">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in candidate_items %}
+                        <tr data-item-id="{{ item.id }}">
+                            <td><strong>{{ item.input_name }}</strong></td>
+                            <td>{{ item.normalized_name }}</td>
+                            <td>
+                                {% if item.confidence >= 0.75 %}
+                                    <span class="badge bg-success">{{ (item.confidence * 100) | round(0) }}%</span>
+                                {% elif item.confidence >= 0.50 %}
+                                    <span class="badge bg-warning text-dark">{{ (item.confidence * 100) | round(0) }}%</span>
+                                {% else %}
+                                    <span class="badge bg-danger">{{ (item.confidence * 100) | round(0) }}%</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="badge bg-secondary">{{ item.status }}</span>
+                            </td>
+                            <td>
+                                <button type="button" class="btn btn-sm btn-success" onclick="confirmCandidate({{ item.id }})">
+                                    <i class="bi bi-check"></i> 確定
+                                </button>
+                                <button type="button" class="btn btn-sm btn-danger" onclick="rejectCandidate({{ item.id }})">
+                                    <i class="bi bi-x"></i> 却下
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-5 mt-3">
+                <i class="bi bi-inbox" style="font-size: 3rem; color: #ccc;"></i>
+                <p class="text-muted mt-3">候補項目がありません</p>
+                <p class="text-muted small">すべてのマスタデータは確定されています</p>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Tab 2: 確定済み -->
+    <div class="tab-pane fade" id="confirmed" role="tabpanel">
+        {% if confirmed_items %}
+            <div class="table-responsive mt-3">
+                <table class="table table-hover table-sm">
+                    <thead>
+                        <tr>
+                            <th>入力名</th>
+                            <th>正規名称</th>
+                            <th style="width: 100px;">確定日</th>
+                            <th style="width: 100px;">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in confirmed_items %}
+                        <tr>
+                            <td><strong>{{ item.input_name }}</strong></td>
+                            <td>{{ item.normalized_name }}</td>
+                            <td>{{ item.confirmed_at[:10] }}</td>
+                            <td>
+                                <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeConfirmed({{ item.id }})">
+                                    <i class="bi bi-trash"></i> 削除
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-5 mt-3">
+                <i class="bi bi-inbox" style="font-size: 3rem; color: #ccc;"></i>
+                <p class="text-muted mt-3">確定済みの項目がありません</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+async function confirmCandidate(itemId) {
+    if (confirmAction('この候補を確定しますか？')) {
+        try {
+            const response = await fetch(`/admin/learning/${itemId}/confirm`, {
+                method: 'POST'
+            });
+
+            if (response.ok) {
+                showAlert('候補を確定しました', 'success');
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                showAlert('確定に失敗しました', 'danger');
+            }
+        } catch (error) {
+            showAlert('エラーが発生しました', 'danger');
+            console.error(error);
+        }
+    }
+}
+
+async function rejectCandidate(itemId) {
+    if (confirmAction('この候補を却下しますか？')) {
+        try {
+            const response = await fetch(`/admin/learning/${itemId}/reject`, {
+                method: 'POST'
+            });
+
+            if (response.ok) {
+                showAlert('候補を却下しました', 'success');
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                showAlert('却下に失敗しました', 'danger');
+            }
+        } catch (error) {
+            showAlert('エラーが発生しました', 'danger');
+            console.error(error);
+        }
+    }
+}
+
+async function removeConfirmed(itemId) {
+    if (confirmAction('この確定済みの項目を削除しますか？')) {
+        try {
+            const response = await fetch(`/admin/learning/${itemId}`, {
+                method: 'DELETE'
+            });
+
+            if (response.ok) {
+                showAlert('項目を削除しました', 'success');
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                showAlert('削除に失敗しました', 'danger');
+            }
+        } catch (error) {
+            showAlert('エラーが発生しました', 'danger');
+            console.error(error);
+        }
+    }
+}
+</script>
+{% endblock %}

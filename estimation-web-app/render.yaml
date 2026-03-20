@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: estimation-system
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120
+    envVars:
+      - key: FLASK_SECRET_KEY
+        generateValue: true
+      - key: DB_PATH
+        value: /opt/render/project/data/estimation.db
+      - key: UPLOAD_FOLDER
+        value: /opt/render/project/data/uploads
+    disk:
+      name: estimation-data
+      mountPath: /opt/render/project/data
+      sizeGB: 1
