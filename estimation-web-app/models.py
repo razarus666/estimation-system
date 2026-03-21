@@ -1,6 +1,6 @@
 """
-DBè¨­è¨: å¨ãã¼ãã«å®ç¾©
-é»æ°è¨­åç©ç®ã»è¦ç©Webãµã¼ãã¹
+DB設計: 全テーブル定義
+電気設備積算・見積Webサービス
 """
 import sqlite3
 import os
@@ -23,7 +23,7 @@ def init_db():
     conn = get_db()
     c = conn.cursor()
 
-    # === ã¦ã¼ã¶ã¼ ===
+    # === ユーザー ===
     c.execute("""CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         email TEXT UNIQUE NOT NULL,
@@ -37,7 +37,7 @@ def init_db():
         FOREIGN KEY (approved_by) REFERENCES users(id)
     )""")
 
-    # === æ¡ä»¶ ===
+    # === 案件 ===
     c.execute("""CREATE TABLE IF NOT EXISTS projects (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
@@ -50,7 +50,7 @@ def init_db():
         FOREIGN KEY (created_by) REFERENCES users(id)
     )""")
 
-    # === ã¢ããã­ã¼ããã¡ã¤ã« ===
+    # === アップロードファイル ===
     c.execute("""CREATE TABLE IF NOT EXISTS project_files (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         project_id INTEGER NOT NULL,
@@ -64,7 +64,7 @@ def init_db():
         FOREIGN KEY (uploaded_by) REFERENCES users(id)
     )""")
 
-    # === ç©ç®ãã¹ã¿ ===
+    # === 積算マスタ ===
     c.execute("""CREATE TABLE IF NOT EXISTS estimate_master (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         source_page TEXT,
@@ -91,7 +91,7 @@ def init_db():
         created_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
     )""")
 
-    # === ææãªã¹ãï¼æ¡ä»¶ãã¨ï¼ ===
+    # === 材料リスト（案件ごと） ===
     c.execute("""CREATE TABLE IF NOT EXISTS material_list (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         project_id INTEGER NOT NULL,
@@ -108,7 +108,7 @@ def init_db():
         FOREIGN KEY (project_id) REFERENCES projects(id)
     )""")
 
-    # === ç§åçµæ ===
+    # === 照合結果 ===
     c.execute("""CREATE TABLE IF NOT EXISTS match_results (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         project_id INTEGER NOT NULL,
@@ -133,7 +133,7 @@ def init_db():
         FOREIGN KEY (master_id) REFERENCES estimate_master(id)
     )""")
 
-    # === è¦ç©æç´° ===
+    # === 見積明細 ===
     c.execute("""CREATE TABLE IF NOT EXISTS estimate_details (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         project_id INTEGER NOT NULL,
@@ -160,7 +160,7 @@ def init_db():
         FOREIGN KEY (project_id) REFERENCES projects(id)
     )""")
 
-    # === æä¿®æ­£å±¥æ­´ ===
+    # === 手修正履歴 ===
     c.execute("""CREATE TABLE IF NOT EXISTS edit_history (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         project_id INTEGER NOT NULL,
@@ -168,13 +168,13 @@ def init_db():
         column_name TEXT NOT NULL,
         old_value TEXT,
         new_value TEXT,
-        edited_by INTEGER NOT NULL,
+        edit%d_by INTEGER NOT NULL,
         edited_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
         FOREIGN KEY (project_id) REFERENCES projects(id),
         FOREIGN KEY (edited_by) REFERENCES users(id)
     )""")
 
-    # === å­¦ç¿è¾æ¸ ===
+    # === 学習辞書 ===
     c.execute("""CREATE TABLE IF NOT EXISTS learning_dictionary (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         input_name TEXT NOT NULL,
@@ -192,7 +192,7 @@ def init_db():
         FOREIGN KEY (confirmed_by) REFERENCES users(id)
     )""")
 
-    # === è¦ç©å±éè¨­å® ===
+    # === 見積共通設定 ===
     c.execute("""CREATE TABLE IF NOT EXISTS estimate_settings (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         setting_key TEXT UNIQUE NOT NULL,
@@ -202,7 +202,7 @@ def init_db():
         updated_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
     )""")
 
-    # === ãã¹ã¿æ´æ°å±¥æ­´ ===
+    # === マスタ更新履歴 ===
     c.execute("""CREATE TABLE IF NOT EXISTS master_update_log (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         action TEXT NOT NULL,
@@ -215,7 +215,7 @@ def init_db():
         FOREIGN KEY (updated_by) REFERENCES users(id)
     )""")
 
-    # === ç£æ»ã­ã° ===
+    # === 監査ログ ===
     c.execute("""CREATE TABLE IF NOT EXISTS audit_log (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER,
@@ -229,7 +229,7 @@ def init_db():
         FOREIGN KEY (user_id) REFERENCES users(id)
     )""")
 
-    # === ã¨ã©ã¼ã­ã° ===
+    # === エラーログ ===
     c.execute("""CREATE TABLE IF NOT EXISTS error_log (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER,
@@ -240,18 +240,18 @@ def init_db():
         created_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
     )""")
 
-    # === åæè¨­å®ãã¼ã¿ ===
+    # === 初期設定データ ===
     settings_defaults = [
-        ("company_name", "", "èªç¤¾å"),
-        ("company_address", "", "èªç¤¾ä½æ"),
-        ("company_tel", "", "èªç¤¾é»è©±çªå·"),
-        ("company_fax", "", "èªç¤¾FAX"),
-        ("labor_unit_price", "25000", "å·¥äºåä¾¡ï¼å´ååä¾¡ï¼å/äººå·¥"),
-        ("estimate_title", "é»æ°è¨­åå·¥äº å¾¡è¦ç©æ¸", "è¦ç©æ¸ã¿ã¤ãã«"),
-        ("estimate_conditions", "1. æ¬è¦ç©ã¯æ¦ç®ã§ã\n2. æå¹æé: è¦ç©æ¥ãã30æ¥é", "è¦ç©æ¡ä»¶"),
-        ("auto_adopt_threshold", "0.75", "èªåæ¡ç¨ãããå¤"),
-        ("fuzzy_threshold", "0.50", "ããã¾ãç§åãããå¤"),
-        ("max_candidates", "5", "æå¤§åè£æ°"),
+        ("company_name", "", "自社名"),
+        ("company_address", "", "自社住所"),
+        ("company_tel", "", "自社電話番号"),
+        ("company_fax", "", "自社FAX"),
+        ("labor_unit_price", "25000", "工事単価（労務単価）円/人工"),
+        ("estimate_title", "電気設備工事 御見積書", "見積書タイトル"),
+        ("estimate_conditions", "1. 本見積は概算です\n2. 有効期限: 見積日より30日間", "見積条件"),
+        ("auto_adopt_threshold", "0.75", "自動採用しきい値"),
+        ("fuzzy_threshold", "0.50", "あいまい照合しきい値"),
+        ("max_candidates", "5", "最大候補数"),
     ]
     for key, val, desc in settings_defaults:
         c.execute("""INSERT OR IGNORE INTO estimate_settings
