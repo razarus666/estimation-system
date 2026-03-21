@@ -3848,11 +3848,105 @@ def debug_errors():
     try:
         db = get_db()
         cursor = db.cursor()
-        cursor.execute('SELECT error_type, error_message, url, created_at FROM error_log ORDER BY created_at DESC LIMIT 20')
-        errors = [{'type': r[0], 'message': r[1], 'url': r[2], 'time': r[3]} for r in cursor.fetchall()]
+        cursor.execute('SELECT error_type, error_message, traceback, url, created_at FROM error_log ORDER BY created_at DESC LIMIT 20')
+        errors = [{'type': r[0], 'message': r[1], 'traceback': r[2], 'url': r[3], 'time': r[4]} for r in cursor.fetchall()]
         return jsonify({'errors': errors}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+@app.route('/debug/project/<int:project_id>')
+@login_required
+def debug_project(project_id):
+    """Debug project detail rendering step by step"""
+    import traceback as tb
+    steps = []
+    try:
+        db = get_db()
+        cursor = db.cursor()
+        steps.append('DB connected')
+
+        cursor.execute(
+            'SELECT id, name, description, client_name, status, created_at, created_by FROM projects WHERE id = ?',
+            (project_id,)
+        )
+        project = cursor.fetchone()
+        steps.append(f'Project fetched: {project is not None}')
+        if not project:
+            return jsonify({'steps': steps, 'error': 'Project not found'}), 404
+
+        cursor.execute(
+            '''SELECT id, file_type, original_name, file_size, uploaded_at
+               FROM project_files WHERE project_id = ? ORDER BY uploaded_at DESC''',
+            (project_id,)
+        )
+        files = cursor.fetchall()
+        steps.append(f'Files fetched: {len(files)}')
+        if files:
+            f = files[0]
+            steps.append(f'File[0] type: {type(f).__name__}, keys: {list(f.keys()) if hasattr(f, "keys") else "no keys"}')
+            try:
+                steps.append(f'File[0].original_name = {f["original_name"]}')
+            except Exception as e2:
+                steps.append(f'File[0]["original_name"] error: {e2}')
+
+        cursor.execute(
+            '''SELECT id, row_no, material_name, spec, size, quantity, unit, construction_method, field_category
+               FROM material_list WHERE project_id = ? ORDER BY row_no''',
+            (project_id,)
+        )
+        materials = cursor.fetchall()
+        steps.append(f'Materials fetched: {len(materials)}')
+
+        cursor.execute(
+            'SELECT COUNT(*), COALESCE(SUM(amount),0), COALESCE(SUM(productivity_total),0) FROM estimate_details WHERE project_id = ?',
+            (project_id,)
+        )
+        est_row = cursor.fetchone()
+        estimate_count = est_row[0]
+        total_amount = est_row[1]
+        total_productivity = est_row[2]
+        steps.append(f'Estimates: count={estimate_count}, amount={total_amount}, productivity={total_productivity}')
+
+        cursor.execute("SELECT setting_value FROM estimate_settings WHERE setting_key='labor_unit_price'")
+        lup_row = cursor.fetchone()
+        labor_unit_price = float(lup_row[0]) if lup_row else 25000
+        steps.append(f'Labor unit price: {labor_unit_price}')
+
+        cursor.execute(
+            '''SELECT id, material_id, candidate_rank, master_id, match_type,
+               confidence, reason, is_adopted, master_name, master_spec,
+               master_method, composite_unit_price, removal_productivity, source_page
+            FROM match_results WHERE project_id = ? ORDER BY material_id, candidate_rank''',
+            (project_id,)
+        )
+        match_results = cursor.fetchall()
+        steps.append(f'Match results: {len(match_results)}')
+
+        # Try rendering template
+        try:
+            html = render_template(
+                'project_detail.html',
+                project={
+                    'id': project[0], 'name': project[1], 'description': project[2],
+                    'client_name': project[3], 'status': project[4], 'created_at': project[5]
+                },
+                files=files, materials=materials,
+                estimate_count=estimate_count, total_amount=total_amount,
+                total_productivity=total_productivity,
+                labor_unit_price=labor_unit_price, match_results=match_results
+            )
+            steps.append(f'Template rendered OK, length={len(html)}')
+        except Exception as te:
+            steps.append(f'TEMPLATE ERROR: {te}')
+            steps.append(tb.format_exc())
+
+        return jsonify({'steps': steps, 'status': 'OK'}), 200
+
+    except Exception as e:
+        steps.append(f'EXCEPTION: {e}')
+        steps.append(tb.format_exc())
+        return jsonify({'steps': steps, 'status': 'ERROR'}), 500
 
 
 # ==================== ERROR HANDLERS ====================
