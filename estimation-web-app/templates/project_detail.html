@@ -249,7 +249,7 @@
                 <tr class="align-middle">
                   <td class="px-5 py-3">
                     <i class="bi bi-file-earmark me-2"></i>
-                    <span class="fw-500">{{ file.original_name or file.file_name }}</span>
+                    <span class="fw-500">{{ file.original_name or 'ファイル' }}</span>
                   </td>
                   <td class="px-5 py-3 text-secondary small">
                     {{ file.uploaded_at[:16] if file.uploaded_at else '-' }}

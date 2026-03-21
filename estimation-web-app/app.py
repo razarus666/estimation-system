@@ -966,12 +966,15 @@ def project_detail(project_id):
         lup_row = cursor.fetchone()
         labor_unit_price = float(lup_row[0]) if lup_row else 25000
 
-        # Get match results for display
+        # Get match results for display (join with material_list for material_name)
         cursor.execute(
-            '''SELECT id, material_id, candidate_rank, master_id, match_type,
-               confidence, reason, is_adopted, master_name, master_spec,
-               master_method, composite_unit_price, removal_productivity, source_page
-            FROM match_results WHERE project_id = ? ORDER BY material_id, candidate_rank''',
+            '''SELECT mr.id, mr.material_id, mr.candidate_rank, mr.master_id, mr.match_type,
+               mr.confidence, mr.reason, mr.is_adopted, mr.master_name, mr.master_spec,
+               mr.master_method, mr.composite_unit_price, mr.removal_productivity, mr.source_page,
+               COALESCE(ml.material_name, '') as material_name
+            FROM match_results mr
+            LEFT JOIN material_list ml ON mr.material_id = ml.id
+            WHERE mr.project_id = ? ORDER BY mr.material_id, mr.candidate_rank''',
             (project_id,)
         )
         match_results = cursor.fetchall()
