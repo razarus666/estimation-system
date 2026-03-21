@@ -3952,24 +3952,40 @@ def debug_project(project_id):
         return jsonify({'steps': steps, 'status': 'ERROR'}), 500
 
 
-# ==================== ERROR HANDLERS ====================
+# ==================== VERSION & ERROR HANDLERS ====================
+
+APP_VERSION = 'fb9400e-v2'
+
+@app.route('/debug/version')
+def debug_version():
+    """Show app version for deploy verification"""
+    return jsonify({'version': APP_VERSION, 'status': 'ok'}), 200
+
 
 @app.errorhandler(404)
 def not_found(error):
     """404 error handler"""
-    return render_template('error.html', error='ページが見つかりません'), 404
+    return render_template('error.html', error_code=404, error_message=f'ページが見つかりません (v{APP_VERSION})'), 404
 
 
 @app.errorhandler(500)
 def internal_error(error):
     """500 error handler"""
-    return render_template('error.html', error='サーバーエラーが発生しました'), 500
+    import traceback
+    tb_str = traceback.format_exc()
+    return render_template('error.html', error_code=500,
+                           error_message=f'サーバーエラーが発生しました',
+                           error_details=f'{error}\n\n{tb_str}'), 500
 
 
 @app.errorhandler(403)
 def forbidden(error):
     """403 error handler"""
-    return render_template('error.html', error='アクセスが禁止されています'), 403
+    return render_template('error.html', error_code=403, error_message='アクセスが禁止されています'), 403
+
+
+# Enable DEBUG mode temporarily to show error details on error page
+app.config['DEBUG'] = True
 
 
 if __name__ == '__main__':
