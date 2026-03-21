@@ -168,7 +168,7 @@ def init_db():
         column_name TEXT NOT NULL,
         old_value TEXT,
         new_value TEXT,
-        edit%d_by INTEGER NOT NULL,
+        edited_by INTEGER NOT NULL,
         edited_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
         FOREIGN KEY (project_id) REFERENCES projects(id),
         FOREIGN KEY (edited_by) REFERENCES users(id)
