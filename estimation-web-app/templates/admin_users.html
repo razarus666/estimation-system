@@ -18,6 +18,7 @@
                         <th>権限</th>
                         <th>状態</th>
                         <th>登録日</th>
+                        <th>最終ログイン</th>
                         <th class="pe-4">操作</th>
                     </tr>
                 </thead>
@@ -54,6 +55,9 @@
                             <td>
                                 <small class="text-muted">{{ user.created_at[:10] if user.created_at else '-' }}</small>
                             </td>
+                            <td>
+                                <small class="text-muted">{{ user.last_login_at[:10] if user.last_login_at else '-' }}</small>
+                            </td>
                             <td class="pe-4">
                                 <div class="btn-group btn-group-sm" role="group">
                                     {% if user.role == 'pending' %}
@@ -86,6 +90,14 @@
                                                 onclick="toggleUserStatus({{ user.id }}, {{ 'false' if user.is_active else 'true' }}, '{{ user.full_name }}')">
                                             <i class="fas {% if user.is_active %}fa-lock{% else %}fa-lock-open{% endif %}"></i>
                                             {% if user.is_active %}無効化{% else %}有効化{% endif %}
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-info"
+                                                onclick="resetPassword({{ user.id }}, '{{ user.full_name }}')">
+                                            <i class="fas fa-key"></i> PW
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-danger"
+                                                onclick="deleteUserAccount({{ user.id }}, '{{ user.full_name }}')">
+                                            <i class="fas fa-trash"></i>
                                         </button>
                                     {% endif %}
                                 </div>
@@ -241,6 +253,46 @@
                         setTimeout(() => location.reload(), 1500);
                     } else {
                         showNotification('エラー', data.message || 'エラーが発生しました', 'error');
+                    }
+                })
+                .catch(err => showNotification('エラー', err.message, 'error'));
+        }
+    }
+
+    function resetPassword(userId, userName) {
+        if (confirm(`${userName} さんのパスワードをリセットしますか？\n\n新しい一時パスワードが表示されます。`)) {
+            fetch(`/admin/users/${userId}/reset-password`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        const tempPass = data.temp_password;
+                        alert(`パスワードをリセットしました。\n\n一時パスワード: ${tempPass}\n\nこのパスワードをユーザーに通知してください。`);
+                        showNotification('成功', `パスワードをリセットしました`, 'success');
+                        setTimeout(() => location.reload(), 1500);
+                    } else {
+                        showNotification('エラー', data.error || 'エラーが発生しました', 'error');
+                    }
+                })
+                .catch(err => showNotification('エラー', err.message, 'error'));
+        }
+    }
+
+    function deleteUserAccount(userId, userName) {
+        if (confirm(`${userName} さんを削除しますか？\n\nこの操作は取り消せません。`)) {
+            fetch(`/admin/users/${userId}/delete`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        showNotification('成功', `ユーザーを削除しました`, 'success');
+                        setTimeout(() => location.reload(), 1500);
+                    } else {
+                        showNotification('エラー', data.error || 'エラーが発生しました', 'error');
                     }
                 })
                 .catch(err => showNotification('エラー', err.message, 'error'));

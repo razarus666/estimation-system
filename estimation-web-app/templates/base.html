@@ -985,13 +985,17 @@
 
         <div class="user-info" id="userInfo">
             {% if current_user.is_authenticated %}
-            <div class="user-avatar">
-                {{ current_user.full_name[0] if current_user.full_name else 'U' }}
-            </div>
-            <div class="user-details">
-                <div class="user-name">{{ current_user.full_name }}</div>
-                <div class="user-role">
-                    {% if current_user.role == 'admin' %}管理者{% elif current_user.role == 'user' %}ユーザー{% else %}{{ current_user.role }}{% endif %}
+            <div class="dropdown" style="display: flex; align-items: center; gap: 12px;">
+                <a href="{{ url_for('user_profile') }}" class="user-profile-link" title="プロフィール">
+                    <div class="user-avatar">
+                        {{ current_user.full_name[0] if current_user.full_name else 'U' }}
+                    </div>
+                </a>
+                <div class="user-details">
+                    <a href="{{ url_for('user_profile') }}" class="user-name text-decoration-none" style="color: inherit;">{{ current_user.full_name }}</a>
+                    <div class="user-role">
+                        {% if current_user.role == 'admin' %}管理者{% elif current_user.role == 'user' %}ユーザー{% else %}{{ current_user.role }}{% endif %}
+                    </div>
                 </div>
             </div>
             {% endif %}

@@ -34,8 +34,30 @@ def init_db():
         created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
         approved_at TEXT,
         approved_by INTEGER,
+        avatar_path TEXT,
+        phone TEXT,
+        department TEXT,
+        last_login_at TEXT,
         FOREIGN KEY (approved_by) REFERENCES users(id)
     )""")
+
+    # Migration: add new columns if missing from existing DB
+    try:
+        c.execute("ALTER TABLE users ADD COLUMN avatar_path TEXT")
+    except Exception:
+        pass
+    try:
+        c.execute("ALTER TABLE users ADD COLUMN phone TEXT")
+    except Exception:
+        pass
+    try:
+        c.execute("ALTER TABLE users ADD COLUMN department TEXT")
+    except Exception:
+        pass
+    try:
+        c.execute("ALTER TABLE users ADD COLUMN last_login_at TEXT")
+    except Exception:
+        pass
 
     # === 案件 ===
     c.execute("""CREATE TABLE IF NOT EXISTS projects (
@@ -206,6 +228,22 @@ def init_db():
         description TEXT,
         updated_by INTEGER,
         updated_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+    )""")
+
+    # === 案件別見積設定 ===
+    c.execute("""CREATE TABLE IF NOT EXISTS project_estimate_settings (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        project_id INTEGER NOT NULL,
+        company_name TEXT,
+        company_address TEXT,
+        company_tel TEXT,
+        company_fax TEXT,
+        labor_unit_price REAL DEFAULT 25000,
+        estimate_title TEXT,
+        estimate_conditions TEXT,
+        created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+        updated_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+        FOREIGN KEY (project_id) REFERENCES projects(id)
     )""")
 
     # === マスタ更新履歴 ===

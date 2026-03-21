@@ -258,7 +258,6 @@
                     <a
                       href="{{ url_for('download_file', project_id=project.id, file_id=file.id) }}"
                       class="btn btn-sm btn-outline-primary"
-                      download
                     >
                       <i class="bi bi-download"></i> DL
                     </a>
@@ -600,14 +599,18 @@ function uploadFiles(files) {
       method: 'POST',
       body: formData
     })
-    .then(response => {
-      if (!response.ok) throw new Error('Upload failed');
+    .then(response => response.json())
+    .then(data => {
+      if (!data || data.error) throw new Error(data?.error || 'Upload failed');
       showToast('success', `${file.name} をアップロードしました`);
       setTimeout(() => location.reload(), 500);
     })
     .catch(error => {
       showToast('error', `${file.name} のアップロードに失敗しました`);
       console.error(error);
+    })
+    .finally(() => {
+      uploadProgress.style.display = 'none';
     });
   });
 }

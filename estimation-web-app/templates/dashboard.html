@@ -177,12 +177,28 @@
                 <span class="text-secondary small">{{ project.created_at[:10] if project.created_at else '-' }}</span>
               </td>
               <td class="px-4 py-3 text-center">
-                <a
-                  href="{{ url_for('project_detail', project_id=project.id) }}"
-                  class="btn btn-sm btn-outline-primary"
-                >
-                  詳細
-                </a>
+                <div class="btn-group btn-group-sm">
+                  <a
+                    href="{{ url_for('project_detail', project_id=project.id) }}"
+                    class="btn btn-outline-primary"
+                  >
+                    詳細
+                  </a>
+                  <button
+                    class="btn btn-outline-secondary"
+                    onclick="editProject({{ project.id }}, '{{ project.name }}', '{{ project.client_name or '' }}', '{{ project.description or '' }}', '{{ project.location or '' }}')"
+                    title="編集"
+                  >
+                    <i class="bi bi-pencil"></i>
+                  </button>
+                  <button
+                    class="btn btn-outline-danger"
+                    onclick="deleteProject({{ project.id }}, '{{ project.name }}')"
+                    title="削除"
+                  >
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </div>
               </td>
             </tr>
             {% endfor %}
@@ -254,5 +270,96 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
 });
+
+function editProject(projectId, projectName, clientName, description, location) {
+  document.getElementById('editProjectId').value = projectId;
+  document.getElementById('editProjectName').value = projectName;
+  document.getElementById('editClientName').value = clientName;
+  document.getElementById('editDescription').value = description;
+  document.getElementById('editLocation').value = location;
+  const editModal = new bootstrap.Modal(document.getElementById('editProjectModal'));
+  editModal.show();
+}
+
+function deleteProject(projectId, projectName) {
+  if (confirm(`「${projectName}」を削除しますか？\n\nこの操作は取り消せません。`)) {
+    fetch(`/projects/${projectId}/delete`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        alert('プロジェクトを削除しました');
+        location.reload();
+      } else {
+        alert('削除に失敗しました: ' + (data.error || '不明なエラー'));
+      }
+    })
+    .catch(err => alert('エラーが発生しました: ' + err.message));
+  }
+}
+
+function submitEditProject() {
+  const projectId = document.getElementById('editProjectId').value;
+  const data = {
+    name: document.getElementById('editProjectName').value,
+    client_name: document.getElementById('editClientName').value,
+    description: document.getElementById('editDescription').value,
+    location: document.getElementById('editLocation').value
+  };
+
+  fetch(`/projects/${projectId}/edit`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.success) {
+      alert('プロジェクトを更新しました');
+      location.reload();
+    } else {
+      alert('更新に失敗しました: ' + (data.error || '不明なエラー'));
+    }
+  })
+  .catch(err => alert('エラーが発生しました: ' + err.message));
+}
 </script>
+
+<!-- Edit Project Modal -->
+<div class="modal fade" id="editProjectModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content border-0">
+      <div class="modal-header bg-light border-bottom">
+        <h5 class="modal-title fw-bold">プロジェクト編集</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body px-4 py-4">
+        <input type="hidden" id="editProjectId">
+        <div class="mb-3">
+          <label class="form-label fw-600">プロジェクト名</label>
+          <input type="text" id="editProjectName" class="form-control" required>
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-600">顧客名</label>
+          <input type="text" id="editClientName" class="form-control">
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-600">ロケーション</label>
+          <input type="text" id="editLocation" class="form-control">
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-600">説明</label>
+          <textarea id="editDescription" class="form-control" rows="3"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer border-top">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+        <button type="button" class="btn btn-primary" onclick="submitEditProject()">保存</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 {% endblock %}
