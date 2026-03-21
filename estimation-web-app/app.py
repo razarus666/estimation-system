@@ -4007,7 +4007,7 @@ def debug_project(project_id):
 
 # ==================== VERSION & ERROR HANDLERS ====================
 
-APP_VERSION = '28ebf0c-v3'
+APP_VERSION = 'bf57812-v4'
 
 @app.route('/debug/version')
 def debug_version():
