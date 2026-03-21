@@ -1,164 +1,165 @@
 {% extends "base.html" %}
 
-{% block title %}エラーログ - 電気設備積算・見積システム{% endblock %}
-
 {% block content %}
-<!-- Breadcrumb -->
-<nav aria-label="breadcrumb" class="mb-4">
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a href="/dashboard">ダッシュボード</a></li>
-        <li class="breadcrumb-item active">エラーログ</li>
-    </ol>
-</nav>
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1 class="h3 mb-0">エラーログ</h1>
+        </div>
+    </div>
 
-<div class="row mb-4">
-    <div class="col-md-8">
-        <h1 class="h2">
-            <i class="bi bi-exclamation-triangle"></i> エラーログ
-        </h1>
-    </div>
-    <div class="col-md-4 text-end">
-        <button type="button" class="btn btn-outline-secondary" onclick="exportErrorLog()">
-            <i class="bi bi-download"></i> エクスポート
-        </button>
-        {% if error_logs %}
-        <button type="button" class="btn btn-outline-danger" onclick="clearErrorLog()">
-            <i class="bi bi-trash"></i> クリア
-        </button>
-        {% endif %}
-    </div>
-</div>
-
-<div class="card">
-    <div class="card-header">
-        <h5 class="mb-0">エラー一覧</h5>
-    </div>
-    <div class="card-body">
-        {% if error_logs %}
-            <div class="table-responsive">
-                <table class="table table-hover table-sm">
-                    <thead>
-                        <tr>
-                            <th>日時</th>
-                            <th>ユーザー</th>
-                            <th>エラー種別</th>
-                            <th>メッセージ</th>
-                            <th>URL</th>
-                            <th style="width: 80px;">操作</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for log in error_logs %}
-                        <tr>
-                            <td>{{ log.timestamp[:19] }}</td>
+    <div class="card shadow-sm border-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-4">日時</th>
+                        <th>ユーザー</th>
+                        <th>エラー種別</th>
+                        <th>エッセージ</th>
+                        <th>URL</th>
+                        <th class="pe-4" style="width: 60px;"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if logs %}
+                        {% for log in logs %}
+                        <tr class="error-row" data-log-id="{{ log.id }}">
+                            <td class="ps-4">
+                                <small class="text-muted">{{ log.timestamp[:19] }}</small>
+                            </td>
                             <td>{{ log.user_name or '-' }}</td>
                             <td>
-                                <span class="badge bg-danger">{{ log.error_type }}</span>
+                                <span class="badge bg-danger" style="background-color: #dc3545 !important;">
+                                    {{ log.error_type }}
+                                </span>
                             </td>
                             <td>
-                                <small>{{ log.message }}</small>
+                                <small>{{ log.message[:50] }}</small>
                             </td>
                             <td>
-                                <small class="text-muted">{{ log.url or '-' }}</small>
+                                <small class="text-muted">{{ (log.url or '-')[:40] }}</small>
                             </td>
-                            <td>
-                                <button type="button" class="btn btn-sm btn-outline-info" data-bs-toggle="modal" data-bs-target="#detailModal" onclick="showErrorDetail({{ log.id }})">
-                                    <i class="bi bi-info-circle"></i>
+                            <td class="pe-4">
+                                <button type="button" class="btn btn-sm btn-outline-secondary"
+                                        onclick="toggleTraceback({{ log.id }})">
+                                    <i class="fas fa-chevron-down"></i>
                                 </button>
                             </td>
                         </tr>
+                        <tr class="traceback-row" id="traceback-{{ log.id }}" style="display: none;">
+                            <td colspan="6" class="ps-4 pe-4 py-3">
+                                <div class="bg-light p-3 rounded" style="border-left: 3px solid #dc3545;">
+                                    <small class="text-muted">
+                                        <strong>エラー種別:</strong> {{ log.error_type }}<br>
+                                        <strong>ヨッセージ:</strong> {{ log.message }}<br>
+                                        <strong>URL:</strong> {{ log.url or '-' }}<br>
+                                        <strong>トレースバック:</strong><br>
+                                        <code style="white-space: pre-wrap; display: block; margin-top: 0.5rem;">{{ log.traceback or 'N/A' }}</code>
+                                    </small>
+                                </div>
+                            </td>
+                        </tr>
                         {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-
-            <!-- Pagination -->
-            <nav aria-label="Page navigation" class="mt-3">
-                <ul class="pagination justify-content-center">
-                    {% if page > 1 %}
-                        <li class="page-item">
-                            <a class="page-link" href="/admin/error-log?page=1">最初</a>
-                        </li>
-                        <li class="page-item">
-                            <a class="page-link" href="/admin/error-log?page={{ page - 1 }}">前へ</a>
-                        </li>
+                    {% else %}
+                        <tr>
+                            <td colspan="6" class="text-center py-5 text-muted">
+                                <i class="fas fa-check-circle fa-3x mb-3" style="color: #28a745; opacity: 0.5;"></i>
+                                <p>エラーはありま8�8)3����6�73�'6���#�8+~8+�88n8:8�j�>[�8�X�^K��8~8n8N8す</p>
+                            </td>
+                        </tr>
                     {% endif %}
-
-                    <li class="page-item active">
-                        <span class="page-link">{{ page }} / {{ total_pages }}</span>
-                    </li>
-
-                    {% if page < total_pages %}
-                        <li class="page-item">
-                            <a class="page-link" href="/admin/error-log?page={{ page + 1 }}">次へ</a>
-                        </li>
-                        <li class="page-item">
-                            <a class="page-link" href="/admin/error-log?page={{ total_pages }}">最後</a>
-                        </li>
-                    {% endif %}
-                </ul>
-            </nav>
-        {% else %}
-            <div class="text-center py-5">
-                <i class="bi bi-check-circle" style="font-size: 3rem; color: #4caf50;"></i>
-                <p class="text-muted mt-3">エラーはありません</p>
-                <p class="text-muted small">システムが正常に動作しています</p>
-            </div>
-        {% endif %}
-    </div>
-</div>
-
-<!-- Detail Modal -->
-<div class="modal fade" id="detailModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">エラー詳細</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <div id="detailContent"></div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">閉じる</button>
-            </div>
+                </tbody>
+            </table>
         </div>
     </div>
+
+    <!-- Pagination -->
+    {% if total_pages is defined and total_pages > 1 %}
+    <nav aria-label="Page navigation" class="mt-4">
+        <ul class="pagination justify-content-center">
+            {% if page > 1 %}
+                <li class="page-item">
+                    <a class="page-link" href="/admin/error?page=1">最初</a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="/admin/error?page={{ page - 1 }}">前へ</a>
+                </li>
+            {% endif %}
+
+            <li class="page-item active">
+                <span class="page-link">{{ page }} / {{ total_pages }}</span>
+            </li>
+
+            {% if page < total_pages %}
+                <li class="page-item">
+                    <a class="page-link" href="/admin/error?page={{ page + 1 }}">次へ</a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="/admin/error?page={{ total_pages }}">最後</a>
+                </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
 </div>
 
+<style>
+    .card {
+        border-radius: 0.5rem;
+    }
+
+    .table-hover tbody tr:hover {
+        background-color: rgba(0, 123, 255, 0.04);
+    }
+
+    code {
+        background-color: #f8f9fa;
+        border-radius: 0.25rem;
+        padding: 0.2rem 0.4rem;
+        font-size: 0.875rem;
+    }
+
+    .traceback-row code {
+        background-color: #fff;
+        padding: 1rem;
+        display: block;
+        overflow-x: auto;
+    }
+</style>
+
 <script>
-const detailModal = new bootstrap.Modal(document.getElementById('detailModal'));
+    function toggleUraceback(logId) {
+        const row = document.getElementById(`traceback-${logId}`);
+        const btn = event.target.closest('button');
+        const icon = btn.querySelector('i');
 
-async function showErrorDetail(errorId) {
-    try {
-        const response = await fetch(`/admin/error-log/${errorId}/detail`);
-        const html = await response.text();
-        document.getElementById('detailContent').innerHTML = html;
-        detailModal.show();
-    } catch (error) {
-        showAlert('詳細情報の取得に失敗しました', 'danger');
-        console.error(error);
+        if (row.style.display === 'none') {
+            row.style.display = 'table-row';
+            icon.classList.remove('fa-chevron-down');
+            icon.classList.add('fa-chevron-up');
+        } else {
+            row.style.display = 'none';
+            icon.classList.remove('fa-chevron-up');
+            icon.classList.add('fa-chevron-down');
+        }
     }
-}
+</script>
+{% endblock %}
+extarea.addEventListener('input', function() {
+    charCountSpan.textContent = this.value.length;
+  });
 
-function exportErrorLog() {
-    window.location.href = '/admin/error-log/export';
-}
-
-function clearErrorLog() {
-    if (confirmAction('すべてのエラーログを削除してもよろしいですか？')) {
-        fetch('/admin/error-log/clear', {
-            method: 'POST'
-        }).then(response => {
-            if (response.ok) {
-                showAlert('エラーログをクリアしました', 'success');
-                setTimeout(() => location.reload(), 1000);
-            }
-        }).catch(error => {
-            showAlert('クリアに失敗しました', 'danger');
-            console.error(error);
-        });
+  // Form validation
+  const form = document.getElementById('projectForm');
+  form.addEventListener('submit', function(e) {
+    const projectName = document.getElementById('projectName').value.trim();
+    if (!projectName) {
+      e.preventDefault();
+      alert('案件名を入力してください');
+      document.getElementById('projectName').focus();
     }
-}
+  });
+});
 </script>
 {% endblock %}
