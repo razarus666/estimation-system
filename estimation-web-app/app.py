@@ -4007,7 +4007,7 @@ def debug_project(project_id):
 
 # ==================== VERSION & ERROR HANDLERS ====================
 
-APP_VERSION = 'test-upload-v6'
+APP_VERSION = 'test-upload-v7'
 
 @app.route('/debug/version')
 def debug_version():
@@ -4135,21 +4135,24 @@ def debug_test_upload():
 
         # Insert file record
         cursor.execute(
-            '''INSERT INTO project_files (project_id, filename, original_name, file_type, file_size, file_path, uploaded_by, uploaded_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?)''',
-            (project_id, unique_name, 'test_material_list.xlsx', 'material_list', file_size, dest_path, current_user.id, datetime.utcnow())
+            '''INSERT INTO project_files (project_id, original_name, file_type, file_size, stored_path, uploaded_by, uploaded_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?)''',
+            (project_id, 'test_material_list.xlsx', 'material_list', file_size, dest_path, current_user.id, datetime.utcnow())
         )
         file_id = cursor.lastrowid
 
-        # Insert materials
+        # Insert materials (same schema as upload_file route)
         material_count = 0
         for item in parsed:
             cursor.execute(
-                '''INSERT INTO materials (project_id, file_id, name, specification, quantity, unit, unit_price, amount, created_at)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)''',
-                (project_id, file_id, item.get('name', ''), item.get('specification', ''),
-                 item.get('quantity', 0), item.get('unit', ''), item.get('unit_price', 0),
-                 item.get('amount', 0), datetime.utcnow())
+                '''INSERT INTO material_list
+                   (project_id, row_no, material_name, spec, size, quantity, unit, construction_method, field_category, drawing_ref, remarks)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+                (project_id, item.get('row_no', ''), item.get('material_name', ''),
+                 item.get('spec', ''), item.get('size', ''),
+                 item.get('quantity', 0), item.get('unit', ''),
+                 item.get('construction_method', ''), item.get('field_category', ''),
+                 item.get('drawing_ref', ''), item.get('remarks', ''))
             )
             material_count += 1
 
