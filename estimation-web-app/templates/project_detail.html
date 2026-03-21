@@ -5,217 +5,332 @@
   <!-- Toast Container -->
   <div id="toastContainer" style="position: fixed; bottom: 20px; right: 20px; z-index: 1050;"></div>
 
-  <!-- Project Header -->
-  <div class="card border-0 shadow-sm mb-4">
-    <div class="card-body py-4 px-5">
-      <div class="row align-items-center">
-        <div class="col">
-          <h1 class="h2 fw-bold mb-2">{{ project.name }}</h1>
-          <div class="d-flex gap-3 align-items-center">
-            {% if project.client_name %}
-            <span class="text-secondary">
-              <i class="bi bi-person-check"></i> {{ project.client_name }}
-            </span>
-            {% endif %}
-            {% set status_colors = {
-              'draft': ('#6b7280', 'グレー'),
-              'active': ('#4f6ef7', '進行中'),
-              'matched': ('#22c55e', '照合完了'),
-              'estimated': ('#a855f7', '見積完了')
-            } %}
-            {% set status_info = status_colors.get(project.status, ('#6b7280', project.status)) %}
-            <span
-              class="badge rounded-pill"
-              style="background-color: {{ status_info[0] }}20; color: {{ status_info[0] }}; font-size: 0.875rem;"
-            >
-              {{ status_info[1] }}
-            </span>
-            <span class="text-secondary small">
-              作成: {{ project.created_at[:10] if project.created_at else '-' }}
-            </span>
-          </div>
+  <!-- Header -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h1>{{ project.name }}</h1>
+      <p class="text-muted mb-0">{{ project.description }}</p>
+    </div>
+    <div class="btn-group">
+      <a href="{% url 'estimate_builder' project.id %}" class="btn btn-primary">
+        <i class="bi bi-calculator"></i> 見積を作成
+      </a>
+      <button class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#editProjectModal">
+        <i class="bi bi-pencil"></i> 編集
+      </button>
+      <button class="btn btn-danger" onclick="deleteProject()">
+        <i class="bi bi-trash"></i> 削除
+      </button>
+    </div>
+  </div>
+
+  <!-- Project Info Cards -->
+  <div class="row mb-4">
+    <div class="col-md-3">
+      <div class="card">
+        <div class="card-body">
+          <h6 class="card-title text-muted">顧客名</h6>
+          <p class="card-text">{{ project.client_name }}</p>
         </div>
-        <div class="col-auto">
-          <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">
-            <i class="bi bi-arrow-left"></i> 戻る
-          </a>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card">
+        <div class="card-body">
+          <h6 class="card-title text-muted">状況</h6>
+          <p class="card-text">
+            {% if project.status == 'draft' %}
+              <span class="badge bg-warning">下書き</span>
+            {% elif project.status == 'active' %}
+              <span class="badge bg-info">進行中</span>
+            {% elif project.status == 'completed' %}
+              <span class="badge bg-success">完了</span>
+            {% else %}
+              <span class="badge bg-secondary">{{ project.status }}</span>
+            {% endif %}
+          </p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card">
+        <div class="card-body">
+          <h6 class="card-title text-muted">作成日</h6>
+          <p class="card-text">{{ project.created_at|date:"Y-m-d" }}</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card">
+        <div class="card-body">
+          <h6 class="card-title text-muted">見積数</h6>
+          <p class="card-text">{{ project.estimates.count }}</p>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Tab Navigation -->
-  <ul class="nav nav-tabs border-bottom mb-4" role="tablist" style="border-color: #e5e7eb;">
-    <li class="nav-item" role="presentation">
-      <button
-        class="nav-link active fw-500"
-        id="tab-overview"
-        data-bs-toggle="tab"
-        data-bs-target="#overview"
-        type="button"
-        role="tab"
-      >
-        <i class="bi bi-info-circle me-2"></i>概要
-      </button>
-    </li>
-    <li class="nav-item" role="presentation">
-      <button
-        class="nav-link fw-500"
-        id="tab-files"
-        data-bs-toggle="tab"
-        data-bs-target="#files"
-        type="button"
-        role="tab"
-      >
-        <i class="bi bi-file-earmark me-2"></i>ファイル
-      </button>
-    </li>
-    <li class="nav-item" role="presentation">
-      <button
-        class="nav-link fw-500"
-        id="tab-materials"
-        data-bs-toggle="tab"
-        data-bs-target="#materials"
-        type="button"
-        role="tab"
-      >
-        <i class="bi bi-list-ul me-2"></i>材料リスト
-      </button>
-    </li>
-    <li class="nav-item" role="presentation">
-      <button
-        class="nav-link fw-500"
-        id="tab-matching"
-        data-bs-toggle="tab"
-        data-bs-target="#matching"
-        type="button"
-        role="tab"
-      >
-        <i class="bi bi-lightning me-2"></i>AI照合結果
-      </button>
-    </li>
-    <li class="nav-item" role="presentation">
-      <button
-        class="nav-link fw-500"
-        id="tab-estimates"
-        data-bs-toggle="tab"
-        data-bs-target="#estimates"
-        type="button"
-        role="tab"
-      >
-        <i class="bi bi-receipt me-2"></i>見積明細
-      </button>
-    </li>
-  </ul>
-
-  <!-- Tab Content -->
-  <div class="tab-content">
-    <!-- Overview Tab -->
-    <div class="tab-pane fade show active" id="overview" role="tabpanel">
-      <div class="row g-4">
-        <div class="col-lg-8">
-          <div class="card border-0 shadow-sm">
-            <div class="card-header bg-white border-bottom px-5 py-3">
-              <h6 class="mb-0 fw-bold">プロジェクト情報</h6>
-            </div>
-            <div class="card-body px-5 py-4">
-              <div class="row mb-4">
-                <div class="col-md-6">
-                  <p class="text-secondary small mb-1">案件名</p>
-                  <p class="fw-500">{{ project.name }}</p>
-                </div>
-                <div class="col-md-6">
-                  <p class="text-secondary small mb-1">顧客名</p>
-                  <p class="fw-500">{{ project.client_name or '-' }}</p>
-                </div>
-              </div>
-              {% if project.description %}
-              <div class="mb-4">
-                <p class="text-secondary small mb-1">説明</p>
-                <p class="fw-500" style="white-space: pre-wrap;">{{ project.description }}</p>
-              </div>
-              {% endif %}
-              <div class="row">
-                <div class="col-md-6">
-                  <p class="text-secondary small mb-1">ステータス</p>
-                  <p class="fw-500">{{ status_info[1] }}</p>
-                </div>
-                <div class="col-md-6">
-                  <p class="text-secondary small mb-1">作成日時</p>
-                  <p class="fw          </td>
+  <!-- Estimates List -->
+  <div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <h5 class="mb-0">見積一覧</h5>
+      <a href="{% url 'estimate_builder' project.id %}" class="btn btn-sm btn-primary">
+        <i class="bi bi-plus"></i> 新規作成
+      </a>
+    </div>
+    <div class="card-body">
+      {% if project.estimates.all %}
+        <div class="table-responsive">
+          <table class="table table-hover">
+            <thead>
+              <tr>
+                <th>見積番号</th>
+                <th>作成日</th>
+                <th>更新日</th>
+                <th>金額</th>
+                <th>状況</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for estimate in project.estimates.all %}
+                <tr>
+                  <td>{{ estimate.estimate_number }}</td>
+                  <td>{{ estimate.created_at|date:"Y-m-d" }}</td>
+                  <td>{{ estimate.updated_at|date:"Y-m-d" }}</td>
+                  <td>{{ estimate.grand_total|currency }}</td>
+                  <td>
+                    {% if estimate.status == 'draft' %}
+                      <span class="badge bg-warning">下書き</span>
+                    {% elif estimate.status == 'sent' %}
+                      <span class="badge bg-info">送信済み</span>
+                    {% elif estimate.status == 'accepted' %}
+                      <span class="badge bg-success">受理</span>
+                    {% elif estimate.status == 'rejected' %}
+                      <span class="badge bg-danger">却下</span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    <a href="#" class="btn btn-sm btn-info" onclick="viewEstimate({{ estimate.id }})">
+                      <i class="bi bi-eye"></i> 表示
+                    </a>
+                    <a href="#" class="btn btn-sm btn-secondary" onclick="editEstimate({{ estimate.id }})">
+                      <i class="bi bi-pencil"></i> 編集
+                    </a>
+                    <a href="#" class="btn btn-sm btn-danger" onclick="deleteEstimate({{ estimate.id }})">
+                      <i class="bi bi-trash"></i> 削除
+                    </a>
+                  </td>
                 </tr>
-                {% endfor %}
-              </tbody>
-            </table>
-          </div>
+              {% endfor %}
+            </tbody>
+          </table>
         </div>
-      </div>
+      {% else %}
+        <p class="text-muted">まだ見積が作成されていません。</p>
       {% endif %}
     </div>
+  </div>
 
-    <!-- Materials Tab -->
-    <div class="tab-pane fade" id="materials" role="tabpanel">
-      {% if materials %}
-      <div class="card border-0 shadow-sm">
-        <div class="card-header bg-white border-bottom px-5 py-3">
-          <h6 class="mb-0 fw-bold">材料リスト</h6>
-        </div>
-        <div class="card-body p-0">
-          <div class="table-responsive">
-            <table class="table table-hover mb-0">
-              <thead class="bg-light">
-                <tr>
-                  <th class="px-5 py-3 fw-600 text-secondary small">材料名</th>
-                  <th class="px-5 py-3 fw-600 text-secondary small">規格</th>
-                  <th class="px-5 py-3 fw-600 text-secondary small">数量</th>
-                  <th class="px-5 py-3 fw-600 text-secondary small">単位</th>
-                  <th class="px-5 py-3 fw-600 text-secondary small">施工方法</th>
-                </tr>
-              </thead>
-              <tbody>
-                {% for material in materials %}
-                <tr class="align-middle">
-                  <td class="px-5 py-3 fw-500">{{ material.material_name }}</td>
-                  <td class="px-5 py-3 text-secondary">{{ material.spec or '-' }}</td>
-                  <td class="px-5 py-3 text-secondary">{{ material.quantity or '-' }}</td>
-                  <td class="px-5 py-3 text-secondary">{{ material.unit or '-' }}</td>
-                  <td class="px-5 py-3 text-secondary small">{{ material.construction_method or '-' }}</td>
-                </tr>
-                {% endfor %}
-              </tbody>
-            </table>
+  <!-- Project Timeline -->
+  <div class="card mb-4">
+    <div class="card-header">
+      <h5 class="mb-0">活動履歴</h5>
+    </div>
+    <div class="card-body">
+      <div class="timeline">
+        <div class="timeline-item">
+          <div class="timeline-marker bg-primary"></div>
+          <div class="timeline-content">
+            <h6>プロジェクト作成</h6>
+            <p class="text-muted small">{{ project.created_at|date:"Y-m-d H:i" }}</p>
           </div>
         </div>
+        {% for estimate in project.estimates.all %}
+          <div class="timeline-item">
+            <div class="timeline-marker bg-info"></div>
+            <div class="timeline-content">
+              <h6>見積作成: {{ estimate.estimate_number }}</h6>
+              <p class="text-muted small">{{ estimate.created_at|date:"Y-m-d H:i" }}</p>
+            </div>
+          </div>
+        {% endfor %}
       </div>
-      {% else %}
-      <div class="card border-0 shadow-sm">
-        <div class="card-body text-center py-5">
-          <div class="mb-3" style="font-size: 2rem; opacity: 0.3;">
-            <i class="bi bi-inbox"></i>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Project Modal -->
+<div class="modal fade" id="editProjectModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">プロジェクトを編集</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="editProjectForm">
+          <div class="mb-3">
+            <label for="projectName" class="form-label">プロジェクト名</label>
+            <input type="text" class="form-control" id="projectName" value="{{ project.name }}" required>
           </div>
-          <p class="text-secondary mb-0">材料リストは.xlsxま~8��77n89^8*8*N8:�8).8*.88>89~8:�8;�88�89~8n8�88^8C�����F�c���F�c��RV�F�bWТ��F�cࠢ�����F6���rF"����F�b6�73�'F"��RfFR"�C�&�F6���r"&��S�'F'�V�#��F�b6�73�&�"�B#��'WGF���C�''V��F6���t'F� �6�73�&'F�'F��&��'�'F���r ���6Ɩ6��''V��F6���r���&��V7B�B�Ғ ��ƒ6�73�&&�&��Ɩv�F��r�R�"#�������z�X�^xZ~Y�8).Z�������'WGF�����F�cࠢ�����F��r7FFR����F�b�C�&�F6���t��F��r"7G��S�&F�7������S�#��F�b6�73�&6&B&�&FW"�6�F�r�6�#��F�b6�73�&6&B�&�G�FW�B�6V�FW"��R#��F�b6�73�&�"�2#��F�b6�73�'7���W"�&�&FW""&��S�'7FGW2"7G��S�&6���#�f"���&��'���#��7�6�73�'f�7V�ǒֆ�FFV�#�8����8�K�������7����F�c���F�c��6�73�&gr�S�"�#��8�i�ii�8).�z>i�K���������6�73�'FW�B�6V6��F'�6���#�8>8(�8�8�i[z).8�8�8(�Zi��j8�8.8(�8�8������F�c���F�c���F�cࠢ���&W7V�G2����R�b�F6��&W7V�G2WТ�F�b�C�&�F6���u&W7V�G2#��F�b6�73�&6&B&�&FW"�6�F�r�6�#��F�b6�73�&6&BֆVFW"&r�v��FR&�&FW"�&�GF����R��2#�ƃb6�73�&�"�gr�&��B#�xZ~Y�{Yi�����c���F�c��F�b6�73�&6&B�&�G��#��F�b6�73�'F&�R�&W7��6�fR#��F&�R6�73�'F&�RF&�Rֆ�fW"�"�#��F�VB6�73�&&r�Ɩv�B#��G#��F�6�73�'��R��2gr�cFW�B�6V6��F'�6���#�i�ii�Y���F���F�6�73�'��R��2gr�cFW�B�6V6��F'�6���#�89�8+�8+�Y�z{��F���F�6�73�'��R��2gr�cFW�B�6V6��F'�6���#�K���[�c��F���F�6�73�'��R��2gr�cFW�B�6V6��F'�6���#�89�88>88z��X�S��F���F�6�73�'��R��2gr�cFW�B�6V6��F'�6���#�h�yJ�ynyK��F���F�6�73�'��R��2FW�B�6V�FW"gr�cFW�B�6V6��F'�6���#�i8�K����F����G#���F�VC��F&�G���Rf�"&W7V�B���F6��&W7V�G2WТ�G"6�73�&Ɩv��֖FF�R#��FB6�73�'��R��2gr�S#緲&W7V�B��FW&�����R����FC��FB6�73�'��R��2#��7�6�73�&gr�S#緲&W7V�B��7FW%���R����7����FC��FB6�73�'��R��2#��F�b7G��S�'v�GF��#��#��R6WB6��f�FV�6R�&W7V�B�6��f�FV�6R�"WТ�R�b6��f�FV�6R���sRWТ�R6WB&%�6���"�wf"���7V66W72�rWТ�R6WBFW�E�6���"�wf"���7V66W72�rWТ�RVƖb6��f�FV�6R���SWТ�R6WB&%�6���"�wf"���v&��r�rWТ�R6WBFW�E�6���"�wf"���v&��r�rWТ�RV�6RWТ�R6WB&%�6���"�wf"���F�vW"�rWТ�R6WBFW�E�6���"�wf"���F�vW"�rWТ�RV�F�bWТ�F�b6�73�'&�w&W72"7G��S�&�V�v�C�#��&�&FW"�&F�W3�G��#��F�`�6�73�'&�w&W72�&" �&��S�'&�w&W76&" �7G��S�'v�GF����6��f�FV�6R���S�&6�w&�V�B�6���#���&%�6���"�Ӳ ����F�c���F�c��6���7G��S�&6���#���FW�E�6���"�Ӳf��B�vV�v�C�c�#緲'���g�"�f�&�B�6��f�FV�6R����S��6������F�c���FC��FB6�73�'��R��2#��R6WB�F6��G�U�6���'2���vW�7Bs��r3#&3SVRr�~Z��XZ�K��{Br���v��&�Ɨ�VBs��r36#�&cbr�~j�>�h�X�br���v��U��F6�s��r3f#fCBr�~Y�z{r���vgW���s��r6cS�S"r�~8.8N8�8Br���wV��F6�VBs��r6VcCCCBr�~iʮxZ~Y�r���WТ�R6WB�F6��G�U���f���F6��G�U�6���'2�vWB�&W7V�B��F6��G�R��r3f#s#�r�&W7V�B��F6��G�R��WТ�7�6�73�&&FvR&�V�FVB���� �7G��S�&&6�w&�V�B�6���#����F6��G�U���f�����#�6���#����F6��G�U���f����Ӳf��B�6��S��sW&VӲ �����F6��G�U���f����Т��7����FC��FB6�73�'��R��26���FW�B�6V6��F'�#緲&W7V�B�&V6���"r�r����FC��FB6�73�'��R��2FW�B�6V�FW"#��'WGF��6�73�&'F�'F��6�'F���WFƖ�R�&��'� ���6Ɩ6��'6��t6�F�FFW4��F��&��V7B�B�����&W7V�B�B�Ғ ��X	��9�K��jp���'WGF�����FC���G#��RV�Ff�"WТ��F&�G����F&�S���F�c���F�c���F�c���F�c��RV�F�bWТ��F�cࠢ���W7F��FW2F"����F�b6�73�'F"��RfFR"�C�&W7F��FW2"&��S�'F'�V�#��F�b6�73�&�"�BB�f�W�v�"#��'WGF���C�&FE&�t'F� �6�73�&'F�'F���WFƖ�R�&��'� ���6Ɩ6��&FDW7F��FU&�r���&��V7B�B�Ғ ��ƒ6�73�&&�&���W2��r�R�"#�����΋��X� ���'WGF������&Vc�'��W&��f�"�vW��'E�W�6V�r�&��V7E��C�&��V7B�B��� �6�73�&'F�'F���WFƖ�R�7V66W72 ��ƒ6�73�&&�&��f��R�V&�&��W�6V��R�"#�����W�6V�X{�X��������F�cࠢ�F�b6�73�&6&B&�&FW"�6�F�r�6�#��F�b6�73�&6&B�&�G��#��F�b6�73�'F&�R�&W7��6�fR#��F&�R6�73�'F&�RF&�Rֆ�fW"�"�"�C�&W7F��FW5F&�R#��F�VB6�73�&&r�Ɩv�B#��G#��F�6�73�'��R��2gr�cFW�B�6V6��F'�6���"7G��S�'v�GF��c��#��yZ�X�s��F���F�6�73�'��R��2gr�cFW�B�6V6��F'�6���#�X�n�x���F���F�6�73�'��R��2gr�cFW�B�6V6��F'�6���#�Y�z{��F���F�6�73�'��R��2gr�cFW�B�6V6��F'�6���#�h�j���F���F�6�73�'��R��2gr�cFW�B�6V6��F'�6���#�ik�[z^i�K�c��F���F�6�73�'��R��2gr�cFW�B�6V6��F'�6���#�XَK����F���F�6�73�'��R��2gr�cFW�B�6V6��F'�6���FW�B�V�B#�i[�x���F���F�6�73�'��R��2gr�cFW�B�6V6��F'�6���FW�B�V�B#�XَK���F���F�6�73�'��R��2gr�cFW�B�6V6��F'�6���FW�B�V�B#�y����F���F�6�73�'��R��2gr�cFW�B�6V6��F'�6���FW�B�V�B#�jڞh���F���F�6�73�'��R��2gr�cFW�B�6V6��F'�6���FW�B�V�B#�jڞh�Y������F����G#���F�VC��F&�G��C�&W7F��FW4&�G�#����W7F��FW2&�w2v���&R�V�FVBf��f67&�B�����F&�G���Ff��B6�73�&&r�Ɩv�B#��G#��FB6��7��#�"6�73�'��R��2FW�B�V�Bgr�c#�Y�����ɣ��FC��FB6�73�'��R��2FW�B�V�Bgr�c"�C�'F�F���V�B#�*S��FC��FB6��7��#""6�73�'��R��2#���FC���G#���Ff��C���F&�S���F�c���F�c���F�c���F�c���F�c���F�cࠣ���6�F�FFW2��F�����F�b6�73�&��F�fFR"�C�&6�F�FFW4��F�"F&��FW��"�#��F�b6�73�&��F��F���r��F���r#��F�b6�73�&��F��6��FV�B&�&FW"�#��F�b6�73�&��F�ֆVFW"&r�Ɩv�B&�&FW"�&�GF����R#�ƃR6�73�&��F��F�F�Rgr�&��B#�89�88>88X	��9�K��js���S��'WGF��G�S�&'WGF��"6�73�&'F��6��6R"FF�'2�F�6֗73�&��F�#���'WGF�����F�c��F�b6�73�&��F��&�G��#��F�b�C�&6�F�FFW4��F��r"6�73�'FW�B�6V�FW"��R#��F�b6�73�'7���W"�&�&FW"�"�2"7G��S�&6���#�f"���&��'���#��7�6�73�'f�7V�ǒֆ�FFV�#�8����8�K�������7����F�c��6�73�'FW�B�6V6��F'�#�8����8�K����������F�c��F�b�C�&6�F�FFW4Ɨ7B#���F�c���F�c���F�c���F�c���F�cࠣ�7G��S���b�Ɩ���6���#�f"���FW�B�6V6��F'����&�&FW#����S��&�&FW"�&�GF�Ӣ'�6�ƖBG&�7&V�C��FF��r�&�GF�Ӣ�sW&VӰ�G&�6�F������'3��Т��b�Ɩ泦��fW"��6���#�f"���FW�B�&��'����&�&FW"�&�GF���6���#�f"���&��'����Т��b�Ɩ��7F�fR��6���#�f"���&��'����&�&FW"�&�GF���6���#�f"���&��'����&6�w&�V�C����S��Р�6G&����S���fW"��&�&FW"�6���#�f"���&��'����&6�w&�V�B�6���#�6ccvfc��Т6G&����R�G&v�fW"��&�&FW"�6���#�f"���&��'����&6�w&�V�B�6���#�6ccvfc��Р��gr�c��f��B�vV�v�C�c��Р��VF�F&�R�6V����7W'6�#����FW#��G&�6�F������'3��Т�VF�F&�R�6V�æ��fW"��&6�w&�V�B�6���#�6ccvfc��Т�VF�F&�R�6V����WB��v�GF��S��&�&FW#��6�ƖBf"���&��'����&�&FW"�&F�W3�G���FF��s�G�����У��7G��Sࠣ�67&�C���f��RW��B��FƖ�p�6��7BG&����R�F�7V�V�B�vWDV�V�V�D'��B�vG&����Rr���6��7Bf��T��WB�F�7V�V�B�vWDV�V�V�D'��B�vf��T��WBr����G&����R�FDWfV�DƗ7FV�W"�v6Ɩ6�r�����f��T��WB�6Ɩ6�������G&����R�FDWfV�DƗ7FV�W"�vG&v�fW"r��R�����R�&WfV�DFVfV�B����G&����R�6�74Ɨ7B�FB�vG&v�fW"r���ғ���G&����R�FDWfV�DƗ7FV�W"�vG&v�VfRr�������G&����R�6�74Ɨ7B�&V��fR�vG&v�fW"r���ғ���G&����R�FDWfV�DƗ7FV�W"�vG&�r��R�����R�&WfV�DFVfV�B����G&����R�6�74Ɨ7B�&V��fR�vG&v�fW"r���6��7Bf��W2�R�FFG&�6fW"�f��W3���b�f��W2��V�wF�����W��Df��W2�f��W2���Чғ���f��T��WB�FDWfV�DƗ7FV�W"�v6��vRr��R�����W��Df��W2�R�F&vWB�f��W2���ғ���gV�7F���W��Df��W2�f��W2���6��7BW��E&�w&W72�F�7V�V�B�vWDV�V�V�D'��B�wW��E&�w&W72r���6��7B&�w&W74&"�F�7V�V�B�vWDV�V�V�D'��B�w&�w&W74&"r���6��7BW��E7FGW2�F�7V�V�B�vWDV�V�V�D'��B�wW��E7FGW2r����W��E&�w&W72�7G��R�F�7���v&��6�s���'&��g&�҆f��W2��f�$V6���f��R���FW������6��7Bf�&�FF��Wrf�&�FF����f�&�FF�V�B�vf��Rr�f��R����W��E7FGW2�FW�D6��FV�B�G�f��R���W�8).8*.88>89~8:�8;�88�K��������fWF6���&��V7G2���&��V7B�B���W��F����WF��C�u�5Br��&�G��f�&�FF�Ґ��F�V�&W7��6R�����b�&W7��6R����F�&�r�WrW'&�"�uW��Bf��VBr���6��uF�7B�w7V66W72r�G�f��R���W�8).8*.88>89~8:�8;�88�8~8�8~8����6WEF��V�WB�������6F����&V��B���S���Ґ��6F6��W'&�"����6��uF�7B�vW'&�"r�G�f��R���W�8�8*.88>89~8:�8;�88�8�ZKiY~8~8�8~8����6��6��R�W'&�"�W'&�"���ғ��ғ��Р���F�7B��F�f�6F���0�gV�7F���6��uF�7B�G�R��W76vR���6��7BF�7D6��F��W"�F�7V�V�B�vWDV�V�V�D'��B�v�7D6��F��W"r���6��7BF�7D�B�wF�7B�r�FFR���r�����6��7B&t6���"�G�R���w7V66W72r�wf"���7V66W72�r�G�R���vW'&�"r�wf"���F�vW"�r�wf"���v&��r�s��6��7B�6���G�R���w7V66W72r�v6�V6��6�&6�Rr�G�R���vW'&�"r�vW�6��F����6�&6�Rr�vW�6��F����G&��v�Rs���6��7BF�74�D��� ��F�b�C�"G�F�7D�G�"6�73�&6&B&�&FW"�6�F�r�6�"7G��S�&&6�w&�V�B�6���#�G�&t6���'Ӳ#��F�b6�73�&6&B�&�G���B��2FW�B�v��FRB�f�W�Ɩv�֗FV�2�6V�FW"v�2#�ƒ6�73�&&�&��G��6���#������7��G��W76vW���7����F�c���F�c����F�7D6��F��W"��6W'DF�6V�D�D�v&Vf�&VV�Br�F�7D�D����6WEF��V�WB�������6��7BF�7B�F�7V�V�B�vWDV�V�V�D'��B�F�7D�B����b�F�7B���F�7B�7G��R��6�G��ss��F�7B�7G��R�G&�6�F����v�6�G��72s��6WEF��V�WB�����F�7B�&V��fR���3���Т��3���Р�����F6���p�gV�7F���'V��F6���r�&��V7D�B���6��7B'V�'F��F�7V�V�B�vWDV�V�V�D'��B�w'V��F6���t'F�r���6��7B��F��tF�b�F�7V�V�B�vWDV�V�V�D'��B�v�F6���t��F��rr����'V�'F��F�6&�VB�G'VS����F��tF�b�7G��R�F�7���v&��6�s���fWF6���&��V7G2�G�&��V7D�G��'V���F6���v����WF��C�u�5Br���VFW'3���t6��FV�B�G�Rs�vƖ6F�����6��p�ТҐ��F�V�&W7��6R�����b�&W7��6R����F�&�r�WrW'&�"�t�F6���rf��VBr���&WGW&�&W7��6R�6�ₓ��Ґ��F�V�FF����6��uF�7B�w7V66W72r�t�xZ~Y�8�Z��K�n8~8�8~8�r���6WEF��V�WB�������6F����&V��B���S���Ґ��6F6��W'&�"����6��uF�7B�vW'&�"r�t�xZ~Y�8�ZKiY~8~8�8~8�r���6��6��R�W'&�"�W'&�"���'V�'F��F�6&�VB�f�6S����F��tF�b�7G��R�F�7���v���Rs��ғ��Р���6��r6�F�FFW2��F��gV�7F���6��t6�F�FFW4��F&��V7D�B��F6��B���6��7B��F���Wr&��G7G&���FF�7V�V�B�vWDV�V�V�D'��B�v6�F�FFW4��F�r����6��7B6�F�FFW4Ɨ7B�F�7V�V�B�vWDV�V�V�D'��B�v6�F�FFW4Ɨ7Br���6��7B6�F�FFW4��F��r�F�7V�V�B�vWDV�V�V�D'��B�v6�F�FFW4��F��rr����6�F�FFW4��F��r�7G��R�F�7���v&��6�s��6�F�FFW4Ɨ7B���W$�D���rs�����F��6��r�����fWF6���&��V7G2�G�&��V7D�G���F6��6�F�FFW2�G��F6��G�����WF��C�ttUBp�Ґ��F�V�&W7��6R�����b�&W7��6R����F�&�r�WrW'&�"�tf��VBF���B6�F�FFW2r���&WGW&�&W7��6R�6�ₓ��Ґ��F�V�FF����6�F�FFW4��F��r�7G��R�F�7���v���Rs����b�FF�6�F�FFW2��FF�6�F�FFW2��V�wF�������6�F�FFW4Ɨ7B���W$�D���s�F�b6�73�'�RFW�B�6V�FW"FW�B�6V6��F'�#�X	��9�8�8.8(�8�8�8)3��F�c�s��&WGW&㰢Р��WB�F���s�F�b6�73�&Ɨ7B�w&�W#�s��FF�6�F�FFW2�f�$V6��6�F�FFR����6��f�FV�6R��6�F�FFR�6��f�FV�6R���F�f��VB�����F���� ��F�b6�73�&Ɨ7B�w&�W֗FV���R��2&�&FW"�&�&FW"�&�GF��#��F�b6�73�&B�f�W��W7F�g��6��FV�B�&WGvVV�Ɩv�֗FV�2�7F'B�"�"#�ƃb6�73�&gr�&��B�"�#�G�6�F�FFR���W����c��7�6�73�&&FvR"7G��S�&&6�w&�V�B�6���#�f"���&��'����6�G��ヲ#�G�6��f�FV�6W�S��7����F�c��6�73�'FW�B�6V6��F'�6����"�2#�G�6�F�FFR�7V2��r�w�����'WGF��6�73�&'F�'F��6�'F��&��'� ���6Ɩ6��&F�D6�F�FFR�G�FF�&��V7E��G��G�FF��F6���G��G�6�F�FFR�GҒ ��ƒ6�73�&&�&��6�V6���r�R�#�����8>8�X	��9�8).h�yJ����'WGF�����F�c���ғ���F����s��F�c�s��6�F�FFW4Ɨ7B���W$�D����F�ð�Ґ��6F6��W'&�"����6�F�FFW4��F��r�7G��R�F�7���v���Rs��6�F�FFW4Ɨ7B���W$�D���s�F�b6�73�'�RFW�B�6V�FW"FW�B�F�vW"#�8����8�8*�8:�8;���F�c�s��6��6��R�W'&�"�W'&�"���ғ��Р�gV�7F���F�D6�F�FFR�&��V7D�B��F6��B�6�F�FFT�B���fWF6���&��V7G2�G�&��V7D�G��F�B�6�F�FFV����WF��C�u�5Br���VFW'3���t6��FV�B�G�Rs�vƖ6F�����6��p����&�G���4���7G&��v�g�����F6���C��F6��B��6�F�FFU��C�6�F�FFT�@�Ґ�Ґ��F�V�&W7��6R�����b�&W7��6R����F�&�r�WrW'&�"�tF�F���f��VBr���6��uF�7B�w7V66W72r�~X	��9�8).h�yJ�8~8�8~8�r���6WEF��V�WB�������6F����&V��B���S���Ґ��6F6��W'&�"����6��uF�7B�vW'&�"r�~X	��9�8�h�yJ�8�ZKiY~8~8�8~8�r���6��6��R�W'&�"�W'&�"���ғ��Р���FBW7F��FR&�p�gV�7F���FDW7F��FU&�r�&��V7D�B���fWF6���&��V7G2�G�&��V7D�G��W7F��FW2�FB�&�v����WF��C�u�5Br���VFW'3���t6��FV�B�G�Rs�vƖ6F�����6��p�ТҐ��F�V�&W7��6R�����b�&W7��6R����F�&�r�WrW'&�"�tf��VBF�FB&�rr���&WGW&�&W7��6R�6�ₓ��Ґ��F�V�FF����6��uF�7B�w7V66W72r�~��8).���X�8~8�8~8�r���6WEF��V�WB�������6F����&V��B���S���Ґ��6F6��W'&�"����6��uF�7B�vW'&�"r�~��8���X�8�ZKiY~8~8�8~8�r���6��6��R�W'&�"�W'&�"���ғ��Р���VF�BW7F��FR6V���gV�7F���VF�DW7F��FT6V�&��V7D�B�FWF�ĖB�f�V�B�7W'&V�Ef�VR���6��7B�Wuf�VR�&��B�G�f�V�G�8).{z���n8~8n8�88^8C��7W'&V�Ef�VR����b��Wuf�VR����V�����Wuf�VR���7W'&V�Ef�VR�&WGW.n;
+          <div class="mb-3">
+            <label for="clientName" class="form-label">顧客名</label>
+            <input type="text" class="form-control" id="clientName" value="{{ project.client_name }}" required>
+          </div>
+          <div class="mb-3">
+            <label for="description" class="form-label">説明</label>
+            <textarea class="form-control" id="description" rows="3">{{ project.description }}</textarea>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+        <button type="button" class="btn btn-primary" onclick="saveProjectEdit()">保存</button>
+      </div>
+    </div>
+  </div>
+</div>
 
-  fetch(`/projects/${projectId}/estimates/${detailId}/edit`, {
-    method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      [field]: newValue
+<style>
+  .timeline {
+    position: relative;
+    padding: 20px 0;
+  }
+
+  .timeline-item {
+    display: flex;
+    margin-bottom: 30px;
+  }
+
+  .timeline-marker {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    margin-top: 5px;
+    margin-right: 15px;
+  }
+
+  .timeline-content {
+    flex: 1;
+  }
+
+  .timeline-content h6 {
+    margin: 0 0 5px 0;
+  }
+</style>
+
+<script>
+  function editProject() {
+    // Open edit modal
+    const modal = new bootstrap.Modal(document.getElementById('editProjectModal'));
+    modal.show();
+  }
+
+  function saveProjectEdit() {
+    const projectName = document.getElementById('projectName').value;
+    const clientName = document.getElementById('clientName').value;
+    const description = document.getElementById('description').value;
+
+    fetch('{% url "project_detail" project.id %}', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': '{{ csrf_token }}'
+      },
+      body: JSON.stringify({
+        name: projectName,
+        client_name: clientName,
+        description: description
+      })
     })
-  })
-  .then(response => {
-    if (!response.ok) throw new Error('Update failed');
-    showToast('success', '更新しました');
-    setTimeout(() => location.reload(), 500);
-  })
-  .catch(error => {
-    showToast('error', '更新に失敗しました');
-    console.error(error);
-  });
-}
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        showToast('プロジェクトを更新しました', 'success');
+        setTimeout(() => location.reload(), 1500);
+      } else {
+        showToast('エラーが発生しました: ' + data.error, 'danger');
+      }
+    })
+    .catch(error => {
+      showToast('エラーが発生しました', 'danger');
+      console.error('Error:', error);
+    });
+  }
 
-// Initialize (placeholder for loading estimates)
-document.addEventListener('DOMContentLoaded', function() {
-  // Load estimates data if aavailable
-  const estimatesBody = document.getElementById('estmatesB�G�s���b�W7F��FW4&�G������W7F��FW2v�V�B&R�V�FVB'�f�6�&6�V�B�"f��6���Чғ����67&�C৲RV�F&��6�W�
+  function deleteProject() {
+    if (confirm('本当にこのプロジェクトを削除しますか？')) {
+      fetch('{% url "project_delete" project.id %}', {
+        method: 'DELETE',
+        headers: {
+          'X-CSRFToken': '{{ csrf_token }}'
+        }
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          showToast('プロジェクトを削除しました', 'success');
+          setTimeout(() => window.location.href = '{% url "project_list" %}', 1500);
+        } else {
+          showToast('エラーが発生しました: ' + data.error, 'danger');
+        }
+      })
+      .catch(error => {
+        showToast('エラーが発生しました', 'danger');
+        console.error('Error:', error);
+      });
+    }
+  }
+
+  function viewEstimate(estimateId) {
+    window.location.href = `/estimate/${estimateId}/`;
+  }
+
+  function editEstimate(estimateId) {
+    window.location.href = `/estimate-builder/${estimateId}/`;
+  }
+
+  function deleteEstimate(estimateId) {
+    if (confirm('本当にこの見積を削除しますか？')) {
+      fetch(`/api/estimate/${estimateId}/`, {
+        method: 'DELETE',
+        headers: {
+          'X-CSRFToken': '{{ csrf_token }}'
+        }
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          showToast('見積を削除しました', 'success');
+          setTimeout(() => location.reload(), 1500);
+        } else {
+          showToast('エラーが発生しました: ' + data.error, 'danger');
+        }
+      })
+      .catch(error => {
+        showToast('エラーが発生しました', 'danger');
+        console.error('Error:', error);
+      });
+    }
+  }
+
+  function showToast(message, type = 'info') {
+    const toastContainer = document.getElementById('toastContainer');
+    const toast = document.createElement('div');
+    toast.className = `alert alert-${type} alert-dismissible fade show`;
+    toast.innerHTML = `
+      ${message}
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    `;
+    toastContainer.appendChild(toast);
+
+    // Auto dismiss after 5 seconds
+    setTimeout(() => {
+      toast.classList.remove('show');
+      setTimeout(() => toast.remove(), 150);
+    }, 5000);
+  }
+</script>
+
+{% endblock %}
