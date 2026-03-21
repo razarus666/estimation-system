@@ -3,290 +3,7468 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}電気設備積算・見積システム{% endblock %}</title>
+    <title>{% block title %}電気設備積算システム{% endblock %}</title>
+
+    <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+
+    <!-- Google Fonts: Inter & Noto Sans JP -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
+
     <style>
+        /* ========== CSS Variables / Theme ========== */
         :root {
-            --primary-color: #1a73e8;
-            --header-bg: #f8f9fa;
+            --color-navy: #1a1f36;
+            --color-navy-light: #252c42;
+            --color-navy-lighter: #2f3654;
+            --color-white: #ffffff;
+            --color-bg-light: #f8f9fa;
+            --color-text-dark: #1a1f36;
+            --color-text-muted: #6c757d;
+            --color-primary-blue: #3b82f6;
+            --color-primary-blue-dark: #1e40af;
+            --color-accent-grey: #9ca3af;
+            --color-success: #10b981;
+            --color-warning: #f59e0b;
+            --color-danger: #ef4444;
+            --color-border: #e5e7eb;
+            --color-shadow: rgba(0, 0, 0, 0.08);
+            --color-glass-bg: rgba(255, 255, 255, 0.7);
+
+            --font-family-primary: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            --font-family-jp: 'Noto Sans JP', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            --font-family: var(--font-family-primary), var(--font-family-jp);
+
+            --radius-sm: 6px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            --radius-xl: 20px;
+
+            --shadow-sm: 0 1px 2px var(--color-shadow);
+            --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07), 0 2px 4px rgba(0, 0, 0, 0.05);
+            --shadow-lg: 0 20px 25px rgba(0, 0, 0, 0.1), 0 10px 10px rgba(0, 0, 0, 0.04);
+
+            --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-normal: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* ========== Base Styles ========== */
+        * {
+            font-family: var(--font-family);
+        }
+
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            background-color: var(--color-bg-light);
+            color: var(--color-text-dark);
         }
 
         body {
-            background-color: #ffffff;
-            color: #333;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
         }
 
-        .navbar {
-            background-color: var(--header-bg);
-            border-bottom: 2px solid var(--primary-color);
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        /* ========== Sidebar Navigation ========== */
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 260px;
+            height: 100vh;
+            background: linear-gradient(135deg, var(--color-navy) 0%, var(--color-navy-light) 100%);
+            padding: 24px 16px;
+            overflow-y: auto;
+            z-index: 1000;
+            box-shadow: 2px 0 8px rgba(0, 0, 0, 0.12);
+            transition: transform var(--transition-normal);
         }
 
-        .navbar-brand {
+        .sidebar.collapsed {
+            transform: translateX(-260px);
+        }
+
+        /* Sidebar Logo */
+        .sidebar-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 32px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .sidebar-logo {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #3b82f6 0%, #0ea5e9 100%);
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            font-weight: 700;
+            color: white;
+        }
+
+        .sidebar-title {
+            color: white;
+            font-size: 14px;
             font-weight: 600;
-            font-size: 1.3rem;
-            color: var(--primary-color) !important;
+            letter-spacing: 0.3px;
+            margin: 0;
         }
 
-        .nav-link {
-            color: #666 !important;
+        /* Sidebar Menu Items */
+        .sidebar-nav {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            margin-bottom: 32px;
+        }
+
+        .sidebar-nav li {
+            margin-bottom: 4px;
+        }
+
+        .sidebar-nav a {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 11px 14px;
+            color: rgba(255, 255, 255, 0.7);
+            text-decoration: none;
+            border-radius: var(--radius-md);
+            font-size: 14px;
             font-weight: 500;
+            transition: all var(--transition-fast);
+            position: relative;
         }
 
-        .nav-link:hover {
-            color: var(--primary-color) !important;
+        .sidebar-nav a:hover {
+           background: rgba(255, 255, 255, 0.1);
+            color: white;
         }
 
-        .navbar .dropdown-toggle::after {
+        .sidebar-nav a.active {
+            background: rgba(59, 130, 246, 0.2);
+            color: #60a5fa;
+            font-weight: 600;
+        }
+
+        .sidebar-nav a.active::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 3px;
+            height: 24px;
+            background: #60a5fa;
+            border-radius: 0 3px 3px 0;
+        }
+
+        .sidebar-nav i {
+            font-size: 18px;
+            width: 18px;
+            text-align: center;
+        }
+
+        /* Sidebar Sections */
+        .sidebar-section {
+            margin-bottom: 24px;
+        }
+
+        .sidebar-section-title {
+            font-size: 11px;
+            font-weight: 700;
+            color: rgba(255, 255, 255, 0.5);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 12px 14px;
+            margin-bottom: 8px;
+        }
+
+        /* Sidebar Scrollbar */
+        .sidebar::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .sidebar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .sidebar::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+        }
+
+        .sidebar::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        /* ========== Top Header ========== */
+        .header {
+            position: fixed;
+            top: 0;
+            left: 260px;
+            right: 0;
+            height: 70px;
+            background: var(--color-white);
+            border-bottom: 1px solid var(--color-border);
+            padding: 0 32px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            z-index: 999;
+            transition: left var(--transition-normal);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .header.sidebar-collapsed {
+            left: 0;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+        }
+
+        .sidebar-toggle {
+            background: none;
+            border: none;
+            font-size: 20px;
+            color: var(--color-text-dark);
+            cursor: pointer;
+            padding: 8px;
+            border-radius: var(--radius-md);
+            transition: all var(--transition-fast);
             display: none;
         }
 
-        .dropdown-menu {
-            border: 1px solid #e0e0e0;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        .sidebar-toggle:hover {
+            background: var(--color-bg-light);
         }
 
-        .dropdown-item:hover {
-            background-color: #f0f7ff;
-            color: var(--primary-color);
+        /* ========== Main Content Area ========== */
+        .main-content {
+            margin-left: 260px;
+            margin-top: 70px;
+            padding: 32px;
+            flex: 1;
+            transition: margin-left var(--transition-normal);
+            background: var(--color-bg-light);
+            min-height: calc(100vh - 70px);
         }
 
-        .btn-primary {
-            background-color: var(--primary-color);
-            border-color: var(--primary-color);
+        .main-content.sidebar-collapsed {
+            margin-left: 0;
         }
 
-        .btn-primary:hover {
-            background-color: #1557b0;
-            border-color: #1557b0;
+        /* ========== Content Container ========== */
+        .content-wrapper {
+            max-width: 1400px;
+            margin: 0 auto;
         }
 
-        .alert {
-            border: none;
-            border-radius: 6px;
-            margin-bottom: 1.5rem;
-        }
-
-        .alert-success {
-            background-color: #e8f5e9;
-            color: #2e7d32;
-        }
-
-        .alert-danger {
-            background-color: #ffebee;
-            color: #c62828;
-        }
-
-        .alert-warning {
-            background-color: #fff3e0;
-            color: #e65100;
-        }
-
-        .alert-info {
-            background-color: #e1f5fe;
-            color: #01579b;
-        }
-
-        .main-container {
-            min-height: calc(100vh - 200px);
-            padding: 2rem 0;
-        }
-
-        footer {
-            background-color: var(--header-bg);
-            border-top: 1px solid #e0e0e0;
-            padding: 2rem 0;
-            margin-top: 4rem;
-            text-align: center;
-            color: #666;
-            font-size: 0.9rem;
-        }
-
+        /* ========== Cards & Components ========== */
         .card {
-            border: 1px solid #e0e0e0;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-            border-radius: 6px;
+            background: var(--color-white);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-md);
+            transition: all var(--transition-normal);
+            overflow: hidden;
+        }
+
+        .card:hover {
+            box-shadow: var(--shadow-lg);
+            border-color: #d1d5db;
         }
 
         .card-header {
-            background-color: var(--header-bg);
-            border-bottom: 1px solid #e0e0e0;
+            background: linear-gradient(to right, #f8f9fa, #ffffff);
+            border-bottom: 1px solid var(--color-border);
+            padding: 20px 24px;
         }
 
-        table {
-            font-size: 0.95rem;
+        .card-body {
+            padding: 24px;
         }
 
-        th {
-            background-color: var(--header-bg);
-            font-weight: 600;
-            border-bottom: 2px solid #e0e0e0;
+        /* ========== Glass Morphism ========== */
+        .glass {
+            background: var(--color-glass-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: var(--radius-lg);
         }
 
-        .badge {
-            font-size: 0.85rem;
-            padding: 0.4rem 0.6rem;
+        /* ========== Buttons ========== */
+        .btn {
+            font-weight: 500;
+            border-radius: var(--radius-md);
+            border: none;
+            transition: all var(--transition-fast);
+            padding: 10px 18px;
+            font-size: 14px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
         }
 
-        .badge-success {
-            background-color: #4caf50;
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
         }
 
-        .badge-warning {
-            background-color: #ff9800;
+        .btn-primary {
+            background: var(--color-primary-blue);
+            color: white;
         }
 
-        .badge-danger {
-            background-color: #f44336;
+        .btn-primary:hover {
+            background: var(--color-primary-blue-dark);
+            color: white;
         }
 
-        .badge-info {
-            background-color: #2196f3;
+        .btn-success {
+            background: var(--color-success);
+            color: white;
         }
 
-        .loading-spinner {
-            display: none;
+        .btn-success:hover {
+            background: #059669;
+            color: white;
         }
 
-        .loading-spinner.active {
-            display: inline-block;
+        .btn-warning {
+            background: var(--color-warning);
+            color: white;
         }
 
-        .modal-header {
-            background-color: var(--header-bg);
-            border-bottom: 1px solid #e0e0e0;
+        .btn-warning:hover {
+            background: #d97706;
+            color: white;
+        }
+
+        .btn-danger {
+            background: var(--color-danger);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #e5e7eb;
+            color: var(--color-text-dark);
+        }
+
+        .btn-secondary:hover {
+            background: #d1d5db;
+            color: var(--color-text-dark);
+        }
+
+        .btn-lg {
+            padding: 12px 28px;
+            font-size: 15px;
+        }
+
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 13px;
+        }
+
+        /* ========== Forms ========== */
+        .form-group {
+            margin-bottom: 20px;
         }
 
         .form-label {
-            font-weight: 500;
-            color: #333;
-            margin-top: 0.5rem;
-            margin-bottom: 0.3rem;
+            font-weight: 600;
+            font-size: 14px;
+            color: var(--color-text-dark);
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .form-control {
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-md);
+            padding: 10px 14px;
+            font-size: 14px;
+            font-family: var(--font-family);
+            transition: all var(--transition-fast);
+            background: white;
+            color: var(--color-text-dark);
         }
 
         .form-control:focus {
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 0.2rem rgba(26, 115, 232, 0.15);
+            border-color: var(--color-primary-blue);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+            outline: none;
         }
 
-        .form-select:focus {
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 0.2rem rgba(26, 115, 232, 0.15);
+        .form-control::placeholder {
+            color: var(--color-text-muted);
         }
 
-        .required::after {
-            content: "*";
-            color: #f44336;
-            margin-left: 0.3rem;
+        .floating-label {
+            position: relative;
+        }
+
+        .floating-label .form-control {
+            padding-top: 20px;
+            padding-bottom: 6px;
+        }
+
+        .floating-label label {
+            position: absolute;
+            top: 10px;
+            left: 14px;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--color-text-muted);
+            pointer-events: none;
+            transition: all var(--transition-fast);
+        }
+
+        .floating-label .form-control:focus ~ label,
+        .floating-label .form-control:not(:placeholder-shown) ~ label {
+            top: 4px;
+            font-size: 11px;
+            color: var(--color-primary-blue);
+            font-weight: 600;
+        }
+
+        /* ========== Color-coded Status ========== */
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border-radius: var(--radius-md);
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .status-high {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--color-success);
+        }
+
+        .status-review {
+            background: rgba(245, 158, 11, 0.1);
+            color: var(--color-warning);
+        }
+
+        .status-low {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--color-danger);
+        }
+
+        /* ========== Loading Overlay ========== */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.4);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            backdrop-filter: blur(4px);
+        }
+
+        .loading-overlay.show {
+            display: flex;
+        }
+
+        .loading-spinner {
+            background: var(--color-white);
+            padding: 32px;
+            border-radius: var(--radius-lg);
+            text-align: center;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 48px;
+            height: 48px;
+            border: 4px solid #e5e7eb;
+            border-top-color: var(--color-primary-blue);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-bottom: 16px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .spinner-text {
+            font-size: 14px;
+            color: var(--color-text-muted);
+            margin-bottom: 8px;
+        }
+
+        /* ========== Toast Notifications ========== */
+        .toast-container {
+            position: fixed;
+            top: 24px;
+            right: 24px;
+            z-index: 2001;
+            pointer-events: none;
+        }
+
+        .toast {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: var(--color-white);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-md);
+            padding: 16px 20px;
+            margin-bottom: 12px;
+            box-shadow: var(--shadow-lg);
+            animation: slideIn 0.3s ease-out;
+            pointer-events: auto;
+            min-width: 320px;
+            max-width: 400px;
+        }
+
+        .toast.success {
+            border-left: 4px solid var(--color-success);
+        }
+
+        .toast.error {
+            border-left: 4px solid var(--color-danger);
+        }
+
+        .toast.warning {
+            border-left: 4px solid var(--color-warning);
+        }
+
+        .toast.info {
+            border-left: 4px solid var(--color-primary-blue);
+        }
+
+        .toast-icon {
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+
+        .toast.success .toast-icon {
+            color: var(--color-success);
+        }
+
+        .toast.error .toast-icon {
+            color: var(--color-danger);
+        }
+
+        .toast.warning .toast-icon {
+            color: var(--color-warning);
+        }
+
+        .toast.info .toast-icon {
+            color: var(--color-primary-blue);
+        }
+
+        .toast-content {
+            flex: 1;
+        }
+
+        .toast-title {
+            font-weight: 600;
+            font-size: 14px;
+            color: var(--color-text-dark);
+            margin-bottom: 2px;
+        }
+
+        .toast-message {
+            font-size: 13px;
+            color: var(--color-text-muted);
+        }
+
+        .toast-close {
+            background: none;
+            border: none;
+            font-size: 18px;
+            color: var(--color-text-muted);
+            cursor: pointer;
+            padding: 0;
+            flex-shrink: 0;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        /* ========== Flash Messages (Legacy Bootstrap) ========== */
+        .alert {
+            border-radius: var(--radius-md);
+            border: 1px solid;
+            padding: 14px 16px;
+            margin-bottom: 160  ���F���6ƖFT���72V6R��WC��Р���W'B�7V66W72��&6�w&�V�C�&v&�b��R�#�������&�&FW"�6���#�&v&�b��R�#���2���6���#�f"���6���"�7V66W72���Р���W'B�F�vW"��&6�w&�V�C�&v&�#3��c��c�������&�&FW"�6���#�&v&�#3��c��c���2���6���#�f"���6���"�F�vW"���Р���W'B�v&��r��&6�w&�V�C�&v&�#CR�S��������&�&FW"�6���#�&v&�#CR�S����2���6���#�f"���6���"�v&��r���Р���W'B֖�f���&6�w&�V�C�&v&�S��3�#Cb������&�&FW"�6���#�&v&�S��3�#Cb��2���6���#�f"���6���"�&��'��&�VR���Р���W'B�6��6R��&6�w&�V�C����S��&�&FW#����S��f��B�6��S�g���7W'6�#����FW#���6�G���s��FF��s���Р���W'B�6��6S���fW"���6�G����Р������������G��w&�����������������"��2��B��R��b��f��B�vV�v�C�s��6���#�f"���6���"�FW�B�F&�����&v���&�GF�Ӣ'���Р����f��B�6��S�3'����WGFW"�76��s���W���Р��"��f��B�6��S�#G����WGFW"�76��s���7���Р��2��f��B�6��S������WGFW"�76��s���'���Р��B��f��B�6��S�c  
+        }
+
+        p {
+            margin-bottom: 12px;
+            line-height: 1.6;
+        }
+
+        a {
+            color: var(--color-primary-blue);
+            text-decoration: none;
+            transition: color var(--transition-fast);
+        }
+
+        a:hover {
+            color: var(--color-primary-blue-dark);
+            text-decoration: underline;
+        }
+
+        /* ========== Tables ========== */
+        .table {
+            background: var(--color-white);
+            border-collapse: collapse;
+            margin-bottom: 0;
+        }
+
+        .table thead {
+            background: linear-gradient(to right, #f8f9fa, #ffffff);
+            border-bottom: 2px solid var(--color-border);
+        }
+
+        .table th {
+            font-weight: 600;
+            font-size: 13px;
+            color: var(--color-text-dark);
+            padding: 14px 16px;
+            text-align: left;
+            text-transform: none;
+        }
+
+        .table td {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--color-border);
+            font-size: 14px;
+        }
+
+        .table tbody tr:hover {
+            background: #f8f9fa;
+        }
+
+        /* ========== User Info & Header ========== */
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .user-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--color-primary-blue) 0%, #0ea5e9 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .user-details {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .user-name {
+            font-weight: 600;
+            font-size: 14px;
+            color: var(--color-text-dark);
+        }
+
+        .user-role {
+            font-size: 12px;
+            color: var(--color-text-muted);
+        }
+
+        /* ========== Footer ========== */
+        .footer {
+            margin-top: 48px;
+            padding-top: 24px;
+            border-top: 1px solid var(--color-border);
+            text-align: center;
+            color: var(--color-text-muted);
+            font-size: 13px;
+        }
+
+        /* ========== Responsive Design ========== */
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 240px;
+            }
+
+            .header {
+                left: 240px;
+            }
+
+            .header.sidebar-collapsed {
+                left: 0;
+            }
+
+            .main-content {
+                margin-left: 240px;
+            }
+
+            .main-content.sidebar-collapsed {
+                margin-left: 0;
+            }
+
+            .sidebar-toggle {
+                display: block;
+            }
+
+            .sidebar-title {
+                display: none;
+            }
+
+            .sidebar-nav a span {
+                display: none;
+            }
+
+            .sidebar-nav a {
+                justify-content: center;
+            }
+
+            .main-content {
+                padding: 24px 16px;
+            }
+
+            h1 {
+                font-size: 24px;
+            }
+
+            h2 {
+                font-size: 20px;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .sidebar {
+                width: 220px;
+            }
+
+            .sidebar-logo {
+                width: 36px;
+                height: 36px;
+                font-size: 18px;
+            }
+
+            .header {
+                padding: 0 160  �Р��VFW"��VgB��v�'���Р������6��FV�B��FF��s�g�'���Р��6&B���&v���&�GF�Ӣg���Р��6&B�&�G���FF��s�c  
+            }
+
+            .user-info {
+                display: none;
+            }
+
+            .toast {
+                min-width: 280px;
+                max-width: 280px;
+            }
         }
     </style>
+
     {% block extra_css %}{% endblock %}
 </head>
 <body>
-    <!-- Navbar -->
-    <nav class="navbar navbar-expand-lg sticky-top">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="/dashboard">
-                <i class="bi bi-lightning-fill"></i> 電気設備積算システム
-            </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav me-auto">
-                    <li class="nav-item">
-                        <a class="nav-link" href="/dashboard">ダッシュボード</a>
-                    </li>
-                    {% if current_user.role == 'admin' %}
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="adminMenu" role="button" data-bs-toggle="dropdown">
-                            <i class="bi bi-gear"></i> 管理者メニュー
-                        </a>
-                        <ul class="dropdown-menu" aria-labelledby="adminMenu">
-                            <li><a class="dropdown-item" href="/admin/users">ユーザー管理</a></li>
-                            <li><a class="dropdown-item" href="/admin/audit-log">監査ログ</a></li>
-                            <li><a class="dropdown-item" href="/admin/error-log">エラーログ</a></li>
-                            <li><a class="dropdown-item" href="/admin/learning">学習辞書</a></li>
-                            <li><a class="dropdown-item" href="/admin/master">マスタ管理</a></li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="/admin/settings">設定</a></li>
-                        </ul>
-                    </li>
-                    {% endif %}
-                </ul>
-                <ul class="navbar-nav">
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="userMenu" role="button" data-bs-toggle="dropdown">
-                            <i class="bi bi-person-circle"></i> {{ current_user.full_name }}
-                        </a>
-                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenu">
-                            <li><a class="dropdown-item" href="/logout">ログアウト</a></li>
-                        </ul>
-                    </li>
-                </ul>
-            </div>
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-logo">⚡</div>
+            <h1 class="sidebar-title">積算</h1>
         </div>
-    </nav>
 
-    <!-- Main Content -->
-    <div class="main-container">
-        <div class="container-fluid">
-            <!-- Flash Messages -->
-            {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                    {% for category, message in messages %}
-                        {% set alert_class = 'alert-success' if category == 'success' else 'alert-danger' if category == 'danger' else 'alert-warning' if category == 'warning' else 'alert-info' %}
-                        <div class="alert {{ alert_class }} alert-dismissible fade show" role="alert">
-                            <i class="bi bi-info-circle"></i> {{ message }}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                        </div>
-                    {% endfor %}
-                {% endif %}
-            {% endwith %}
+        <!-- Regular User Navigation -->
+        <ul class="sidebar-nav">
+            <li>
+                <a href="{{ url_for('dashboard') if current_user.is_authenticated else '#' }}"
+                   class="{% if request.endpoint and 'dashboard' in request.endpoint %}active{% endif %}">
+                    <i class="bi bi-speedometer2"></i>
+                    <span>ダッシュボード</span>
+                </a>
+            </li>
+            <li>
+                <a href="{{ url_for('dashboard') if current_user.is_authenticated else '#' }}"
+                   class="{% if request.endpoint and 'dashboard' in request.endpoint %}active{% endif %}">
+                    <i class="bi bi-list-check"></i>
+                    <span>案件一覧</span>
+                </a>
+            </li>
+            <li>
+                <a href="{{ url_for('create_project') if current_user.is_authenticated else '#' }}"
+                   class="{% if request.endpoint and 'create_project' in request.endpoint %}active{% endif %}">
+                    <i class="bi bi-plus-circle"></i>
+                    <span>見積作成</span>
+                </a>
+            </li>
+            <li>
+                <a href="#"
+                   class="{% if request.endpoint and 'files' in request.endpoint %}active{% endif %}">
+                    <i class="bi bi-file-earmark"></i>
+                    <span>共有ファイル</span>
+                </a>
+            </li>
+        </ul>
 
-            {% block content %}{% endblock %}
+        <!-- Admin Navigation (shown only to admins) -->
+        {% if current_user.is_authenticated and current_user.role == 'admin' %}
+        <div class="sidebar-section">
+            <div class="sidebar-section-title">管理者</div>
+            <ul claader ========== */
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .user-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--color-primary-blue) 0%, #0ea5e9 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .user-details {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .user-name {
+            font-weight: 600;
+            font-size: 14px;
+            color: var(--color-text-dark);
+        }
+
+        .user-role {
+            font-size: 12px;
+            color: var(--color-text-muted);
+        }
+
+        /* ========== Footer ========== */
+        .footer {
+            margin-top: 48px;
+            padding-top: 24px;
+            border-top: 1px solid var(--color-border);
+            text-align: center;
+            color: var(--color-text-muted);
+            font-size: 13px;
+        }
+
+        /* ========== Responsive Design ========== */
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 240px;
+            }
+
+            .header {
+                left: 240px;
+            }
+
+            .header.sidebar-collapsed {
+                left: 0;
+            }
+
+            .main-content {
+                margin-left: 240px;
+            }
+
+            .main-content.sidebar-collapsed {
+                margin-left: 0;
+            }
+
+            .sidebar-toggle {
+                display: block;
+            }
+
+            .sidebar-title {
+                display: none;
+            }
+
+            .sidebar-nav a span {
+                display: none;
+            }
+
+            .sidebar-nav a {
+                justify-content: center;
+            }
+
+            .main-content {
+                padding: 24px 16px;
+            }
+
+            h1 {
+                font-size: 24px;
+            }
+
+            h2 {
+                font-size: 20px;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .sidebar {
+                width: 220px;
+            }
+
+            .sidebar-logo {
+                width: 36px;
+                height: 36px;
+                font-size: 18px;
+            }
+
+            .header {
+                padding: 0 16px;
+            }
+
+            .header-left {
+                gap: 12px;
+            }
+
+            .main-content {
+                padding: 16px 12px;
+            }
+
+            .card {
+                margin-bottom: 16px;
+            }
+
+            .card-body {
+                padding: 16px;
+            }
+
+            .user-info {
+                display: none;
+            }
+
+            .toast {
+                min-width: 280px;
+                max-width: 280px;
+            }
+        }
+    </style>
+
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-logo">⚡</div>
+            <h1 class="sidebar-title">積算</h1>
+        </div>
+
+        <!-- Regular User Navigation -->
+        <ul class="sidebar-nav">
+            <li>
+                <a href="{{ url_for('dashboard') if current_user.is_authenticated else '#' }}"
+                   class="{% if request.endpoint and 'dashboard' in request.endpoint %}active{% endif %}">
+                    <i class="bi bi-speedometer2"></i>
+                    <span>ダッシュボード</span>
+                </a>
+            </li>
+            <li>
+                <a href="{{ url_for('dashboard') if current_user.is_authenticated else '#' }}"
+                   class="{% if request.endpoint and 'dashboard' in request.endpoint %}active{% endif %}">
+                    <i class="bi bi-list-check"></i>
+                    <span>案件一覧</span>
+                </a>
+            </li>
+            <li>
+                <a href="{{ url_for('create_project') if current_user.is_authenticated else '#' }}"
+                   class="{% if request.endpoint and 'create_project' in request.endpoint %}active{% endif %}">
+                    <i class="bi bi-plus-circle"></i>
+                    <span>見積作成</span>
+                </a>
+            </li>
+            <li>
+                <a href="#"
+                   class="{% if request.endpoint and 'files' in request.endpoint %}active{% endif %}">
+                    <i class="bi bi-file-earmark"></i>
+                    <span>共有ファイル</span>
+                </a>
+            </li>
+        </ul>
+
+        <!-- Admin Navigation (shown only to admins) -->
+        {% if current_user.is_authenticated and current_user.role == 'admin' %}
+        <div class="sidebar-section">
+            <div class="sidebar-section-title">管理者</div>
+            <ul class="sidebar-nav">
+                <li>
+                    <a href="{{ url_for('admin_users') }}"
+                       class="{% if request.endpoint and request.endpoint == 'admin_users' %}active{% endif %}">
+                        <i class="bi bi-people"></i>
+                        <span>ユーザー管理</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ url_for('admin_audit_log') }}"
+                       class="{% if request.endpoint and request.endpoint == 'admin_audit_log' %}active{% endif %}">
+                        <i class="bi bi-clock-history"></i>
+                        <span>監査ログ</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ url_for('admin_error_log') }}"
+                       class="{% if request.endpoint and request.endpoint == 'admin_error_log' %}active{% endif %}">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        <span>エラーログ</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ url_for('admin_learning') }}"
+                       class="{% if request.endpoint and request.endpoint == 'admin_learning' %}active{% endif %}">
+                        <i class="bi bi-book"></i>
+                        <span>学習辞書</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ url_for('admin_master') }}"
+                       class="{% if request.endpoint and request.endpoint == 'admin_master' %}active{% endif %}">
+                        <i class="bi bi-table"></i>
+                        <span>マスタ管理</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ url_for('admin_settings') }}"
+                       class="{% if request.endpoint and request.endpoint == 'admin_settings' %}active{% endif %}">
+                        <i class="bi bi-gear"></i>
+                        <span>設定</span>
+                    </a>
+                </li>
+            </ul>
+        </div>
+        {% endif %}
+    </aside>
+
+    <!-- Top Header -->
+    <header class="header" id="header">
+        <div class="header-left">
+            <button class="sidebar-toggle" id="sidebarToggle">
+                <i class="bi bi-list"></i>
+            </button>
+        </div>
+
+        <div class="user-info" id="userInfo">
+            {% if current_user.is_authenticated %}
+            <div class="user-avatar">
+                {{ current_user.full_name[0] if current_user.full_name else 'U' }}
+            </div>
+            <div class="user-details">
+                <div class="user-name">{{ current_user.full_name }}</div>
+                <div class="user-role">
+                    {% if current_user.role == 'admin' %}管理者{% elif current_user.role == 'user' %}ユーザー{% else %}{{ current_user.role }}{% endif %}
+                </div>
+            </div>
+            {% endif %}
+            <a href="{{ url_for('logout') if current_user.is_authenticated else '#' }}" class="btn btn-secondary btn-sm">
+                <i class="bi bi-box-arrow-right"></i>
+                <span>ログアウト</span>
+            </a>
+        </div>
+    </header>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner">
+            <div class="spinner"></div>
+            <div class="spinner-text">AI処理中...</div>
+            <div style="font-size: 12px; color: var(--color-text-muted);">お待たせしていま</div>
         </div>
     </div>
 
-    <!-- Footer -->
-    <footer>
-        <p>&copy; 電気設備積算・見積システム v1.0</p>
-    </footer>
+    <!-- Flash Messages (Modern Toast Style) -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div class="toast-container">
+            {% for category, message in messages %}
+            <div class="toast {% if category == 'error' %}error{% elif category == 'success' %}success{% elif category == 'warning' %}warning{% else %}info{% endif %}">
+                <div class="toast-icon">
+                    {% if category == 'error' %}
+                        <i class="bi bi-exclamation-circle-fill"></i>
+                    {% elif category == 'success' %}
+                        <i class="bi bi-check-circle-fill"></i>
+                    {% elif category == 'warning' %}
+                        <i class="bi bi-exclamation-triangle-fill"></i>
+                    {% else %}
+                        <i class="bi bi-info-circle-fill"></i>
+                    {% endif %}
+                </div>
+                <div class="toast-content">
+                    <div class="toast-title">
+                        {% if category == 'error' %}エラー{% elif category == 'success' %}成功{% elif category == 'warning' %}注意{% else %}情報{% endif %}
+                    </div>
+                    <div class="toast-message">{{ message }}</div>
+                </div>
+                <button class="toast-close" onclick="this.parentElement.style.display='none';">
+                    <i class="bi bi-x"></i>
+                </button>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    {% endwith %}
 
+    <!-- Main Content -->
+    <main class="main-content" id="mainContent">
+        <div class="content-wrapper">
+            {% block content %}{% endblock %}
+
+            <!-- Footer -->
+            <footer class="footer">
+                <p>&copy; 2024 電気設備積算システム. All rights reserved.</p>
+            </footer>
+        </div>
+    </main>
+
+    <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Base JavaScript -->
     <script>
-        // Global utility functions
-        function showLoading(element) {
-            const spinner = element.querySelector('.loading-spinner');
-            if (spinner) {
-                spinner.classList.add('active');
-            }
+        // Sidebar Toggle
+        const sidebar= document.getElementById('sidebar');
+        const header = document.getElementById('header');
+        const mainContent = document.getElementById('mainContent');
+        const sidebarToggle = document.getElementById('sidebarToggle');
+
+        if (sidebarToggle) {
+            sidebarToggle.addEventListener('click', () => {
+                sidebar.classList.toggle('collapsed');
+                header.classList.toggle('sidebar-collapsed');
+                mainContent.classList.toggle('sidebar-collapsed');
+            });
         }
 
-        function hideLoading(element) {
-            const spinner = element.querySelector('.loading-spinner');
-            if (spinner) {
-                spinner.classList.remove('active');
-            }
+        // Loading Overlay Functions
+        function showLoadingOverlay() {
+            document.getElementById('loadingOverlay').classList.add('show');
         }
 
-        function confirmAction(message) {
-            return confirm(message);
+        function hideLoadingOverlay() {
+            document.getElementById('loadingOverlay').classList.remove('show');
         }
 
-        function showAlert(message, type = 'info') {
-            const alertHtml = `<div class="alert alert-${type} alert-dismissible fade show" role="alert">
-                <i class="bi bi-info-circle"></i> ${message}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>`;
-            const container = document.querySelector('.main-container');
-            const alertElement = document.createElement('div');
-            alertElement.innerHTML = alertHtml;
-            container.insertBefore(alertElement.firstChild, container.firstChild);
+        // Toast Notification Function
+        function showToast(message, title = '通知', type = 'info') {
+            const container = document.querySelector('.toast-container) iy createPToastContainer();
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+
+            const iconMap = {
+                'success': 'bi-check-circle-fill',
+                'error': 'bi-exclamation-circle-fill',
+                'warning': 'bi-exclamation-triangle-fill',
+                'info': 'bi-info-circle-fill'
+            };
+
+            const titleMap = {
+                'success': '成功',
+                'error': 'エラー',
+                'warning': '注意',
+                'info': '情報'
+            };
+
+            toast.innerHTML = `
+                <div class="toast-icon">
+                    <i class="bi ${iconMap[type]}"></i>
+                </div>
+                <div class="toast-content">
+                    <div class="toast-title">${titleMap[type]}</div>
+                    <div class="toast-message">${message}</div>
+                </div>
+                <button class="toast-close" onclick="this.parentElement.style.display='none';">
+                    <i class="bi bi-x"></i>
+                </button>
+            `;
+
+            container.appendChild(toast);
+
+            // Auto-remove after 5 seconds
+            setTimeout(() => {
+                toast.style.animation = 'slideOut 0.3s ease-out';
+                setTimeout(() => toast.remove(), 300);
+            }, 5000);
         }
+
+        function createToastContainer() {
+            const container = document.createElement('div');
+            container.className = 'toast-container';
+            document.body.appendChild(container);
+            return container;
+        }
+
+        // Close alerts on close button click
+        document.querySelectorAll('.alert-close').forEach(btn => {
+            btn.addEventListener('click', function() {
+                this.closest('.alert').remove();
+            });
+        });
     </script>
+
     {% block extra_js %}{% endblock %}
 </body>
 </html>
+ 
+              � �       
+
+        � �
+   
+  � � 
+ 
+�        
+
+�    �                       �    �    �        �                    
+        �            �
+   
+
+    �           �              
+               �                                 �            
+                   �            
+                     �             
+                   �                                �  �           �   
+    
+
+        ��Lz� �
+          �                      
+         �             
+          �"�פ��                   
+         �             
+       � �����2î      
+
+                         
+         � 
+
+ �           �   
+           �n\�     
+
+          
+      
+     �  
+       �             
+              ���h�k     
+
+          
+     
+       
+     �  
+       �             
+                    ���"�k�     
+
+           
+      
+     �  
+       �             
+            
+  ����Y9]     
+
+           
+     
+       
+     �  
+       �             
+            
+        ��#���c     
+
+    
+      
+       
+     �  
+       �             
+       �       �m{+�Zj�     
+
+    
+                  
+         � 
+
+ �           �   
+   
+      ��(=M5�
+     
+
+    
+                        
+         � 
+
+ �           �   
+   
+           ��F�����     
+
+    
+   
+               
+         � 
+
+ �           �   
+   
+   
+  �q3.�6.�     
+
+    
+   
+                     
+         � 
+
+ �           �   
+   
+   
+        򵻄�mU     
+
+    
+ 
+ �             
+         � 
+
+ �           �   
+   
+ 
+ ��:�b�~�     
+
+    
+ 
+ �                   
+         � 
+
+ �           �   
+   
+ 
+ �      ���?�f)                            �                          �                           
+         �             
+               m�B�b�^                     
+         �             
+         �U	u`�D�                    
+         �             
+         
+�"v�/c�@                    
+         �             
+          �G��mV!             
+  
+         �    �     �
+ �    �    �            
+                   
+                                � �           �               �    
+                
+               
+    �                
+  �         
+ 
+ 
+  � 
+ �         
+         �    
+�    �  �         
+ 
+       �       
+  �     
+                                          
+    
+                   
+ 
+ 
+     
+  �         �                
+  �             
+  
+   �     �
+        
+  �           
+      
+     
+             � �     
+            
+      �
+           
+�          
+               
+ 
+ � �     
+ �    �               
+�               
+       
+ 
+    �   �  
+           
+             
+     
+                              �             �   �
+              
+                
+   �      �              �
+  �           � 
+           �   �         � 
+      
+         ��          �           ��
+                         
+                  
+ �            
+                 
+         �                        
+                    
+         
+                     
+                                 �  �  
+                    �                                         
+ 
+  �                 
+         
+  �                     
+  ��     
+                       �      
+�      �       �         �  
+ 
+             �                             
+
+      
+     
+  �          
+                �                
+       
+ 
+                �      
+     
+                     �             ��             
+��        � 
+
+�
+ � 
+�   
+     �� �    
+       
+       � 
+
+     � 
+
+    ���     ޭ   �     �                
+      �   �      
+          �  � �          
+ 
+ �   �           �                  �   �   
+     � %   
+  �       �   �   
+      �  
+      
+
+      �  
+      
+        
+   �  
+            
+   �  
+          �  
+      
+        
+   �  
+     �    
+  �  
+                   
+                   �    
+      � 
+
+             � 
+
+     �       � 
+ �  �       
+�
+         �      �      
+  �                  �                �                  �            �           
+        �         
+ �     �  ���  
+
+  
+  
+ 
+                  � �     
+   
+    
+  �             
+       �     ��    �              
+   
+
+                 
+         
+  �� ���             @   �      � �    � 
+
+    �        
+     �                  �               �        �      �        
+        
+       �            �                 �  �       
+   �      
+ � 
+      �                                  �      �           �                   
+ 
+                     �    
+�   �     
+          
+  
+             
+                    �         
+   �    %   �
+              
+ � 
+ �   
+     �   
+          �              
+�     
+            
+        �                  �
+        
+
+ f       �       
+  
+ 
+   �                             
+             
+             �Uj�T��  ��  �                        
+             
+       (�	���HU�
+  
+� ��                       
+             
+       ���+ӿ.�+3  
+� ��                       
+             
+       4d�Y�|m��  
+� ��                       
+             
+           �u��B�K�  
+� ��                       
+             
+             ����B��  
+� ��                       
+             
+       )f�����"  ��  �                        
+             
+       �#��QF��  
+� ��                       
+             
+       A��b�8K<  
+� ��                       
+             
+       Q! Ok`��l�  
+� ��                       
+             
+       w1�=�tY�$  
+� ��                       
+             
+       #	�>أ&{6  
+� ��                       
+             
+       #'�҉D�  ��  �                        
+             
+       Ft o�}%D
+�_  
+� ��                       
+             
+       �9�{�g=X  
+� ��                       
+             
+          �    ��zt�t�  
+� ��                       
+             
+            �]��x{W  ��  �                        
+             
+        �  �.hj^r|
+  ��  �                        
+             
+        �  ?�[�~OL  
+� ��                       
+             
+       pS Ŷ���E
+  ��  �                        
+             
+       y	�SK�Ʀ>  
+� ��                       
+             
+       a ���r��#q  
+� ��                       
+             
+       &S;s�]��H  
+� ��                       
+             
+       (��7O�WB��  ��  �                        
+             
+       r��aߤ��W  
+� ��                       
+             
+       s��ڏYLa  
+� ��                       
+             
+       ��)��9�X�  
+� ��                       
+             
+       Ph <�,is�  
+� ��                       
+             
+       c"p�sde#��  
+� ��                       
+             
+       F(L�������  
+� ��                       
+             
+       $��uU�&���
+  ��  �                        
+             
+       �vK\���F
+  ��  �                        
+             
+       YMhs05�-  
+� ��                       
+             
+       b�1<&FJ  
+� ��                       
+             
+       HR��ۗ��
+  
+� ��                       
+             
+       (p�\��@8�  
+� ��                       
+             
+       �2�5M�1�L�  
+� ��                       
+             
+       7�Q�BE�*  
+� ��                       
+             
+       ��&w;V9�  
+� ��                       
+             
+       �#�ϟ��  
+� ��                       
+             
+       �w��c�i�  
+� ��                       
+             
+       'IL���"  
+� ��                       
+             
+       V�	�,3i�\  
+� ��                       
+             
+        ���/;�p:  ��  �                        
+             
+       �V��h>1*��  
+� ��                       
+             
+       �    ��:�T��  
+� ��                    
+         �             
+        �   �Tnc+ 
+                       
+             
+       80>q&1e���  
+� ��                       
+             
+         �     
+�hU7.
+�   ��  �            
+   
+         
+               
+     
+
+    
+    
+              �           
+     �       
+ 
+
+
+    
+    
+   �          ��� ���v|���
+��     
+     �            :���׹_�v+����9cL@�W0J��z%o   
+           �8<b /�
+[�# �ߴ
+
+    
+         
+    �  �    8�.�S��?&�����c������ �&�
+
+    
+         
+     
+ �            
+    
+                $             
+                       �    
+        
+                  
+  
+    %                         
+
+    
+         
+          �4�����S�P�l�NBBn��/&�TB�a;J �               
+       
+
+            
+
+    
+         
+     �    
+       
+ �                              
+         
+          �       � �      
+      
+
+	  
+                                 
+       �  
+    ��(   
+       �        
+
+ f     
+     �        x����ڹK؋x�G���dˏ
+�@   
+        
+      
+          
+           
+
+ f           �            �     
+               
+        
+   �                       
+   
+P            
+     
+
+                         �       �     �         �    �                                   
+              
+    �   
+    H��Ce(    
+   
+   �       
+w7i 
+ 
+                        
+                     
+                  
+                 
+�        
+                      
+                       
+     
+         B       �     
+                     
+             UŹ��R     
+               
+     
+                    
+                   
+                     
+           
+ WQ���N     
+               
+     
+                    
+               b    
+                     
+            
+�<���6
+     
+               
+     
+                    
+               b    
+                   
+           
+    3Gb   
+        �            
+        �       34v   
+        �         
+       
+                    
+        �                       
+   
+P            
+     
+
+                  
+         
+              �   
+       �\[��     
+         
+ 
+         
+         
+                     
+    �    
+          ��(                       
+   �            �  � �     X�){R�>�X��͟QEūW�* ������ �  �      
+ 
+
+      ���@���*�����ԇঋՆ�}Ew�HZe            
+      �    �         ����`            �        
+  �
+         �~,G��|            f           : /
+         
+/   /     �  ����ŧ�h�][wۄ��p
+ �    iA2
+    � 
+                 
+/ �       /    �       
+                   
+             �      
+      
+      
+
+  �             
+   
+  �    �     
+
+            
+    �   
+            
+  �     
+       �8�;.$ܖ;����n��F�a�N�خu$�
+
+    �   
+   
+  �     
+�        h��I}�p+�B��Ss*zl�(�>� A��#
+
+    �   
+   
+  �     
+�        �_L��Q����B�c�|�l������X�Cz�
+
+    �   
+   
+  �     
+          �g��8���+)�1�����L��`�q��v�c�� �        �   
+      �            �                            
+         �             
+         ���B�I�                   
+         �             
+         �6��l=�1      
+       
+                    
+  
+  �               
+ �            
+      
+�        
+    
+             �  
+       
+   
+        �    
+       
+           
+         
+    
+    
+                                     
+     
+    ����ilZy��Uշ}�Ll��   
+     
+               
+     �           �   
+     
+  � 	=���@                            �           �           �   �   
+                   �             �           �   �   
+     � �
+ �           �   �   
+    
+           �2  
+              
+          
+       �           � 
+     �     
+    
+    
+             �  
+         
+ 
+ �         
+
+   
+     �         
+           
+�  �             
+  
+        
+                      �        
+        
+
+     
+  
+                
+  �      �             
+  �    �      �   
+ 
+  
+    �  � �� �         
+     �                  
+      �                    �        � �   �                
+
+ �        
+           
+  � �        � �� �          
+                         
+         �             
+          ��  Ս�}�=6 
+                    
+         �             
+               �   ��6�7�       � 
+ 
+                �    �    �  � �  �   �  �  �     �          
+  
+     �  
+   � 
+ 
+  ���
+
+      
+       
+       
+ 
+��                     
+
+    �      �         �                                     
+         �             
+          ��  Ս�}�=6 
+                    
+         �             
+         
+ 
+�
+ A� �Y!� 
+      � 
+ 
+          
+ 
+�
+  �        � �  �       �  �     �          
+  
+     �  
+   � 
+ 
+  ���
+
+                             f  
+                             iA2    �     �     
+ �            
+     
+�        � 
+      �
+  �
+	               �   �  ˑ���>�D�זN�v�����y�_�}���A   
+�       �    
+�   �    
+ � 
+        �                     
+          �                    
+    �     
+         
+   
+               
+  
+ 
+   �        
+           
+
+  �   �  
+ 
+       
+ �           �                      
+         �      �    
+ 
+             
+      
+ 
+ 
+     
+           : /          
+        
+
+    �      �          
+      �     
+
+
+         ��(      d   �   
+  
+ 
+ �   �             
+          �      �  �  	
+
+    
+
+
+     � 
+
+
+     �        
+
+        �  �
+            �  �  	
+
+
+         
+
+
+     
+
+ 
+   
+ �     �  �  �
+       
+
+          
+      
+       �  �  	
+
+    � � � � �       
+ � �       
+
+ 
+   
+ �      
+ 
+
+ �       
+ �   
+            � �                
+  
+             �   
+	          �   
+�          
+
+ �   
+  �     
+   
+
+    
+  �  
+      
+ 
+ � �        
+   �     �  �            �        
+              
+  
+    �              
+�        
+ 
+ u
+u   u Z u      Z u    
+u   u Z u      Z u      Z u      Z u   �    
+            
+             
+
+
+     
+   �    
+  
+                   
+     
+� �                
+   �     � �       
+  
+ ��       �       � � �   
+  � 
+
+         �    �  
+
+  
+       
+  � �     �  
+
+
+        
+ 
+ �      
+  
+        
+         $  
+              
+  
+    �              
+�        
+ 
+  &(L� e 6� T� �� T� V � # � 6 x� D ) A $1	� e � 6  S &	u  S @ �	�8i ) 2�   �   	�r T   g  c� � R� � 4 c � W(   6� gV#xU U�  U� dl#  �3 x   � T\ �	 5 f	`"  	 �  c�    � x $H 5	 � ��  $  Q f� 4� 3 '  Y  Y '  '  q � Ge !@y#E Q ! C � C a  �  C  � 8g  D �  
+     
+   
+                � � �    
+ 
+ �               
+   
+              � 
+       
+          
+  
+           
+    
+            � �  
+ 
+ �     �       
+                 	 
+
+       
+      
+       �  �
+   �      
+      K     �   
+        	 
+
+ 
+ 
+      
+              � 
+   
+  
+
+ 
+ �          
+  
+        
+  
+  ��      
+    
+   �      
+�      �    
+  �  �      
+  �        �   �  ��        
+        
+  
+  ��   
+      
+   �      
+      
+  
+         
+    
+  
+   
+
+        �  
+      
+  �       
+  
+      �       �  �  	
+
+    � � � � �       
+ � �       
+
+ 
+   
+ �      
+ 
+
+ �       
+ 
+  �   
+   
+         �     �                   
+ 
+ �  �              �   
+	          �   
+�  
+    �       
+ �   
+  � 
+
+    
+  �  
+        
+
+
+           � �   �  
+   �           
+
+
+    �
+   
+ 
+   �     
+  /  �     
+ 
+�L    
+ 
+ �      
+  
+        �                          
+                      � 
+    �      
+   ht�  � "� �   � "  
+t	t	   & u I I   s   � � �  � � � � �                 � �        
+   �    �    
+    
+     �       
+        �   
+     
+         
+
+  �   
+   
+     �       �       
+           
+  
+  
+     � �                
+   �     � �       
+  
+ ��      
+ �   
+   
+ �         �       � � �   
+  � 
+
+         �    �  
+
+  
+       
+  � �   �    
+   �     �  �           
+       
+              
+  
+    �              
+�        
+ 
+   J  ��  �� J I I   2't	t	   4 ! zI	I	  �
+I	I	       
+         
+             
+
+
+     
+   �     
+ 
+  �  �         
+        
+  
+  ��                        
+  
+           
+    
+            � �  
+ 
+ �     �       
+                 	 
+
+       
+      
+       �  �
+   �      
+      K     �   
+        	 
+
+ 
+ 
+      
+              � 
+         
+  
+
+ 
+ �          
+  �      
+ 
+ 
+        
+ 
+           
+ �   
+   
+    
+      
+                  �  
+   
+
+
+
+         
+
+
+     
+
+ 
+   
+ �      
+ 
+
+ �       
+ �   
+  �
+�   
+                 �  
+   
+
+
+
+         
+
+
+     
+
+ 
+   
+ �      
+ 
+
+ �      
+ 
+ 
+   �     �           
+� �                
+   �     � �       
+  
+ ��      
+  �       � � �   
+  � 
+
+         �    �  
+
+  
+       
+  � �      �      � �        
+   �     �  �                                     
+                      � 
+    �      
+   �\� b � s� � �� I  8 ( w� � �� e   $   )  8     % T� V  � (� i �� � y sIr&  4 b 4 D e 		 W �  e � ss � D v# 7 E ( $ a f  �  � �  W S H %e"	B	a!�8RGY	�,  f� Q ��  �  H\(  ��  C�   	!� u �� ' �� F � Y 2q �""  0:$    D C fV�q � e # �� ' ) %\  # " 3  3 v� �   7 Ah ��  � y �   $1 i � 6	U  � ) q  q b �  y B y S  9 #c 1 " ' �aU 5 9 A�   � � � �� � �  !	 Y y $a	r0#aU)	0xT 8 � ( D y y 0 x � q  v #� B 7� T # � i ��         
+   	z u   u P u  �    �
+u       u  
+u    	xz u       
+     
+   
+                � � �    
+ 
+ �                     
+    
+      
+    
+           
+  �      
+ 
+        
+ � 
+�
+ 
+            �   
+	          �   
+�                
+�
+
+ �   
+  �    �  
+
+  
+               
+
+
+           � �   �  
+   �           
+
+
+    �
+   
+ 
+   �     
+  /  �     
+ 
+�L    
+ 
+ �      
+  
+       �          
+              
+  
+    �              
+�        
+ 
+ � 5V ���t		3� � bghX  C 6 !	 �  � & a  P T� � %e  v	iHW	 3 �� $ $� a  &�v S �  9 e D 	  C h 1 8 �	� e Rr&VqiaiH  r  T V f ( � ) &   v $ H 7  $ � " q � �  r� v5y y � ��  X � 3  b  # l I )r) 	 '�  �� " "   � $   Tt< e d� c �� � R � 6 r �  #   UA	2rC C  b <   c � � )	G	@q G  6	x	 i T  y	07Q	7	D7	� 3	 5 8 T  2R ' � S  � 7� � $a  U )|� D H	h)   5	g	 B  � &  1  S �  � cT "   � B 7		   W07  e $ U 3 ) � Xq    
+  
+ 
+ %	 7
+u    u  
+u    	xz u   u u % P u  �    �
+u                 
+  
+
+
+                               �    
+   �     �  �              �                          
+                      � 
+    �      
+   ' ' � �
+%     T   �� �
+%     �  
+%     w '   
+      
+      
+  
+   
+ 
+ 
+      
+   
+ �     
+           
+  
+     
+ 
+  � �  � �   
+   �     � �    �  
+  
+  �         
+
+ �   
+  �    �  
+
+  
+       
+  � �   � �                    � �         
+
+
+           �             � �      �                          �    
+   �     �  �                   
+              
+  
+    �              
+�        
+ 
+ u
+u    u   Z u        Z u  �      Z u   �    Z u                
+  
+
+
+                               �    
+   �     �  �              �                          
+                      � 
+    �      
+   ' ' � �
+%     T   �� �
+%     �  
+%     w '   
+      
+        
+                � � �    
+ 
+ �        
+� 
+            
+     
+ 
+� �                
+   �     � �       
+  
+ ��      
+  �       � � �   
+  � 
+
+         �    �  
+
+  
+       
+  � �            � �        
+   �     �  �             �       
+              
+  
+    �              
+�        
+ 
+ 	Z              
+   �  j     �            
+     
+   
+                � � �    
+ 
+ �                 
+              � 
+                  
+  
+           
+    
+            � �  
+ 
+ �     �       
+                 	 
+
+       
+      
+       �  �
+   �      
+      K     �   
+        	 
+
+ 
+ 
+      
+              � 
+   
+  
+
+ 
+ �          
+  
+        
+  
+  ��      
+    
+   �      
+�      �    
+  �  �      
+  �        �   �  ��        
+        
+  
+  ��          
+   �      
+      
+  
+         
+    
+  
+
+                    �   
+	          �   
+�          
+
+ �   
+  �     
+   
+
+    
+  �  
+      
+ 
+ � �     �     � �        
+   �     �  �                        
+              
+  
+    �              
+�        
+ 
+ %� %  "  V� Q Q �    r� %      w 	Wgz %    T   �    b�%%  Z   �  F
+%    ' w  w '
+%     T u 
+u    u      	 
+u    u       u
+u     u   �     
+     
+   
+                � � �    
+ 
+ �                   
+        
+  
+  ��                  
+       
+                   �        
+  � �
+  
+   �     
+
+            
+            �   �   
+          
+   �      
+�      �    
+  �  �      
+  �        �   �  ��        
+        
+  
+  ��          
+   �      
+       
+              � 
+        
+       �  �
+   �      
+      K     �   
+        	 
+
+ 
+ 
+      
+              � 
+   
+  
+
+ 
+ �          
+  �      
+ 
+ 
+        
+� �                
+   �     � �       
+  
+ ��      
+  �       � � �   
+  � 
+
+         �    �  
+
+  
+       
+  � �            
+
+
+        
+ 
+ �      
+  
+                                 
+                      � 
+    �      
+   �        Z u   u  
+u    u Z u   �   � �      u � r ZII     � �   p�HH  	 %
+%     Z %   % %
+%      E� �
+$	$	       z %       
+     
+   
+                � � �    
+ 
+ �                
+ 
+ 
+           
+� �                
+   �     � �       
+  
+ ��      
+  �       � � �   
+  � 
+
+         �    �  
+
+  
+       
+  � �      �     
+   � �        
+   �     �  �                                    
+                      � 
+    �      
+    ju   A  �   3    9\ 	 � )Zu      Zu     � �    )  D
+%     �u
+u       % u  u� 
+u     � e* %    #   	 �� u 
+u      Z u      u	     \  8  %  
+%                 
+             
+
+
+     
+   �     
+ 
+            �    
+     
+              � 
+                  
+  
+           
+    
+            � �  
+ 
+ �     �       
+                 	 
+
+       
+      
+       �  �
+   �      
+      K     �   
+        	 
+
+ 
+ 
+      
+              � 
+   
+  
+
+ 
+ �          
+  
+        
+  
+  ��      
+    
+   �      
+�      �    
+  �  �      
+  �        �   �  ��        
+        
+  
+  ��          
+   �      
+      
+  
+         
+    
+        
+      
+   
+   
+      � �                
+  
+     
+
+    
+
+ f      �   
+	    
+      
+  
+  �         
+
+ �   
+  �     
+   
+
+    
+  �  
+      
+ 
+ � �       
+
+           
+
+
+�    
+ 
+   
+       2     2    �        2                       iA2 
+    
+
+       �         
+             
+
+
+     
+   �    
+         
+ 
+      
+                            ��       
+  
+           
+
+        
+     �  
+           �                � �     
+           �     
+  �     
+
+   
+
+         �       
+
+�  �     �        �
+      �          0       ���     
+
+         
+
+ � �  � 
+  
+
+       
+
+�  
+         �       
+
+              
+       �     �  
+   � �         
+
+     
+
+      
+
+  �    
+
+   
+� � � 
+
+  �  � 
+ 
+       
+  �      
+   
+   
+          
+�        �    
+   �  
+ 
+     �        � �     �      
+        
+           �  
+         
+  
+             �  �   
+�         
+�   � �      �         �  �         
+
+     
+    �       
+     
+     
+      �   
+ 
+ �   
+ 
+ � �  
+      �    � �                      �        
+         
+      �    � 
+       
+                                  
+   
+�   �
+              
+
+ �                  
+           �      �     �  
+  �   ��
+   � ��      � 
+       �  �             �  
+         �  
+   �          
+        �                      
+                     �   �  
+   
+� 
+    �            �  
+
+     
+       �  
+   �     �    
+
+    
+
+ �        
+     �  
+   �                  �         � 
+   �     �      �    
+        �          
+     �          
+     �   �    
+       �  
+     �     
+                    �    �
+   
+              �            �
+   
+ 
+         
+ 
+ �                      
+  
+
+ �        
+        �          �         
+ 
+   J  ��  �� J I I   2't	t	   4 ! zI	I	  �
+I	I	       
+           
+       
+
+      �   �       
+     �   �                    
+   �         
+     �   �             �  
+     �     
+                               
+           
+ 
+ �    
+     �    
+
+      �                  
+   �     
+   �     
+   
+                  �  
+  
+ � 
+�
+ 
+  
+ � �   �  ��B���� 1��ng
+
+      �    
+
+�              �               �                  �    
+          �           �                                �          
+      
+         �  
+     �    
+    �          
+           �   � 
+ �                         �   � 
+�   
+ 
+ � �    �   � 
+   �     � 
+
+�                 � �              � �                   �    
+              
+           �                               
+    �   
+    �    ��  �   
+    
+   �                       �                     �            
+ 
+ 4 W� e4  4 W  z Q Q   � B  Q Q    � 	�
+t	t	    & u I I    s  	 � z I I    u 2t	t	     s	  �
+t	t	    &� u I I    s!�   
+               
+     
+      
+   
+      
+ 
+ �                      
+  
+
+ �        
+        �      
+ 
+   J  ��  �� J I I   2't	t	   4 ! zI	I	  �
+I	I	       
+            
+  �      
+ 
+ �                      
+  
+
+ �        
+       �     
+ 
+  " %
+u     % Z I I  � u 2t	t	    s � r
+t	t	   &� u I I   s! V 
+uu  uu    B  r * I I   2't	t	   4 ! S
+u       
+            
+   �       
+ 
+ �                      
+  
+
+ �        
+       � �    
+ 
+ u� xx u   �F  	 � 7    2	2QwQ#Xju     � u   �  
+%      � Zu    u
+%     %  
+u      �
+u     
+u     * I I  � u 2t	t	    sG� G� z u   �   x 	%  G
+uu    B Q Q  � B  * u   � * Q Q   B  Q Q     !%� % %  �   ��                  
+            
+ 
+ �                      
+  
+
+ �        
+               
+ 
+  ' '  �   �  � u  �   � X  X X
+%   � Z %    J %   B w u
+u    u  �  ( 
+u    W �  Q Q   � 
+u   u   
+            
+          
+ 
+ �                      
+  
+
+ �        
+             
+ 
+ Z   u
+u    u Z u   u � 
+u    u ��    qu  � � �    ��   �  � � �   	   Z %   % %  
+%    %  Z %   � z I I      
+%                     
+           
+ 
+ �                      
+  
+
+ �        
+       �  
+     
+ 
+ u� � � \ f  xu  
+u   "W	 " wz Q Q  % u %
+%     %  H� u   � I  Z %    % %   
+            
+    �       
+ 
+ �                      
+  
+
+ �        
+                
+ 
+ 
+  �    �        �   %    
+u    �   
+u    �  Z u   �    Z u       
+            
+          
+ 
+ �                      
+  
+
+ �        
+       � �      
+ 
+ J                     
+   
+       
+ 
+ �                      
+  
+
+ �        
+              
+ 
+  %
+u    u
+u    u� xx u   � !  x   � u f 
+%     I %  � %    $	 % f� 
+u   I	 f � H H   Y � u  � A� u  j u  �  u    Z %    % % Z %    %                 
+   
+      
+ 
+ �                      
+  
+
+ �        
+             
+ 
+ Z �T	PP  u  H#   	  u  � � #jPP   � �    �        V  I I   ��uu   I QPP   R7u    t s  R
+u     g*     u    �    ��                   
+    �       
+ 
+ �                      
+  
+
+ �        
+              
+ 
+ u  \   �u Zu      Zu     u� xx u  u \  8  %  
+%      u
+%      u
+%     %  : u   u Z u  �   Z u   u u � u
+u    Z u  �   : u   u Z u  �   Z u     
+            
+           
+ 
+ �                      
+  
+
+ �        
+             
+ 
+   '� u   t   � �� u    t a  !  6 V E %�
+u    ' � )� \ � (# G E ua�  �	u � � �
+%%    d   X S S U� S S     d #v: %    5   C	D c� c
+%      T   
+            
+           
+ 
+ �                      
+  
+
+ �        
+       �       
+ 
+ � 5V ���t		3� � bghX  C 6 !	 �  � & a  P T� � %e  v	iHW	 3 �� $ $� a  &�v S �  9 e D 	  C h 1 8 �	� e Rr&VqiaiH  r  T V f ( � ) &   v $ H 7  $ � " q � �  r� v5y y � ��  X � 3  b  # l I )r) 	 '�  �� " "   � $   Tt< e d� c �� � R � 6 r �  #   UA	2rC C  b <   c � � )	G	@q G  6	x	 i T  y	07Q	7	D7	� 3	 5 8 T  2R ' � S  � 7� � $a  U )|� D H	h)   5	g	 B  � &  1  S �  � cT "   � B 7		   W07  e $ U 3 ) � Xq    
+  
+ 
+ %	 7
+u    u  
+u    	xz u   u u % P u  �    �
+u                    
+             
+ 
+ �                      
+  
+
+ �        
+       �   �      
+ 
+ $�  r t ! g 	h�   	!� u �� ' �   �  	 q 	�"j      � 5 9 A�    c � � ) � v�  1� �  %  y VA w � �  4 b 4 D e 		 W �  e � ss � D v# 7 E ( $ a f  �  � �  W S H %e"	B	a!�8RGY	 p|� D H	h)   5	g	 B  � &  1  S �  � cT "   � B 7		   W07  e $ U 3 ) � Xq  Q t9w'BC (� b � s� � �� I  8 ( w� � �� e   $   )  8   E A � R� u 1 
+tt   P	I
+tt   % s &  G 5 9 f x
+YY   ' d R R   $	 "
+u    � � g �c�J   � s R � 6 r �  #   UA	2rC CS	 	  c �                
+           
+ 
+ �                      
+  
+
+ �        
+                
+ 
+  u� xx u   �   xu  � u   J   � \		x	x	 	\ f  xu Zu     Zu   	  u �      u� u       Z %    % \  8  % Z %    % % Z %    % % 	� %    % \  8  % Z %    % % Z %    % %   
+            
+         
+ 
+ �                      
+  
+
+ �        
+       �      
+ 
+  u
+u    %<" 1Y � C C   $Z u   u  
+u    u Pz%    Ye	 bb u  �   b !� %    X Z u   u u % $ � s  %:%     	uzu   �W  U   2*uu  � r � IZ%    %                 
+  �         
+ 
+ �                      
+  
+
+ �        
+       �       
+ 
+ u \ f  xu Zu      a WW:EE   C u� u   % \ xxu u  � % % 
+u    u  	r� * I I   S "  
+%      � 
+%      u
+%     % ( * u    1  G
+uu    B Q Q  � B  * u   � * u      
+ u    * u    �
+uu    Q Q    		" : u   �                 
+  � �      
+ 
+ �                      
+  
+
+ �        
+       �  �     
+ 
+   \  f �� u�  � u � u � u  %u� u   % 	\ � �   \   �u � u  � u Zu   u u %
+%     % � % %  
+%      �
+%       	Z %    % <  8  %  
+%      �
+%             
+  u
+u     Z u     Z u   u u � 
+u      
+u     Z u   u u   
+            
+          
+ 
+ �                      
+  
+
+ �        
+       �       
+ 
+ u� � �  � u � u  � u  %	 WW:EE   C u� u   % u %
+%     %  � % % 
+u    u  	r� * I I   S "  
+%      � 
+%                      
+    
+          
+ 
+ �                      
+  
+
+ �        
+       �   �        
+ 
+ u  � u � u  � u   % � t s� X X  T  Zu    % \ xxu u  � % % 
+u    u  	r� * I I   S "  
+%      � 
+%      � 
+%     % 
+%       Z u   �  \ f  xu Zu     T:EE  H   � I I   2't	t	   4   " 
+u      %    % %   
+            
+              
+ 
+ �                      
+  
+
+ �        
+         
+ 
+      
+ 
+ uju     u� xx u   �!  x  �   h %  h
+%      (Z %       
+t	t	  2� H  U H2w	�w	E�Zu     Z f f    & �    & : u   u u �  Z u   u   u� % %  %
+u     Z u   u %  Z %    % %  Z %    % % Z %    %    
+u     Z u   �  u
+u   u Z u      
+u   u : u    
+u     Z u      
+u     Z u   �  	u
+u   u	 Z u      
+u   	u u	 Z u      
+u                    
+         
+ 
+ �                      
+  
+
+ �        
+               
+ 
+  d  l   �u juu  V EE� 11 A  �	� |   1 3 	� t 
+t	t	   A �*!!   E u	�j!!   $  ( 
+t	t	   � q� t� H H    L � 3Y f� y E	 X� I I     8 #    X X v� 7 �� �   C C � � � & ��  Y E�%    u
+%       j$	$	      l ss3 � 4 4     d 4 4     q � s  :PP    �\   f u 5 ! H � I� 
+%      !  x   f 	 x v &0� %    !	�   Z                     
+     �       
+ 
+ �                      
+  
+
+ �        
+         
+�     
+ 
+ S% �u    | V 0h � �� � � 2 U� � �  � � G� B� I� W� 2� U�  � f  �u   !f%� �tt     B	  % � Q Q    #| 6 u f W Y � � ! B f �
+    T � E �X6)| %	 f5   � %     8 %� � %      ( �  
+u     Z I I   2't	t	   4  � �� z Q Q   B  Q Q                   
+   
+       
+ 
+ �                      
+  
+
+ �        
+        �     
+ 
+  4fj u   i       � R R   1 " U  � 4� � E s 5    6 � y� G     � � #���" f  tX        \� 6 � u  X D e �� X X   9:       ! 	d    �� 6� �� 7 `	�	Ej I I  � B � Y � #                  
+          
+ 
+ �                      
+  
+
+ �        
+              
+ 
+ u \ f  xu L  r q  (1b1Ju   u u� u   u L  X 	 p1s	s	   � L xxu u � % % Z %    % % J %    % %  Z %    %  % Z %    % L  8  %  
+%      �
+%        Z u   Z u     Z u       
+u    � 
+u      Z u    
+u     Z u      Z u      
+u                    
+          
+ 
+ �                      
+  
+
+ �        
+         �    
+ 
+ 
+  �    x Z	d	    6| U & B 2 W  E )U  W� � 	d    "   Z	d	    6| 0   �	 W� � '	 '    �!Z	d	    x  �T:PP   f\  � $ 6 R U � �� 7� t� �� H � 3�   3�uX� H  � 7 85 R�     � f   �  D t �uX H  � #8 S R�      f�  sZPP   f\ # � 65UqC�X H   
+            
+     �      
+ 
+ �                      
+  
+
+ �        
+             
+    
+ 
+ 	Z              
+   �  j     �            
+            
+  � �         
+ 
+ �                      
+  
+
+ �        
+       �       
+ 
+ u   �!  x  � u  %� � u  %  \ � �       � % %  
+%      u
+%      � 
+%     % �  �      
+            
+   
+      
+ 
+ �                      
+  
+
+ �        
+        �      
+ 
+ �9% ET  r 	�Q	�u    r  % E� u  � V  %� E� u  	�  $ 2�  r�   " �� u   V  �i c �  3  U� X� hZ H H    %  g7,  	!bhC  'bh: %       w  C                
+  � �
+
+      
+ 
+ �                      
+  
+
+ �        
+       � 
+ �     
+ 
+  � u       
+u     �    
+  
+ 
+  u� � �  � u � u  � u  %u� u   %      \  8  %  
+%       � Z %    % %  Z %    %    
+            
+   
+      
+ 
+ �                      
+  
+
+ �        
+              
+ 
+ 
+  �    �        �   y� s d Y
+%     ( &U� %   U	D* %   7	    
+            
+         
+ 
+ �                      
+  
+
+ �        
+              
+ 
+ u� u    �  s W 2 h  � h  u  rh� D� v  f % � u    \ f  xu ,  � @	0X��u      Zu    	3, 		  D u , xxu U � 7   �   	u� % %    Z %    % %    Z %    % % * %    % % � 
+%     % � % %      �� %       	 3 � B�  �y   � � 1 p  A  	� %    �   �  C  39 F u �	y                
+  �  
+      
+ 
+ �                      
+  
+
+ �        
+       �        
+ 
+  u� xx u  \   �u Zu      Zu        Z %    %  � % % Z %    % %  Z %    % % G z u    * u    �
+t	t	  ' & I I   ! 4  i	 S
+u     x 1  G
+t	t	   & u I I   s  * u   � * Q Q   B  Q Q                   
+  � ��        
+ 
+ �                      
+  
+
+ �        
+       � �       
+ 
+   f  xu Zu     r| � A �)uz R R  %� 
+u    e� Cw � ��  �� W  Zu     � � � �   Z %    % \  8  %  
+%      � 
+%        �*r    e   f� r   v                            
+                                    
+                        
+  �             � �              �      �                �     �       
+                �  
+     �               �       �             �                 �               
+                  �       �  ��B���� 1��ng  �   �         
+          
+ 
+              
+ 
+ �                      
+  
+
+ �        
+       �  �      
+ 
+ �p�  �y �)   u Q�    � F T  :11   �	 X  :                     
+          
+  
+    
+     
+
+      �    ���� 
+      
+ 
+
+      
+       
+     �              
+        �           � ��   
+��۬             
+   
+                �        � �   �        �  
+    
+
+ �        
+      ��        �  
+       
+           
+                 � �     �       ���
+        �                     �      � ��     
+     
+     �         
+      �   ���  
+    
+           
+      
+  
+    
+   � 
+       
+    
+
+�       
+      
+  
+ �
+       
+  � �  
+   �     � �
+   
+         ��
+                �  
+   �     ���
+  � �      �        
+  �  �        
+   
+ �۬ 
+  
+   
+    
+  � �  �۬ 
+     
+ � � ����   �     
+
+ �        
+    
+   
+   
+        
+    
+     � ��   
+ 
+        
+
+ �        
+    
+ ��            �                        
+    
+     
+ �۬ 
+            ���             
+           �   
+        � �  �     ����   
+ 
+ �     
+  �        
+
+ �        
+    �       �      
+   �                       �                       
+ 
+ r * u    �  "
+t	t	  '2t	t	    4  " * I I   2't	t	   4 !	 " * Q Q  � B uu   � B  r � u   �                
+   
+   
+          
+
+ � ��  �۬ 
+           
+
+ �        
+    
+�                  
+�               
+   
+��۬   �    � 
+    
+ �۬ 
+� 
+    �               �  
+           
+   
+    �      �	                   
+  f           �    � ��� 
+
+                         
+   ��� 
+        
+              
+ �۬     
+         
+   �        
+ 
+ 
+ �    �  
+ �
+   
+ � 
+    �                 �    
+                �  
+ �
+   
+ � 
+ �              �         
+
+ �        
+    
+�        
+             � �  �     ����         
+
+ �        
+      �                � �  ����  
+
+�       
+       �۬       
+
+ �        
+             �۬      
+  
+                 
+
+     
+         
+
+               �  
+               
+
+  � �      �        
+  �  �        
+   
+      �   
+ 
+ �   
+ 
+ � �      
+     
+ � �      
+ �    �                         
+    �          
+�   � �         
+
+ �        
+    
+ ��     � 
+ �
+           �                        
+    
+     
+      �            
+ 
+                  
+ �    
+    
+�       
+ 
+                     
+           �   
+        � �  �          
+  
+  �  
+ 
+ �           �                  
+�       
+ 
+ �                      
+  
+
+ �        
+            
+ 
+ r * u    �  "
+t	t	  '2t	t	    4  " * I I   2't	t	   4 !	 " * Q Q  � B uu   � B  r � u   �                
+   
+   
+          
+
+ � ��       �            
+
+ �        
+    
+�       
+ �  
+               
+
+ 
+             � 
+   
+    �  
+
+        �     �                   
+                       
+ �  
+
+    
+  �    �       
+� 
+    �               �  
+           
+     
+     �    	 �v	     �   
+          
+
+             �        
+             �  
+                
+
+
+             
+                       �       
+ 
+ �          �    
+         
+   
+                                        
+               
+        �  
+              
+�           
+               
+               � �                 �                             �  
+    
+            �                   � �            
+ �        
+                       �             �                                                                 �  
+                
+       
+              
+              � �      
+
+       
+
+                �                    
+                 �   
+         �
+ 
+  �      �   
+
+          �     
+     
+      �  
+   
+
+    � �    
+ 
+  
+                           
+
+                        
+
+            
+      
+  
+        �         
+
+ �        
+    
+�        
+      
+�   �  �          � �                
+�       
+
+ �        
+      �                     
+ �  
+
+�                 �  
+                          
+
+ �        
+           �  
+� �       
+  
+                   
+    
+            �     (�         � �K   
+         �h      
+
+     
+   �            
+        
+        �   � 
+
+ �        
+    
+    
+  
+    
+ 
+ 
+     �          
+ 
+ �                      
+  
+
+ �        
+       �      
+ 
+ E| Y� 4 '� 4 �   �7�u    ���u   TW  c 
+%      i 2
+%     6 d
+%      h  �Z u  �   Z u     	� �       
+           
+    
+    
+   �    �     �    
+   �                       
+    �           
+        
+    
+    
+   �    �     
+   
+   �                       
+    �           
+        
+    
+    
+   �  �      
+�    
+       
+  
+
+          �    � 
+                       �   �����	E��5��RgC� 
+  � �      �[�
+
+��@���       
+
+ �        
+                        �  
+   �  �      
+ 
+ �                      
+  
+
+ �        
+             
+    
+ 
+ r * u    �  "
+t	t	  '2t	t	    4  " * I I   2't	t	   4 !	 " * Q Q  � B uu   � B  r � u   �                  
+     �[�
+
+��@���     �   �����	E��5��RgC�      
+  
+
+
+     �    � �                    �      
+          
+             
+     
+                       
+  
+  
+     
+  
+  
+
+     �   
+
+   
+             
+ 
+     
+ 
+            
+  
+    �    
+        
+ 
+ �          
+      
+ 
+ �                      
+  
+
+ �        
+            
+ 
+ r * u    �  "
+t	t	  '2t	t	    4  " * I I   2't	t	   4 !	 " * Q Q  � B uu   � B  r � u   �                   
+ 
+
+         
+     �  �               
+  
+    
+   
+  
+         
+        
+       � �
+            �   �     � �      �
+  �
+	               �   �  ˑ���>�D�זN�v�����y�_�}���A �                 
+       
+            � �    
+
+
+     �      
+  �    
+      
+    �   
+ 
+  
+        � �      
+
+� �  � �       
+
+� �  �    �      
+
+� �  �      �  � 
+       
+ 
+                     
+       �    
+    
+  % �               �      �  
+      �          7  
+
+      
+   
+      �        A    �             �                B      
+
+ 
+  
+�  J
+   �
+� �
+z
+  � 
+��� � J
+� 
+ ��� 
+ 
+ 
+ 
+ 
+ 
+ � 
+  �    �   � � � � ��
+ �  
+  
+
+� � 
+ � �� � � � � � � � �  �   
+� 
+ � 
+ � 
+�
+�������
+� 
+�
+�
+�������
+ ���
+ 
+ � 
+�
+    
+       �   �             �   
+�
+�  
+��
+
+          �      
+
+�
+�
+
+        
+   
+� $    ��           
+  
+ 
+               
+                             �           
+     *  � ��   �     �     �   � ��	         �  j   �   �            � 
+       �   
+     
+          
+  �    E     f�   �       �              �  � �   � 
+ �    �
+    ~     �        
+    �
+           
+             
+      � 
+       �                �   ��      
+        �                   
+      �      �               �   �    
+ 
+ �     k     �   �,  -   � 
+ �    F  
+�  
+  M                �    ���                	K   
+�      � �            �    � �                   O�        
+       0   0      
+      ��    � 
+       
+         
+     
+             8�      �       
+ �� � 
+ 
+ �  
+   �          �                F   �    �	                               �         O
+       M 
+  Ͽ� �
+    
+       �    �_   [            
+� �      �   ]m    �   �  	                 �
+                                      
+       � 
+
+   �  
+                       � o          ��     
+   �  
+  �   
+      	 0�   
+  �     ���    
+    �     �
+ 
+ �  �     �   �        
+  �       
+ 	 o  � �    �       �      �     
+�          
+l      )  �    
+ 
+�     t                ��                      k � �
+      	
+         
+� �      �  L  
+
+ 
+    � �  �
+        �
+
+  �   ��              �    �   j j �         
+ �         
+�        
+       
+                       	                
+            �
+       
+�
+   �                     
+              +        j �  
+      � � �    �
+O     
+ L
+   �  + O      	   0 
+ 
+
+         �          ��  � 
+     �
+ĺ
+     �                               �             �   �                  
+      �        �                               �
+    �    	       
+          L 
+     
+ �     
+ �              
+ ��
+       � 
+ 
+         
+�   �
+ �         
+   �     �   o   ,                  ,   �    
+     �
+            �        -     �                                �     �                     �          
+        * 
+                         �    j� 
+  L
+        �    	          
+  
+�       
+
+                 '                   
+ �     �      �             , "   j    �     �       ,  	       �   Լ      �   �  
+
+��  �         
+ �  
+             
+   �  
+         
+ 
+                �      
+                     K  ��  �     
+          	 ^    j  �
+        �                                          
+ �          
+      �   � 
+        �       �        N  �   
+
+  �� 
+          
+  M              +         *    
+    
+         � 
+  	 
+    *     �
+     � 
+     �        �              
+        �  �           
+              
+ �   �  
+           �     � 
+� 
+�  
+ > �   �                *�
+      �       
+ �     �                  
+   ,'   � �    � 
+     
+  /    �    ��j    �        � +              �     
+          ��            �   
+           �          I          
+   �
+       �   � 
+        �               
+        
+  �               
+               �  
+           
+       � ��       
+ ��
+  �  �  
+                          �            �      
+      
+�     �               �       
+          �  �o   
+ ��     �   �        �         
+              {  ^      �
+�
+ �           �        K 
+         
+      <�  �   
+ �   	                      
+                           ��    �  �
+         �                  
+            
+      
+�              �   �    
+
+    
+         � 
+ + 
+   �   �                 �      ��  �
+
+     �                     
+      
+   �    �       �        �
+"      
+       �                       �              
+
+         
+ �          �    
+
+   
+            
+ �   �       �      
+         
+           	    �   
+        
+	�      � 
+�    
+  �    �      �     
+        (  �  / 	   �  �     �  
+   
+       � 
+      k             ��   �        O�
+             �     �     
+     � 
+ 
+�           =�             �      	        �� � 
+            �                �   
+     �           � U      
+�    ;   
+ 
+    �     �       Y         }      �
+    y       
+   
+      � ,	     	    
+    	   � �    �2Y                        
+   � �   
+               �       �    �  
+   	 	o        
+ 
+��            
+                /   _ 
+�          ��9 
+�  o�   =�  W   �  o  � �   >        �   	     	   �  
+�! c ,   ]     s� 	 
+ u 
+�    J�         � Y      � 	    
+ 	  
+      �     
+�� � 
+             	   �          C   �  �
+    q      �
+/   �        r b       �          �   
+      	     � s  �   
+   �  + �	               	     �    F 	      � �            � �  �	�        
+   � �   � 	  Y  � 
+  �  
+   G       6        �	�   
+  
+? �   
+  	    	      	  		
+    �
+  ˯
+     �   
+	 
+ �     l	 �        O  "P		�      �� ��  �n    �   
+ � �� 
+   	 
+ �   l �� � �      �           �	 
+	    	   �    �  �	 �  � 
+q
+	 =�                �    � 	�   �  
+�  s  �          	O  � � 
+    � � �  � 
+q
+	 �� 8   =C�     {
+�� �  �< 
+ lY o�	 �  � 	       
+          � �      �� m �      �       �� m � 	  �    
+      ��    	              �   ; 
+       �_� 
+                	       	�  	      � � o	 �   { �    ��   ��   �    	� �     �     <� � � 
+  
+   �  �   �  �    � c o  O  � l� y   � 
+=�              /�        [ � 
+   �� 
+ ��	  	  0 � l �� 
+ z �  K >�  ��         	        �     �  
+�   
+   	
+   ��      �n       �  �        �� 
+    �   �
+    ��
+ ? 
+		 /   � ��       �     �    � B 
+�       
+   
+  �   �   	 	 �   
+� 
+  ��	      G   �            	      �  
+  �� 9 
+?   :�    	�   
+    nO� 
+     �  �  �   s   
+�   
+� �� l�  9]  �      r   ��    � �  
+�  
+        �
+ 	       �    
+�      	�     
+  �
+    � l	 �  z   � �         
+�� �  j 	 
+ [ 
+      ��  �
+    n   
+   
+  �       
+�     	     	      
+[�     �    
+ z   c  ^        
+    
+
+  �=       
+  �         �   	       I            	        
+        � 	 �
+             
+
+
+�    6   }	�      n       
+��6`	 � �      Y    �  
+      " �    ,	       
+  � � 
+           
+ D U    
+�  W        �     ]   	    	    �X            �         �             	    �     l��   
+       Zv
+                   
+�      �     B     �
+         !  �   
+   � 
+  	   �                �  
+ 
+  
+             �    �     �         �             � �  
+ �         ( 
+� m  
+    �       �       
+ ( �
+�           
+�]         �  
+� �  
+   �
+��  �   �       �          � �   8     J      �  
+�    E          
+ �    �
+  �  ��  � �
+   J �     a    	
+
+        
+ 
+   
+ 
+�   ���   
+  �   �  	        ,     �               �          
+      
+               � �   �   ��     <             ��   
+ 
+ �  ��   � �Y       �   	  
+    ��   ���  g ~	   k f      �  �       �	    	                 �   
+    �        �   �                   �O     	       � < �   
+            �   
+ 
+       �        �                 
+   [ � 
+     � 
+    �       
+ �  �              �        �
+M	             
+j  � i  �   
+F �         �Z K  
+    �  �    
+ �   �  
+ jy      ��
+      
+     	�                	       
+  �
+\�                �  
+ h 
+ 
+V                  � 	    �         ~  �     >  
+      
+    
+ �     
+�  �  
+ W     � o  	 
+�
+  O    g
+� k  �       
+ 
+ � 
+  �  �    &   m&  �  �
+ �       ,         
+   �   � � 
+       � �        �   
+     �
+ ��           |    �   �   
+
+  
+    	
+  ;  
+    � 
+    �           	�    
+   ? ʢ     � 
+             ?    � ��     �            
+      
+         M               
+    
+  �   �  �  � 
+  �     �   �
+ 2  � ~
+   
+  �      �       �   � i �    
+	  
+�� 	      	 
+        
+ 
+  z�_  �   
+    �     �   i    �
+�          �  �            
+  	      { �
+�      �   n     
+      
+     �         � 
+  
+                   
+ � U 
+  	�     �� �     �        
+ � �  
+    
+            
+              � � ~ 
+ 	        
+ � 
+   ��   ��        �       
+    
+  �  
+      v �        
+ 
+     *    ʣ  
+    
+      
+
+         ��          
+   � �     
+�  	  �
+ 
+      � T       ��        
+     	�         �   � �p 
+     
+
+ 
+             
+    
+     �  �  ^  �� 
+  
+   �
+  �     �   	
+
+  
+                       �  W           �  �O  �
+
+      �� � 	               �   
+	     
+   �      h        �   �{     r                      �      
+            /   
+ ��� � !   
+ � � 
+o�      
+    �  ��           �       �
+  ���  �    � 
+ �   � � ! �   
+        
+         
+                 =   �
+       ?      
+      j  
+ 
+ �       
+        Z  � 
+   ޯ    ��� ��� �    
+  �  �       
+    
+     
+    r
+ �     
+             �    
+
+            
+              ���   
+  �  �        �        �       
+     h            ]
+   }           �� :  j  z   � 
+  
+  
+    �      
+   	  
+      c
+ �    �     z  
+     
+   
+   
+�  
+     �
+  �   �*�
+ 
+ 
+ �  ���       
+ 
+ �� �      �          �  �   �   �            
+                 �      
+�    � �    � � \      
+��          �      	
+
+      �  &  � 8 � 
+      
+ �     
+ �            �  �           �       � u     �  �     �   �   �      
+     � 
+�     
+      J           ��� 	  �� �                       l 
+       �            	 �  �      �
+  
+  �             
+�     ��    	    {   
+ 
+     �  
+  
+ �   �   �        �
+         }  � � 
+                �      �    �  � /   ��         � 
+  �    �       
+  
+ �       
+              
+ S �    2 - � �
+  �d     �
+ �  i         �   
+                  ��  �   �     �         �         � 
+  � ~�  	   �   �    � �    �                 
+
+ 
+
+    �    ���   �     <  �     � v      �
+   � �   �       
+ ,   � �	 
+
+ � 
+    � �
+    
+    :              
+               � �     p     
+ � 
+ �           
+    �       �   
+   �  }� z 	   
+�   ��    
+                
+  �    
+    �     �    
+ � 
+
+   �  �
+    �    ζ 
+   
+ �                       � �  �          �      
+     � 
+             
+  �   �       �  �   � ӵ �  �            
+{ �   ��  �   
+�    � 
+ �               �            
+ �           �  :  
+ 
+  �   
+  
+ D    �    � �     
+�   
+�     
+   �        �          
+   �             �  �  
+    
+           �          �   
+      �    l      
+
+   ;          �   �  v    .           �            	    �    ߊ�        m            �   
+ � �       �          
+
+#  � 
+ 
+
+ƻ   ��         �   �      z� 
+ �
+   � �     �     
+�    
+ + 
+           
+
+�  
+ 
+ 	   
+       �
+        	 
+     
+     f    �    
+        �   * �
+    �               �   �  �   �
+         �  L  �    � � 	   2�    �  �               
+     
+�     �  
+
+             
+  �     �
+       �         � =  
+      
+�
+ #    � �  �        8          �      8
+             �     
+   
+     = 
+                        � �  � �~          ]  Ի       �      
+Y                   �      
+�   
+   ;   � �   	 ��       q �    	       
+ 
+�
+    
+       �              �
+        p      	  
+  
+ 	      �     �     �     �  �  �      �
+              �    �  M        
+  
+         �F   �        �      
+   �        ~      �
+ N        
+      � 
+  +  
+       �  	                �            V
+  �         p  	           �       [ _      
+ �	         �     y
+     ; �  �        	       	 
+�    �  � |    
+   � �    
+   	�      Z �  �      � 
+      �     
+�         
+    
+�     :    
+ �           �    |         �       
+    m �  �   �          �   	      
+  
+         �       � �
+  
+ 
+        
+ 
+�
+  
+            %  �       
+         ! �               �Z       J  
+  �
+ �       �   \ �   5      �      
+    ] K       
+
+  
+  �  �    �        
+          �  
+     ��
+   �           �    
+       �    �
+    ��   �             ~   �       	   
+          �H   #                 �         Z          �      ��,
+             �        	���2    
+         
+
+! 	         �  
+   
+ �  �
+            �                   �   �             �  �� �
+  �       �
+
+   �   �
+   
+�           � �  
+        
+  
+  �       
+ 	   � �       
+         �   �  ��  �� �
+   �    �  �g�     
+�    � M     
+       
+      �  
+   �
+
+ :      �                �   � � N    
+  
+               
+      	 �         �    �  �	   A  �           � { 2�    �     
+        
+ 	      �       � 
+     �        �  �        � 
+�     � 
+     � 
+       �   
+  ��      
+  �  	�              � 	     �       
+  
+?    
+  	 
+ �      �    �      o    
+
+        
+ 
+      Z
+���   �
+ �  � 
+  � �       �  
+     
+      
+         
+  �    
+�  � 
+      
+ 
+  
+       �    �  	 
+          �   �  �	  �
+  -     �  y
+  
+   
+        �[�  �
+   
+   
+         
+  	 �  m<      � 
+ ^  �   �   �   <      �  g     �   �  
+     	            �
+
+   	                   
+  �      � ��  �     �     
+	 �  
+  �    �     � �       �        � �
+
+      
+   Q  �   
+     �  
+� | �       
+  
+              �   �     
+ � 
+ 
+
+ G      �
+              
+ 	 
+  	      \��             
+          �� 
+     � &                   =     �   �S�  �            |
+ ��    � 
+       �  
+�    �              
+  #  A            +      �
+ � 	  ��     �   � �       
+        
+    
+              
+ �              
+          �    f  
+�  
+�  	 �     
+           �  ��   � 
+      �       � � �             �
+  
+     � 7      �
+ 
+  Y             
+   k    �
+
+ 
+ 
+    � 
+       �   j
+    �           @  
+   [   �
+ 
+   � �      
+ �
+   ��  �   
+  
+        �  {     
+      
+
+ 
+�         
+z 
+  1 ?        � м              
+     
+   3 ;
+            A     
+  >
+   �                   �   �     �     �     
+       	  	              �   
+�         �      �  �
+P  �    
+  ��    
+      �        �        �      	  �   j p�    p     j   �       �
+ ��     
+  
+      �     
+  
+ 
+      8 �
+   � �   �   �   J              �
+   
+�    
+   z   �    �   � �j m       % �   	 c�  �	
+             
+  ���            m   
+ �  
+   
+  �     �    
+    �� �   �           �  
+    	      
+                       	         
+   �    �  
+ {  :       �  �   
+  � �  �   [t      Y         � k 
+ {� {� ٧  �       
+    �  �  	          
+:�      �           
+  �      (
+   �       
+          �   
+   �+              �      Q  �  
+	 A        N     � �      
+        �    �
+�  
+   L
+    
+ �  �� �   �             
+ �   
+�   
+      �                  
+      �  � �       � �
+ 
+
+   
+�
+ �       
+ 
+          ?    
+  
+                 
+                    
+                  
+   �  ;   G 
+
+    >
+                            d     u  d    ��           k�  %           �  �       l :   #    �  �         	    V�    � �   �   
+        
+� &    
+�    
+ �    �     �  ��     � M      �<  	 
+R         � �    jQ
+� �     
+  
+               o     i  ��     K    � 	  
+�
+          	
+ �    
+�
+        	  �      _
+  �      
+�     �   Z  
+  � U     
+  �                   �  ��    #                 � �     
+                 
+     	   ?       � �  
+  �      W
+ 
+  �    W 
+
+  ��          �    �   $ �	     	        
+                 �  �   �  	  T   �  � 
+�              �
+
+   �� 
+   �  � �          �   �             �
+�    
+  
+    
+   
+�
+  
+    >       
+    
+       
+ � 
+ 
+ �     �  �         
+  kv      
+
+  � � 
+    �     
+   o         �  �  	 � +�   �                               �       �    � 
+        
+   
+��
+        
+
+  !             �                   �          [       �     
+ �  w         �  � #���| � �      O    �   # �    �       � � ��    	� ;
+      
+ 	  
+ ��         
+   
+  ó�  
+    � �      
+� 
+   �
+   
+  � �,         
+
+
+  	       �	  �     �J
+ �  �     
+ �
+   � 
+5    � 
+   �    �
+       ' �              �             �
+�
+  
+  
+        � ��       
+     �  �_       	�   
+� �  � �    
+     
+
+   �  �  	             
+      � �             �       :   �             �      |  �
+ 
+        �     
+ ��  k  {6      �  � � �           
+   
+S         
+      
+  �  ��              
+   	             �
+ �   �  
+      �    
+     
+�
+  �     �         <  �   W 
+   �   � �^   �
+     [�  � 
+ 
+  
+     J  	   � 
+          	  �   �
+  
+     	 �  �   �        
+0�  �                 | ? 
+  
+        �� �    �            	       
+        n     �       
+             
+ �     �\    �      �  = �K    N   k   $
+  �    {�             �                  �   � �   ~�  !   
+     �     �   ��        
+   �             �  � 
+ � �  �	 �            � \   
+   �  
+  �       
+     i    
+�   <� � F�   � �       z  �      � �     
+   
+    �      
+   
+
+ �     ��       
+ � 	 
+ 
+   
+  �   
+�  /   j � M�    �
+   �        ��      � �NC Ų  M  
+   ��  �     �          
+                 P     � �          #   { �     	 �  
+ 
+      �            �   �          �   �      =   �  �
+�        � �  �    �D  �    �   
+        �    #      �                 � �     
+  
+  � �      	p   �
+\   
+
+  
+     �       �    �  
+      
+ � ��  �
+ �          ���   �   f      
+  �  
+                                 �      	  �
+  
+�     �  � �   �   ^ �
+           
+�   
+ 
+ �  &       �             	    �      �      	 � � �        �  
+ 	  {  �$    {  �   �    &  S    _      0     S
+ 
+   
+       
+ �  � ��         �   S      
+  
+
+��               �      
+��      
+    �      �   {                  J  
+   
+     
+ � 
+           % o   
+�      �    
+         
+   
+          � 
+   
+
+D             
+  �          �     � �         
+ 
+                 �       � 
+         ��     � �  
+    �       �      �   ̝    �      � #   �  7
+ �         �H  �  		�    
+     �      
+                �     �              �   
+�   
+O ,�  �     � � 
+ ��      
+ 
+�  � 
+	 � �       � Q      
+   � � Z    + 
+               	 
+      
+ }�  
+  �          �                  �  	  h  J8 �        
+   �       � $ 
+  
+    k  
+  ��      �    d   
+ 
+	�   �                   = �    U 
+  �f  i     ^       � �$�)  	[�	              
+       �         
+	     �      	 �   �   ?�  &    �      a   �   
+ �                  �           �	  
+ 	       �	   
+ �    	                .     �
+    �          w  
+          Ŵ  � = �
+   
+  [  �   
+    �   _     �  �  	    	  
+  �       �   	      l     	 
+           5 �              �     � �        � ;         �         �   ;          #
+ =     ��$   �  
+  �     �       W �
+ 
+     
+     \   Q�     �  �
+  �*    
+ �     ��      
+ � 
+       �K �       � 
+ . �    �             �     : 
+  
+   �  
+        � 
+ � 
+    �  
+:  �    � F     
+  
+    
+  
+ �         � �   �  �
+ 	        
+ �  �       
+ 
+     �   
+    �    N�   
+     �      	           �     �x         �   �                     �)  �               �  V   p� �      M 
+��       
+       
+ �   �       �  
+   
+  
+	 
+        
+  �  �       ��        �  �  � � �          
+�� �     �             
+ 
+                     
+   
+ {                 	  �                @      �
+ �       
+      
+         �          q     �   k�     
+             
+     � �   �            {��
+   �       
+      ��             �    �   k   � 
+
+     �   
+�  � 	     
+      �    �    �6     �      <   
+ �            
+      �  	� �     
+  
+  
+ �        
+ 
+ 
+  
+�    �  �     
+    
+   � � 
+�  D    �  �  �    � �
+   
+ �         �        W        f          � 8     �  e            �                 �     	      �            ���	
+
+�� ޿  Ş           {        	�  -�  
+    �      
+    M���	     0�       � 
+    ��     
+
+ �  
+    �         
+     �       z   �
+ 
+ �    
+� �    
+      �
+	      �  ;     	 N     �    �    
+  		        
+�    7     
+�      �        
+   >       � �   
+        w      �  #z  p  �   � 
+�             
+         
+  �      
+        �	       �       �  � �  �
+ �
+                  �   �        �    �
+      � � 
+  
+�     
+           �  	
+ � 1           �                     V�          
+    � 
+            �     	�     � �    4  7  �          �          � �      {*              �   
+  5    �   �     �    
+  	              
+ �     �   	                     k       	   � � �  
+�           � 
+    g 
+    ��        
+  
+          �   �      &                �
+ @     
+  �    
+ �       �       	 x    (         �  <          
+ ��      
+      K	    3   �
+     � �    ��     � �   �    ��    /       � 
+   �        �     �  +  
+     
+  �
+    	  �     
+
+     h  �    
+  G   
+       �       - � k       �
+       �        �    
+	        �           �      �      
+ �          G      
+ �                 �
+   
+�
+  �         
+ �     �       k �/    �  ��  J�     � �  �
+�  Z 	 
+  � �:  :  ] s  ��        }     
+� �         �� k  p +   Z      :   ��  � 
+  � 
+ � �  � �      �      
+� 
+          � �  ��    � 
+  
+              
+      l                                 
+             
+ 
+      
+       �       �     p  �         
+  @ 
+          � 
+  
+         
+      �        $	    '      �   �     r       
+
+ 
+  � d      ��   � ��\
+��  ���  
+�  ��      ��  ��     i     ��                �      �    
+�     �     �       �       � 9           9        �  �     
+   	��
+
+  �
+   �       �    ��        �
+   �              =>           ��                          � ��   �
+ �    ��
+   
+/        )    �
+� �     ~         �   �        
+  	       �  
+   - J  l �    
+    d  �       �   �  !   L     		  '      W	    
+;  �   	    �        . �  �    
+|     �u 	          -	     �     
+Q  �                
+	 	��        �     �  �  �  �             �          �      
+        � 
+        	  �n  
+  h        �       k              	 �  �                  E    
+ �{   
+        �  \        q       6      	  �   �     
+ �   
+ � !             
+ 
+ 	   �	     �          �	  � 
+     
+�        
+     Q   e � �  �   
+    	       �      �      
+  �    wY     	 
+�            #   �  �   
+ 0
+   �      	              ��        Y  9
+        
+      ?
+�         
+    � �        �      �  	   	
+  �  � ��          M    J       
+    �
+    ��    
+  �  	            � �         �             '         �   �          
+     
+�  j     �
+�     
+�         �        �     �                 � ��
+�  ��  �      �    �            	 #  
+                �      �      �  �        Y      �   �  �      ]Z�
+    
+   ��  �   �    ��	 K  	  ;  �    N �   o  
+    �        �   (  ��l�   �           �       � �          �                  �   �      '      D
+ 
+	  � �    ��	        �   
+    �              �           
+      6 �        �     �   � �       �  �  |   �  �       �  �  [
+0   �         � �   �    �        �   �   �                �       <    : �    �  �  ��       
+      �       C      �           
+    r�       s
+   ]               
+ 
+�     N � 
+    
+
+  �      .    � �   �        
+   
+     
+              b      �   L     
+       �    �     �     �      o
+                 �           �   �                � �        � 	  
+
+ �          
+    �    �       @        
+       �    
+    �    �  �    �  �  k  x     y           '  �         Z    ��      
+     	u         
+�
+ t   
+  �      _!  �      �    r F �      �
+ �      � � ��  /
+  �    
+ � 
+   	�           
+   -?         G   �   i       �  
+             
+ E    �	� �  � �                �    l�   
+                  
+  L     ;                   
+  �D    	�                                                     �
+  �     
+      � 
+   	           �               
+  
+ 	   Z                   �     	      
+        �           
+  �  N   �    
+          
+        
+s        k �           
+�       �          v   
+ �                  X     �
+ 
+     
+        � 
+     �       t
+        7         
+         /  ��  	    �  �        b    �    �   	  �D �  �     �        � �    	 
+   �
+ 
+�                �  �     �     
+� � X	  �
+I � ie       
+گ    
+
+     U          �     
+
+   o    �   
+    
+        
+               �  e�       �  	      �  \        �     	        
+       ��  
+  ��   m
+  X  ? ` 
+    �~   	 �
+      
+     
+                 w         n   �  �	=
+
+
+  	     �           G        �     �          �
+ D
+
+    
+     آ          ��       / 
+  2        
+ 
+	`		                 	   
+ �    
+      �
+     
+ � 
+   � 
+        *   
+  �    ; �  �  +    0      
+| 
+
+      �    �         � 
+
+�\     �   p    )  ��          � ,�  �
+ �        �       ; 
+  �     ~      
+  �Y         �� � �      
+    
+    
+                       N  �          
+  �     �[ ��     
+
+ �       �O            F  L�    
+	   \  ��    2      
+ �           �     
+   7         � 
+     ��          ]   �  
+   * ��    ]  	     � �         �      
+  ��L   
+       
+    �            � 
+
+  
+ �� 	   :       
+  �  	  � 
+ �     	            :   
+   
+ 	 �     �
+5        �    ~        �         9   �  �
+  `    
+      ]      & 	    � �             
+   K           K��           �
+ 	   �     [     l           � M 
+                          �    : K  
+  �k�  ��    
+    �   C    
+   �  ��   G K    
+  
+      
+�           �  |  /j
+  �    �         ]     _     �   
+ 
+  �       
+ �m   Z       
+     �Z &  � �     �   
+       �      
+  
+
+     	        <   �    ]  (     
+      V�               �    Y       M     
+Ȧ  	
+?       
+@       J  N
+  
+ g z             
+�    
+R   �    
+          � 
+   �    � 0  4           
+     
+� 
+             �  H      
+-    
+   �     ?    �    �~         
+    �    �   ,             �        U  �       �T      
+  -          �       �Z   
+    j    �     4
+       
+�   
+ 
+                          �  �   �      <�      
+    x  �   
+       �      �      �    � 
+          �     
+ 	     �       �  
+ 	                �     �         
+   
+      �     �	 �     
+    �    	  �      
+        _
+     V            ?
+�    p    
+    
+       :  
+  
+        	�� M � 
+�   �  K  	   � !    Z   	   	  � 
+       	          	y        ? & �     �	
+  
+  
+ �
+               �
+          �  �      
+Y         
+     	    *   
+        �  
+
+�   
+	 
+/   ��      �      �         �
+�K�
+  �  G �        
+��       �   $R     �  �  �    �	
+          ��  ��  �    
+   �   �    ��    �     �  �   � �  
+     J   	)          1
+    
+      �� 
+  
+   R�    
+           
+               ?
+ �  � 
+�            �         �           _	  	          
+     
+     �         R   � @
+     O   �            �O      �      	          -  �     ]  �                  �   k�      �           
+              
+        �                 
+        
+                 [       �          ��                      �+  	�     n  �   �          �     � 
+ � 
+
+�   X�              �       �                                              � �     ] � Z   
+      
+          
+      
+ 
+    �   �   �       _      ��             
+      
+  
+ 	              
+
+�           ���
+   m    �  
+x   �
+  �  � �    
+    
+   ܬ
+ 
+                    <       �           
+    	      u 
+       ��   ��       Q               
+ �      �     � r �:��         
+   
+      �        #           	  � V    � 	      
+
+ 
+  � d      ��   � �� 
+��   ��  
+�  ��        ��   
+        f�     �   9         
+        
+      �           �             �    
+          ��     	        
+       =   �  
+                     5           �           
+P        
+��  �    �    [      � 
+     �
+   
+                                                               s              ��   � �
+ 
+� ���     �    ;  
+    �   
+  2 � �   �   �  �                     �                ]   
+     
+  �    
+ 
+    
+     � �c   ��    < e
+  
+ _ |     �         � i  X   
+  �  �  
+         
+  n         �       ޿ �    -      �         
+ 
+       
+        } k  j 
+ �       �  I    �  
+�     ^   �   �
+   , L�         
+  A 
+           �   
+           X�� � 
+  
+                 
+  �  
+�       L  �          ��	� �  ^ � �         �   Z       �     �  
+
+      �                  
+       �           �
+�  � �    � �  
+
+�         
+�  �      
+   �           
+   �       � �   ^     ,     s       �       �
+  �
+ 
+               
+     �                 :          
+  
+ 
+  �8        �               	 
+ �     �       
+       R        
+   
+     � �             z    �            �
+   o� �  
+                
+   
+      �    	  
+                    �     �   �                  
+ � ��      
+   �   �           U     � �   �  
+    �� �       � 
+    �   <          
+   p        �                       5
+    � k        � �
+   
+  
+  �         �    �	 
+         	        �  	      
+�               	         �         �   � ��    �n   
+                
+  �  
+  	  �h       �                
+  �       �       .  4           � oP �           
+  �      �  �        �     &
+  �        	   
+   �  j�  
+            5            �
+
+       �    � �   �    � �        \ 
+   �       -        
+�    
+   
+ �               
+�
+     
+             �     �� � � �   
+  
+� 	     [        �         �              �      
+  �     
+   �               1 
+ �       �   � 
+      
+           ��       �	      �   O     �  *    7
+ �
+  �          �      �    �  W 
+     G                           �     � �       z
+    �      
+   <  B ��           
+                M 
+ 
+              �N  m     	 �          �  �   
+      
+        �� i   ��     	   �r  
+ � 
+  ��   �   � 
+ [       �       
+ 7� �       a     ��       �            
+      
+���    �
+  �   �        �          
+ 
+  
+ �       
+
+    �          � �    	  p    
+     �
+     �   �    � �       
+          L � @       
+�          
+ 
+ �        �  � 
+ �
+             �                ; � 
+
+ 
+      @       	   �        �               �       [ ��                       � �       �       i  
+  
+�  
+          �^           ,
+   �                   �          
+�
+ �                 �           
+     
+     	 g  	    W    �  
+     �  �   �    � 	  �  
+�     A   #     �> 
+   	               
+  *�
+               c�  �      
+     
+     	�          j               
+ z�  s        � 	�   �  C     
+  
+     �   	  
+        �  L 
+       
+  V      �          
+    
+          �        �   �           �        
+�	    ��     >
+  �   =  
+� |   
+     m 4                               
+ �  � 
+      ; �J ,7   
+   � 
+   m     �0             Ϫ 
+                �   
+         �       [�      � 
+ �    t�      9                  �   �    �         �       
+ �  	             
+ 	             x                �    �    
+   �      
+  � � 	�          �   6      �  L           
+     
+     
+     ��   �     
+  � 
+  � 
+�    { �   �  �     �       �
+  ]  �
+     \    �  r  7
+            1       
+  � �_�      e     �   
+  �    
+    
+ �            )            ��
+=            �       �
+� 
+       �   �     �  qw    �    
+              0       �       
+ 
+        �c                      
+      
+i  ��  �  �  �       �  
+           
+  0  �   y ��      	      }  � 	  �      T  � 8 	 � �           � �      
+ �  9           � 	^    �    	  �   �      w  
+  
+  p         �  	�
+              
+�  O  ` 
+     65           �        �     �         �    }  �        �           ;�     /   �
+ �       
+             �� o         
+                    
+ <              
+   	   �              T  	     �       " �   	 	 �      � 
+        �   �  �  �	 �   �      ~�               : �   � m         �              	 e     �      G  � 
+   
+   
+         � 
+�     ;��  � �    ?+    �          
+            	      u   ~ 
+  
+    �      :  �
+ 	    �  	      ��    � 
+      ΢      �   �    �         
+        � 
+          �   	�      �  
+        �
+a       
+�  T    }  �        �  	     
+            �z
+    
+     ?       
+      
+  ; �
+    
+  
+      
+  z�     ~  ��B    L
+  	  n               �       � 
+ ?  � 
+�    �    2          �      ( 
+B  �
+  � �q �)     � �  
+         �        
+          =    �  �            Z  T         �
+        ��    �      �   �      � 
+   B�5    =p          � 	;          �   �              
+    �       �  �        	     z 	                   6 ~ 
+      � 	     " 6             
+    �    <             
+       ��
+  
+� �          �
+  
+�         
+ 	       
+   N                  	  �     :
+           X   
+   
+                �g 	 �    w          
+ 
+   
+  �      �   �        
+                      
+    �  �  I   � 
+  �    ů            t   �
+    �    
+   � 	 " 
+ -    	                        �	  	    
+      �     �
+ �             Z      a >           �
+ 	�   �
+  ��           V X9   _�) =     
+ _
+          G 
+ 
+  '   �  � �          !�   ��    ��
+           
+   
+      �            D       P    C           
+
+ 
+  � d      ��   ����
+��  ��  
+�  ���    �       � � � � �  
+   �   ��  �       �   �       ��  
+      �     �      
+                    
+�         �  v �    
+�            
+  
+ 	     �       	       �               
+
+ 
+     <          �     	 	   
+  
+
+      
+      
+    :   <                     �                �     ��      �  � 
+  �  n   
+                �  �� �� 
+
+ �
+        �                  5             
+        �  � 
+	�           ��   �                    ===>                    ������������������                                                                                              �
+  �  � �  ��   )    
+           � j��
+  �   �}                        �                   
+  9       ΅_     �      
+      
+         i           �            x  �  �     ��        �                �   �	
+ �    	�   � 	  �             �          �        *   �  �     � 
+C    
+ V    	   �      �        �  �
+  �        H ��               �            �      
+   
+     �  � �  
+        
+     � $ �     <�    ��  L�    E         �           �       �   
+   6� �      �
+ �    	��            -     ��       	 �     �    �     � �� �               �     �   ^      (  ��t     �	        
+
+   $  
+    �         	      �  � �͈           + �           
+�     �� � �  �     �    9       �    �     
+ Q                     �         ^          
+          �   �         �     
+         �             =            �  O
+�  
+p
+     � �  
+         ��                 �O    �U    �        �             �  �    �  �#� 	 
+                         �         
+             �    
+ �       
+ �
+ 
+   D        �   �       E            � 
+      �             �     o                   0  �       � �    
+          
+        � 	         /        3�     ��       
+  ��
+             �  � ? 	    �     ��               �  �    �     	�   i 
+ � �	� 
+                     �              A    _   
+ =  O -     � �    �      �  �
+          �  �     �   
+
+                    �    Y�   9 ��   
+     
+     V
+          
+         �          ,    �  
+         � 
+ 
+ 4     O	 w    `  � �     
+ �    � n �             ��  �     
+             �     ��    ��     � �         �     
+   �
+       o     )  �              X�   �  s             ]~ 
+�      �   
+�         	  �     �   
+           �         +          d                 z t�        �y�      �                 � +  �   
+   ;                   
+       
+      �       �         
+    
+  �    � 
+               
+ L 
+ �  ��   � � �  	     	      � �      �<    �     �               �  x   �
+       �      	 �                                            
+   $      v�    
+* 
+� 	 �  n        � l       A     n{         
+   
+    	       	           m      �p  `     � �        u          �  �       	    
+ � K     
+ 
+�    
+ �               
+  	   
+ Q    H   �                �  
+ �    
+        �        �
+         <    �         �
+  �            Y      �;  �    �                  �    �     
+          �     _  �   �      �    
+                           �      �       � �     p �            �
+y     
+ � (     N  	
+
+  	r     L     ��      
+&       \ �  
+           . 	    �
+ �   .     	 � o            � �      ��
+   �        
+ 
+       
+
+z         	   �  �       -   
+ �   T  � 
+ <   � �    V     G     � 
+
+  �            �� 
+	*           �      �    �   
+ �  
+        
+     �ܺ                	    �    	       
+  ~      �                         
+      
+                �      � �   
+	   
+         
+                  o �  �
+                 
+    �  �b 
+
+�  �         �     	 �    t �     
+             
+  	             �      k �     �   �
+  
+      � E       � 
+< 
+       
+    (     �    
+       �
+   # �    ] �   �  �   0         � � ]       `   
+   
+           j       .                  
+�	  �         
+ 
+      �                      ] 
+�    
+        [              	  � � K �   ( �   
+' �       	��     � ��        � 	�       �      �  � �     �      �  
+     @ e
+      
+  
+     �                  <            �      2        �   
+ 
+ �  
+     
+	
+ 	
+   :     �    �          �  �                    ! J  
+   ?    � �     
+   
+        �    
+   �	         �          �  � 
+�  
+           	  �  
+                            
+     �    � �  &        
+   2�   
+   	   	         * !    
+ �   '�
+       
+              
+�
+     ��    �    ��         �              
+    	  �      � 
+            � U 
+  �     	                 
+                           	     � �           �  �     �         
+ �   	    �� � 
+   
+   �          	  
+  �     �  �      	  �   o            �     
+ �       �  
+   �                  I   �          o                      Z   yo  
+   &  '
+�     
+
+�    	   	      
+  
+�   �               	 A            ;    
+�        �    �    �                   �    � 
+   
+   �     
+           	           ;�          �      � �  ; 
+  � 
+  �	              � e             ��      	  	         �  ;  �   Մ 	         � 
+  
+
+   �      �  
+ � �   ǆ   
+         
+      
+  �         &          �   Z               
+              
+�  �     
+   
+   /�   s     x  �        J �
+               �       G    
+        
+          ,  j       ~�  	       
+ ��   |  �  �   �    W       ԏ   �     � � (    	 �             
+   
+�       n �  � �        �  �       � ��   
+    
+�P       	     �"�          �   	   	5   �    �      �   
+  �         ?�  {         {   �  u   	
+                  �    S  �   
+      �� 
+ �    	 � G� �     |  A � 
+ 
+
+ 	    F  �       6     
+   |  
+   �              �   
+�	      5  �            �s � �     �  �   
+  �    	   	
+  
+                 
+4    x       � ��   ��  
+ �      
+ 
+ 
+    J  
+  
+       
+  
+   -  
+   
+
+�    *    	 �    �   ��
+L           �          �           
+                ��     �   U  �D �        � 
+         ��
+           
+   
+      �        I  
+  f       )  � q    �       
+
+ 
+  � d      ��   � �� 
+�� 	 �
+   
+/           \ �
+  �   �   ��  
+             �  �
+  	  
+ 	       � 
+       �        ,     	     � k  r  ;� �  O"    
+
+�  
+ Yx$          �   �    N        
+
+ 
+ ��     ) + 	 �      
++��  / 
+   �                 	Q �
+ 	     ]  ��   
+      # �  � � 
+  � 9     �    �          �     
+ 	�       �
+     	    
+           �           � ��  ��  
+ �       �   �          
+�           �     
+   �   � U  ;          S  s    �            �            �     �  A�  
+ � �          �        ��  �    
+  �"�  :     	     
+ �   <  � 	 :    =   �         � M    	  �                                 �  �          �         
+
+	           
+ 
+��          	 ��        9�  � 	     	             
+      �  � �  	             �  X�  
+               	 	         
+     i         �� 
+             C��� i .  	Y    
+ 
+�       �              
+    
+   �
+   
+�            O �                         	  dL  
+
+     <   �   �       	      �            �             
+   � 	  "�     :               �             {� ?         �    	 ?�  �4 _    �     �       �     �        �   
+ A       	�  
+   	 
+  �   �         C�   	W�>  
+            �        �     
+        �   �     K�        �     �� �          
+               �   ?     �   
+  \      �               
+  N                   �    �          �  
+             �            
+  �
+}                       �
+�    �
+   �   W  	�      �/ �         ��  
+  �   �   �
+    � 	 �  
+ �  h              
+ �           ��              �      
+    �      
+           �               
+    
+        
+ �    �             �   
+! 
+�	              
+ �   �   �                      *  
+ 
+ � { �      �  H               �     �  
+  �    
+ 	  
+        �    C
+                    �             
+ 
+ �     
+          �    
+          M   � �   ^    �          C�       
+   �         � �   �   S   
+           ��          �  �
+   
+      � ��    	                      �       
+              
+  �   
+      
+�         ]   	
+ 5    �  L       
+ 	       ��      z�  � �        j��                      
+ �    �     
+
+   �       	   � �             
+
+  z   
+
+     
+  	 ~ 
+ �           �     �          
+            �   
+
+  �    �       \   S           ��
+               f 
+        
+    }            
+             �            O      � �         
+ �   
+�   � f                   ��       
+             
+   �            �                  �  �Y   �             
+ 
+   �         � � 
+ �    ��        � 
+       �  
+� �     �  
+
+ � �          �   
+    �             
+      � 	 �
+             ��                  	   
+
+�   �  �   8     � 
+ 
+
+   �  � �               �              �    
+   �    �  �   	          	 �     ��
+   �             
+ 	                 
+
+� � �      �  :              �          
+    
+ �    �       � �         �   
+       �	�       �  �� 
+�                �           � 
+ 
+  �
+           �         vo    t  
+         
+  �x   ��         
+   �           �          � 
+         
+      �       
+   �  
+ @                 �                �       �  �            � 
+ �     
+        � �             a�  
+                               Ѧ  
+ 
+         � � .     
+         
+       �     �     � � � ^    @   
+   9    � 
+ 
+k      � �      
+   �    K   �        l      
+                         � =
+
+�   �� 	  � � �	         �     
+ d
+     
+             
+     l   �          9�  �          f�  �      >    �       
+�             
+        	~  �  
+y	 �    ?   �   
+                 �   �   �      �   ~   �        
+�      �      	  _   
+ 
+  �    ?  �              �            
+   �                       
+     �  ��             A    	�  �    
+  
+             
+  L          
+    
+�     { � �   f 
+   �
+     � :o    
+ 	
+     	N        �    �     
+                   
+     
+  ~ �         �  �   � �    
+  �          
+       = �  
+          5�        � �^      �           ���                	  �    
+          
+       
+  { �             
+     � 
+    
+  � .�  �     	�
+   �           
+  
+ �               
+  �          	          
+      �     
+  k  �        � �� �              	    �  L         �      �� � #  	   �  � 
+   n     �     	� �   �      �  �  �    �  �    �   �      7ꬺ  ھ   J�    �  
+� �:�[ � 
+        t   �       	   �  �9 � #
+  l  �  �      �   �     *� 	 � ��
+           
+   
+      �        u  
+  0      &  � B    �       
+
+ 
+  � d      ��   ���� 
+���  ��  
+�  �
+                                                                   �
+  �       >     �      �
+  �  � �  ��   )    
+           � j�
+   �   M�       	 �                        �  l                    �  	 
+�    
+     
+           �   � 
+      �        
+�                
+          �   Z   �  
+ {            + �   \ 
+   `      
+   	  �        �       �]   )�
+               ��  \  
+
+ [� 
+             � �  
+ 
+t     
+    p�   � 	�    �   
+ 
+l                      
+  
+       �     
+  
+ 
+      �  G 
+    `	 
+          �           q   � �  
+                �D     �   G     �     
+      ]          
+     
+  �    -� �      �     �      	     �       f         
+	��              {   �   ~ 
+      L  �
+   �              
+     m
+   
+  ��               Q
+~ O\ 
+  
+  �    
+ �           �  �y �     
+   �       
+�  
+  L  �  � �    
+ L   �      
+          	                '    '                  Q  �         
+    
+      �<�       
+ L   �       � 
+             
+  �   �        m     
+ i ?    �    
+
+  x  *  �  
+6        C	
+   �                   
+      �     �    q   �  �          }�
+          � �    	      
+ 
+         j	p 
+   
+     �     �  �    >                     � 	          @j)       �
+  �      �   �  � � �   
+        � R                
+ �      
+           }  � 	     �        	       / 
+  �  �  �      l             
+~      
+   �  � x    
+      7    �   
+8  &      �  
+         �     l      � 
+           
+    
+ �                    �      0     �     �~    	   �
+�
+�       �   ��   o                     �    
+      ��� ��
+           
+   
+      �            0        � g    �       
+
+ 
+  � d      ��   � ��|
+�� ���  
+�  ��       
+   _  �            �         
+          
+m
+
+  
+        ?         �              | �        
+?         
+
+        
+        	
+         | �          �            �            
+
+            �    �
+   
+                       ?        �            = 
+       
+ �        �      
+ ��   � �
+ 
+� ���     �    ;  
+    �    �   
+     �        i-   		�	   �    	     
+    �  
+ J 
+ 
+    j   �  
+    �    
+       
+  		          	              �  	              [          � �  
+            
+�       
+    N      =�             Y   
+ ƞ   
+ �  �           c   I    �  7  
+
+ ��     
+                       � �   �       � �a�    e�� �           � *  O       
+ }    �   �        7    
+     �       $      
+�- 
+�
+   �      J   
+�                 	  
+ 
+�      l4     � 
+   
+�    ��  N
+  �?               
+  	  
+      
+  >      �     �           � �  
+     q      \ 
+          �$     
+   �  e                         
+     =     
+^}�     
+  �                        kq�   �   �     ��                 �    	      �~    
+     d  #
+        �    3  �       	   �   O      
+           	     �        �               ��     =  
+  � ���  
+�         
+  2 
+             �  �  ! : �   
+ 
+           �            
+�   �  	�  �             .  � 
+   
+
+ �          
+  - �
+       ^ �       �
+     �     r�                      �          �         �   
+5     O     �    	            k 	   � 
+   u �             �  �  9     �      �uR    	�        
+	   � Z  �	  �
+ 
+ �                 �   ��        
+        
+�   
+          
+�        	 �  ��           �   
+ �  
+    _  �  *        �         �      
+           �                �    
+    �� 
+                 �  �   .     � �     
+   �   �     �          	        �   
+     
+�              
+                  �   M   O             �  
+       �        
+   
+4          (	��        V�  �
+	  C       �  � �        ˢ    �      � � � �  � -     
+     
+     �  	  �  �     �    �  
+   j �       �   
+     � 
+ 
+     
+        �
+     � �   � y   
+        �     j 
+          �  
+  
+         ��� `
+  
+    
+�a  	  l   �� >�    
+ 
+�
+    �  
+      @  
+  
+�    
+ !    
+   	   ��   �    �       	       
+  � � �   Z ��    � 
+      �     ��         �   
+ 
+  �   
+�     �j  �  $N      � = 
+       �  �
+9   z   �
+ ��    �       
+   
+          � � 
+  ��  
+��  	[        
+  K    ]   
+ 
+ �         R   ��     �  	             g    �
+ 
+    �   M      
+      
+  
+  
+ �    � 
+      
+     �               ;   
+  ;      �              j      
+          �          ��           
+   �                        �   
+       � �   
+  �         �  �      
+         �   F 
+  �R   :    
+    
+    � �   �           
+        �       �	  �     
+�                �         � 
+     �  �   
+            z
+      
+        �      	
+            �     n          �
+  
+     ,n   �   �            I  
+ %
+         � 
+    � 
+        �      G         �                
+�   �   �  '    
+o  
+     ��
+�  �         �     �           
+      �   
+                      o J ϯ             �         
+��       
+� 
+                 �    y ~� �       
+                 
+  
+    
+  .  Y    �      �     �    �M            ��  	1  �    �    
+� �   �  ^ R     
+
+    
+ 	 u �   �           
+Q  t  
+ {     5   L	      � M   - �          "      �   �   ��  	   �
+
+     ?          ���            
+   
+      �        P  
+          � b    �       
+
+ 
+  � d      ��   � �� 
+��  ��  
+�  ��       s       3
+  
+     
+    
+       | �    L"                    
+          W     � L         |   !| #     
+        
+       
+      
+ 
+ 'S  
+ Z    
+                �    
+ �                           
+�
+   
+                                
+       
+   =   �                    =    
+��   � �
+ 
+� ���     �    ;  
+    �    
+         % �    �      �  � 	      �  i)
+    C�  �  
+  h �  �> 1    
+
+r	   �  �  ��      �   
+                 �                 T !  
+        �  
+  �    �      �  v  
+�\      �     
+   �  �-  n    
+ 
+    F         �      
+    l                  
+  
+      �  
+   �       �    k  
+  
+  o           �  �        �         
+   
+ �    ��    
+ 6       -�            y  
+ F         �  � �    �              �                 �              
+       
+  � �          
+     	 �!   	�    �       �  ��          �   �  	  �        �    
+       
+  
+              �    	        :   p          l 
+    Q  >  
+        
+        �         �       � � 	    �          :                
+   /       5  `            
+        	  �   �     [�  ��       �         
+ � �     �    �    
+       
+               V  k   
+ � 	 7     �_  jQ          ��       
+   
+       
+          �              
+                    
+ �    � 
+    
+ �� �      
+     �     
+ 
+ 
+  �     
+  �   
+ �  
+�   �  
+
+          �        
+    �             
+       
+ 
+ 
+    
+       �                    �                �         
+              �  �   
+  �                          @        
+         
+  
+                          
+     
+  
+  
+                            
+      
+  
+   
+  
+        
+                               
+ 
+
+
+
+         �                   �                   �         
+             
+                     
+                
+   
+       �     �            �     �          � �   �       
+                                    �                   ��
+ 
+     
+ 
+ �                                                    �	                  A� 
+          
+            
+   
+ 
+   A� A        
+    
+      
+   �	 �X � h � )        
+              
+  c�	8H 2S�S2� b1�S2�9F � �r'� SY8�9�� D�� R	�t � 2�� G� �S� cg� HFH� " Tr& � Qu t bbi fg� 0h��� 	3� � 1	(2 � 7% 6h� h�IA w�    q	! $" �	%9 EQ �EQ�)  S � �I&6 I "`5 �"��X �"�63 �" I �9�I �I �9�' �	   H $	" 9�H $	I �9� ! F �	8 U1 wt	E Y � W r e#� I� V<� 9	WC� b�q� ��q�   HDS�r�� W'� �	 � @$� � 	W� 1 tS� H �  � ( � u r' V&7  u�8 1d �8 � %� b\bi� ' q% �   
+              
+  � 7 E I ! x 	r A y 	(	  � � �8b % W� G  x�� 	 �	'5 %  5 x� 5" `l t' 9 ��D   x E�G � ���   ��a� ) � F B	 f�	Ff   aW8 a �� g 	r  g @Ie9h� $	 � 7	 � � � ���(��	Ff  �	���	6( ( S|�b	 "� &)� b	 h  s	7� &�& u6u� W�A� &�A � U�vi� � &9h y gGu�� �W� y U�   b �Dy ycG x ��� �  $�H D & e ( 4� 	6(  ' �& e x �	6( �8  h�  & �D g3 C�	 ���5 , � % T0 #	F�!bt�cU� f� &)�0 b	 ! �f�&�f# �7&�1# hL q Qr9Q 7 eA  � ��d	�t � ! E ��3� )U 8� �  � '11e � �� (� 11d 1bt�  L h� ' 11e   
+             
+     
+     �   
+    �            
+              �  �   
+   �        �    
+
+�       
+                      
+   � �   �       
+                �                     �        
+                           
+           
+      �      �    �               
+ 
+ � �       
+      
+     �      �   
+       
+                 
+              
+          �   
+�        
+     
+   �                
+ 
+
+
+
+         �                  �         �                  
+        
+                �       �
+     
+          �  �    �                    
+     
+   �                
+ 
+
+
+
+         �                  �                           
+        
+                �               
+          �                          
+     
+   �                
+ 
+
+
+
+         �                  �                                                        �              
+          �  �           
+               
+     
+   �                
+ 
+
+
+
+         �                  �                         
+        
+                �       
+    
+          �  �   
+ 
+ 
+               
+     
+   �                
+ 
+
+
+
+         �                  �         �                  
+        
+                �              
+          �  �    �                    
+     
+   �                
+ 
+
+
+
+         �                  �                                                       �             
+          �                          
+     
+   �                
+ 
+
+
+
+         �                  �         �                
+        
+                �        
+    
+          �  �  �                  
+     
+   �                
+ 
+
+
+
+         �                  �                                                       �             
+          �        �          �                  
+     
+   �                
+ 
+
+
+
+         �                  �          
+                                            �        
+    
+          �              �    
+ 
+               
+     
+   �                
+ 
+
+
+
+         �                  �                                                        �              
+          �         �     �                                       
+      �      �    �        
+     
+
+ 
+ � �                
+     �      �   
+       
+       
+       �                 
+                
+     
+   �                
+ 
+
+
+
+         �                  �         �                           
+                �       � 
+               �     
+       
+ 
+       
+    �       
+   �    
+                  
+     
+   �                
+ 
+
+
+
+         �                  �         
+                �                           �       
+                �                    
+               
+     
+   �                
+ 
+
+
+
+         �                  �         
+                          
+                �       �               �           
+ � 
+                   
+     
+   �                
+ 
+
+
+
+         �                  �                                    
+                �                      �                 
+               
+     
+   �                
+ 
+
+
+
+         �                  �                                     
+                �       �                 �     �            
+   
+               
+     
+   �                
+ 
+
+
+
+         �                  �                         �                           �                       �                   
+               
+     
+   �                
+ 
+
+
+
+         �                  �         
+   �                          
+                �          �              �           
+   �     
+   � 
+               
+     
+   �                
+ 
+
+
+
+         �                  �                           �                           �                         �                   
+                         
+      �      �    �        
+     
+
+ 
+ � �               
+     �      �   
+       
+                                 
+                
+     
+   �                
+ 
+
+
+
+         �                  �                                                    �                        �     
+                        
+     
+   �                
+ 
+
+
+
+         �                  �                                        
+                �                          �                                     
+     
+   �                
+ 
+
+
+
+         �                  �          �                                          �        �                �              �        
+               
+     
+   �                
+ 
+
+
+
+         �                  �                                           
+                �                             �                     
+               
+     
+   �                
+ 
+
+
+
+         �                  �                                                     �                         �                                 
+     
+   �                
+ 
+
+
+
+         �                  �                                                     �                         �           
+     
+  
+               
+     
+   �                
+ 
+
+
+
+         �                  �                                                       �                           �               
+ 
+  �                                    
+      �      �    �        
+     
+
+ 
+ � �     �         
+     �      �   
+       
+       
+        
+              
+                
+     
+   �                
+ 
+
+
+
+         �                  �                                     
+                �       �                 �             �                   
+     
+   �                
+ 
+
+
+
+         �                  �                            
+                        �                          �                                     
+     
+   �                
+ 
+
+
+
+         �                  �                                
+                        �                              �                                          
+     
+   �                
+ 
+
+
+
+         �                  �                          
+                        �                        �                               
+     
+   �                
+ 
+
+
+
+         �                  �         �
+               
+                        �       �
+               �  �
+   �
+  �                  
+     
+   �                
+ 
+
+
+
+         �                  �         
+�                            
+                �       �                 �         
+�  �                   
+     
+   �                
+ 
+
+
+
+         �                  �                           
+                        �                         �                          
+     
+   �                
+ 
+
+
+
+         �                  �                                        
+                �                          �                             
+     
+   �                
+ 
+
+
+
+         �                  �                                         
+                �        
+  �                �      
+             
+               
+     
+   �                
+ 
+
+
+
+         �                  �                          
+                        �                        �                                        
+   
+                     
+        �    
+ �     �     �  
+�     
+
+ 
+ �  
+
+              
+        
+�         � 
+                     
+                                         
+ 
+
+
+
+         �                  �                                    
+                �                        �     
+                        �                                    
+ 
+
+
+
+         �                  �                                     
+                �         �               �     
+            �        �  
+     
+                           X        
+   � 
+   �     $          $                                    
+ 
+
+
+
+         �                  �          
+                          
+                �                         �   
+                                     
+ 
+
+
+
+         �                  �                                        
+                �        
+                  �     �                                                      
+     � �                �  
+ 
+    � �                          � �   �        
+                                          �                          �             �               
+
+             �                                      
+     � �                �  
+ 
+    �    � �                          � �   �        
+                        
+                      �                          �          
+     �              
+          
+                �                          
+
+ 
+ �     	  
+ �     
+      
+        
+ 
+ 
+   �   
+    �       �        
+        
+�     �   � � �    
+�                    
+   
+     
+      
+  
+        �  
+
+
+
+        �                   �              
+        �            
+                                	 
+   �      
+             
+ 
+ ��  �        2     � | f w   ��� � r�                       
+             �   
+     
+                         
+               
+�          � �   �       
+                             
+         �             
+                                        $
+ 
+ �    
+  �   
+           
+        
+  t  3  S r u 2  3 c � � Y � & � �5 3�w3 t   g r G w a H X   �  Y � & g f 6 y & � f � 6 �  X� 3�tf  G ,'  b  Ux  Y q8f g y� 5 �� & � vI	cU�� h� f r� G ' b� I U�  x	 � Y� �� &�1	4  Q 5	� < v �� 6 I	� X�f     �   �   U  I '  b  G8�A	B y  � � d " A"& F �   � � a  V  B" $ b G	� �	8   �g	8 � B d� e #A'd	� Y ! X � Y  a�  %# ! V	 $ � G	7	 � B  i � �  e B 5	 # E�  a� I � X� U�  #! W y � � �  A	� h	7	 �  f Q 6" ! u e  Y    g��  � b  @v b b b   b�  @v� b� b� b l�  y��  	y� 	  F� @\  � dD� D y D dD�   � F� 9 C	y  dD 9           
+           
+             
+         
+                        �               
+�          � �   �       
+                                     �            �                                	
+ 
+ �    
+  �   
+         
+  w :    	B�Y 	  	X �UU   �  � 	I    9 & &     �& &     	g C    	q� B  B�ii           qcc    g$    i g	 �                        
+                     
+                                   
+�          � �   �       
+                                   �                                            '        
+   �      
+             
+ 
+ qQ	(` 	 � fE �52  FIh� & �@	bG2G   7 �  i e� ( G h��7hT $ b   �5 �Fg �� f ! � v i e� T  &   
+           
+                   
+                                       
+�          � �   �       
+                                     �                                                   $
+ 
+ �    
+  �   
+                
+ 
+  % ,1   �  S 	    $ 	D � 	     	b �    u   T 	5 1 X � C � 1� � � 7� q    I 	� X� f� �� �   �   	  #� 7 c  6  Q   a d     	 w�  3  g  � 	� � �                          
+                
+     
+                                       
+�          � �   �       
+                                    �                                                  $
+ 
+ �    
+  �   
+               
+ 
+  q     C W q   C q     � B$  �� �  ( (   q� ( ( B	� �q            
+           
+               
+     
+                           
+      
+  
+        �  
+
+
+
+        �                   �               	          �                                                       �	                       �	      
+   �      
+       
+   
+ 
+   � �        
+              
+  C�	8H 2	S�S3� b1�S3�9F � �r'� SY8�9�� D�� R	�t � 2�� G� �S� cg� HFH� " Tr&  WB�) &��h� y#� � X!	 9XS	 �(qSq bcg �Qv � �  q� g�rF)� S	T Ui� U b		�1� q9& � c4�2#� 0 # %0 E c ' ���	�3�		W�	�W H 0	" 9�H 0I �9�|    $aIA C�Ugw CE	X�# vV r4� ec3� t% WY8 W1d � �� E (	�u� RX9� R� @#� H �S WB� 1� � H�A� 	��� 	wT  g	r' V&7 wT #� �  # a%� '� ' q% �   
+             
+            
+ 
+             
+               
+           �    � �   
+      � �    �       �                               
+  
+     
+ 
+     �  �     
+ � 
+�
+ 
+     �  �     
+  �        
+ 
+      
+
+ �        
+  �     �      �  
+ 
+    �        � �     �         
+             
+      �   
+    �  �                  
+ 
+ �                 
+  
+
+ �        
+         �      �  
+      
+ 
+ 
+  �    x Z	d	    6| U & B 2 W  E )U  W� � 	d    "   Z	d	    6| 0   �	 W� � '	 '    �!Z	d	    x  �T:PP   f\  � $ 6 R U � �� 7� t� �� H � 3�   3�uX� H  � 7 85 R�     � f   �  D t �uX H  � #8 S R�      f�  sZPP   f\ # � 65UqC�X H   
+            
+    �   
+     
+ �                  
+ 
+ �                 
+  
+
+ �        
+       �   �   �  �   
+ �       
+ 
+  "
+t	t	    % Z I I  �  " � I I    9  q� I I                  
+       
+              �
+  
+  �                          
+    �        �    �            
+   
+�   �
+          
+       
+  
+          
+ 
+ � �  �  �                     �            �               � 
+ � 
+       �     � �      
+    
+
+�  
+
+
+ �           � �  
+
+ �        
+      
+  
+�    �             
+        �                 
+  
+  
+    �    �   �                              
+ 
+ �                 
+  
+
+ �        
+       �     
+ 
+  "
+u     % Z u  �  "	 � Q Q   uu     �  r
+u       
+          
+                    
+  
+                   �            �                     �     � �      
+    
+
+�  
+
+
+ �   �        � �  
+
+ �        
+      
+  
+�    �             
+        �                 
+  
+  
+    �    �   �                              
+                    
+      
+  
+                   �            �                     �     � �      
+    
+
+�  
+
+
+ �  �           � �                  � 
+                
+        �                 
+  
+  
+    �    �   �                              
+               � 
+ 
+  
+      
+  
+                   �            �                     �     � �      
+    
+
+�  
+
+
+ �              � �                  � 
+                
+        �                 
+  
+  
+    �    �   �                              
+                   
+  
+                   �            �                     �     � �      
+    
+
+�  
+
+
+ �            � �  
+
+ �        
+      
+  
+�    �             
+        �                 
+  
+  
+    �    �   �                              
+                   
+  
+              
+    
+   
+      
+�        
+             
+   
+             � 
+       
+    �        � 	��	   �   
+     �    
+�    
+  
+    � �       � �            
+       
+   
+
+�         �    �     
+ 
+ �                      
+  
+
+ �        
+       �      
+ 
+ E| Y� 4 '� 4 �   �7�u    ���u   TW  c 
+%      i 2
+%     6 d
+%      h  �Z u  �   Z u     	� �       
+                
+    �    
+
+�  �    
+  � 
+           
+ 
+ �                      
+  
+
+ �        
+            
+ 
+ r * u    �  "
+t	t	  '2t	t	    4  " * I I   2't	t	   4 !	 " * Q Q  � B uu   � B  r � u   �                   �       
+
+  
+        
+     
+    �
+ �      
+    �      �      �      �   ��    ��
+                    
+ 
+ �    
+            
+ �   
+        
+    
+  ��  �     
+      �         
+   �               �                 
+  �  
+  � �  �         
+ 
+ �                      
+  
+
+ �        
+            
+ 
+ r * u    �  "
+t	t	  '2t	t	    4  " * I I   2't	t	   4 !	 " * Q Q  � B uu   � B  r � u   �                          �        �  �   
+      
+    �   
+    �                       � �        �         
+                      
+      
+�                 �  
+        `     
+  
+     
+       
+
+ �             
+
+ 
+      �                 �  
+  �   
+            
+
+  �   � �  ���  � 
+
+    
+          
+ 
+ �                      
+  
+
+ �        
+       �   �    �     �    
+ 
+  u� � � Z u     Z %    % \  8  % Z %    % % Z u      � u  	  Zu            
+   \ � �   \   �u  � u  %� � u  	    Z %    % \  8  % Z %    % % Z %    % %   
+         
+ 
+ �                      
+  
+
+ �        
+       �    
+
+�     �  � 
+   �    
+ 
+  "
+u     % Z u  �  "	 � Q Q   uu     �  r
+u       
+        
+
+    
+         
+       
+
+ �        �          
+
+ 
+          �  
+  �   
+                  
+
+  �  
+�     �     �  
+
+ ��۬    
+ �     � �          
+ 
+ �                      
+  
+
+ �        
+       �   �    �        
+ 
+  u� � � Z u     Z %    % \  8  % Z %    % % Z u      � u  	  Zu            
+   \ � �   \   �u  � u  %� � u  	    Z %    % \  8  % Z %    % % Z %    % %   
+         
+ 
+ �                      
+  
+
+ �        
+       �    
+
+�     �  � 
+      
+ 
+  "
+u     % Z u  �  "	 � Q Q   uu     �  r
+u       
+        
+
+    
+                        �      f         
+ �              �   �        
+      
+ 
+ �  �             �            �              �                 �      f  �            �      f               
+             
+               
+      
+    
+ �  �            
+ 
+       
+ �      
+      
+    
+ �  �   
+            
+ 
+   
+   
+ 
+
+       
+   
+     
