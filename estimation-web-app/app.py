@@ -124,34 +124,70 @@ def extract_pdf_text(file_path):
         raise Exception(f'PDF解析エラー: {str(e)}')
 
 
+def _normalize_header(text):
+    """Normalize header text by removing full-width/half-width spaces for comparison"""
+    import re
+    if not text:
+        return ''
+    # Remove all whitespace (full-width space \u3000, half-width space, tabs, etc.)
+    return re.sub(r'[\s\u3000]+', '', str(text).strip()).lower()
+
+
 def parse_material_list_excel(file_path):
     """Parse material list from Excel file"""
     try:
         from openpyxl import load_workbook
 
-        wb = load_workbook(file_path)
-        ws = wb.active
+        wb = load_workbook(file_path, data_only=True)
 
-        # Find header row by looking for '名称' or 'name'
+        # Header keywords to search for (normalized, no spaces)
+        header_keywords = ['名称', 'name', 'material', '品名', '材料名']
+
+        # Try all sheets (prioritize sheets with names like '内訳', 'material', 'data')
+        priority_sheet_names = ['内訳', '明細', 'material', 'data', '材料']
+        sheets_to_try = []
+
+        # Add priority sheets first
+        for sn in priority_sheet_names:
+            for ws_name in wb.sheetnames:
+                if sn in ws_name.lower() or sn in _normalize_header(ws_name):
+                    if ws_name not in sheets_to_try:
+                        sheets_to_try.append(ws_name)
+
+        # Then add remaining sheets
+        for ws_name in wb.sheetnames:
+            if ws_name not in sheets_to_try:
+                sheets_to_try.append(ws_name)
+
         header_row = None
-        for row_idx, row in enumerate(ws.iter_rows(values_only=True), 1):
-            row_lower = [str(v).lower() if v else '' for v in row]
-            if any(name in row_lower for name in ['名称', 'name', 'material']):
-                header_row = row_idx
+        ws = None
+
+        for sheet_name in sheets_to_try:
+            ws_candidate = wb[sheet_name]
+            for row_idx, row in enumerate(ws_candidate.iter_rows(values_only=True), 1):
+                if row_idx > 50:  # Don't search beyond row 50
+                    break
+                row_normalized = [_normalize_header(v) for v in row]
+                if any(kw in cell for cell in row_normalized for kw in header_keywords):
+                    header_row = row_idx
+                    ws = ws_candidate
+                    break
+            if header_row:
                 break
 
-        if not header_row:
-            raise Exception('ヘッダー行が見つかりません')
+        if not header_row or not ws:
+            raise Exception('ヘッダー行が見つかりません（全シート検索済み）')
 
-        # Get headers
+        # Get headers (normalize for matching but keep original for display)
         headers = []
         for cell in ws[header_row]:
             headers.append(str(cell.value).strip() if cell.value else '')
 
-        # Expected columns (Japanese)
+        # Expected columns (Japanese) — keys are normalized (no spaces)
         column_mapping = {
             '行番号': 'row_no',
             '名称': 'material_name',
+            '品名': 'material_name',
             '規格': 'spec',
             'サイズ': 'size',
             '数量': 'quantity',
@@ -159,19 +195,25 @@ def parse_material_list_excel(file_path):
             '施工条件': 'construction_method',
             '分野': 'field_category',
             '図面参照': 'drawing_ref',
-            '備考': 'remarks'
+            '備考': 'remarks',
+            '単価': 'unit_price',
+            '金額': 'amount',
         }
 
-        # Map columns
+        # Map columns — normalize header text before matching
         column_indices = {}
         for col_idx, header in enumerate(headers):
+            header_norm = _normalize_header(header)
             for jp_name, py_name in column_mapping.items():
-                if jp_name.lower() in header.lower() or py_name in header.lower():
-                    column_indices[py_name] = col_idx
+                jp_norm = _normalize_header(jp_name)
+                if jp_norm in header_norm or py_name in header_norm:
+                    if py_name not in column_indices:  # Don't overwrite first match
+                        column_indices[py_name] = col_idx
                     break
 
         # Parse rows
         materials = []
+        row_counter = 0
         for row_idx, row in enumerate(ws.iter_rows(values_only=True), 1):
             if row_idx <= header_row:
                 continue
@@ -182,7 +224,7 @@ def parse_material_list_excel(file_path):
             for py_name, col_idx in column_indices.items():
                 if col_idx < len(row):
                     value = row[col_idx]
-                    if py_name == 'quantity':
+                    if py_name in ('quantity', 'unit_price', 'amount'):
                         try:
                             material[py_name] = float(value) if value else 0
                         except:
@@ -190,9 +232,14 @@ def parse_material_list_excel(file_path):
                     else:
                         material[py_name] = str(value).strip() if value else ''
                 else:
-                    material[py_name] = '' if py_name != 'quantity' else 0
+                    material[py_name] = '' if py_name not in ('quantity', 'unit_price', 'amount') else 0
 
-            if material.get('material_name'):
+            # Skip section headers (rows like "小　　　計", "合　　計") and empty names
+            name = material.get('material_name', '')
+            if name and '計' not in _normalize_header(name):
+                row_counter += 1
+                if 'row_no' not in material or not material['row_no']:
+                    material['row_no'] = str(row_counter)
                 materials.append(material)
 
         return materials
