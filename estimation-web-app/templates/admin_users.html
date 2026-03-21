@@ -1,241 +1,301 @@
 {% extends "base.html" %}
 
-{% block title %}ユーザー管理 - 電気設備積算・見積システム{% endblock %}
-
 {% block content %}
-<!-- Breadcrumb -->
-<nav aria-label="breadcrumb" class="mb-4">
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a href="/dashboard">ダッシュボード</a></li>
-        <li class="breadcrumb-item active">ユーザー管理</li>
-    </ol>
-</nav>
-
-<div class="row mb-4">
-    <div class="col-md-8">
-        <h1 class="h2">
-            <i class="bi bi-people"></i> ユーザー管理
-        </h1>
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <h1 class="h3 mb-0">学習辞書</h1>
+        </div>
     </div>
-</div>
 
-<div class="card">
-    <div class="card-header">
-        <h5 class="mb-0">
-            <i class="bi bi-list"></i> ユーザー一覧
-        </h5>
-    </div>
-    <div class="card-body">
-        {% if users %}
-            <div class="table-responsive">
-                <table class="table table-hover table-sm">
-                    <thead>
-                        <tr>
-                            <th>氏名</th>
-                            <th>メール</th>
-                            <th>権限</th>
-                            <th style="width: 120px;">ステータス</th>
-                            <th style="width: 100px;">登録日</th>
-                            <th style="width: 150px;">操作</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for user in users %}
-                        <tr {% if user.status == 'pending' %}class="table-warning"{% endif %}>
-                            <td><strong>{{ user.full_name }}</strong></td>
-                            <td>{{ user.email }}</td>
-                            <td>
-                                {% if user.role == 'admin' %}
-                                    <span class="badge bg-danger">管理者</span>
-                                {% elif user.role == 'user' %}
-                                    <span class="badge bg-primary">ユーザー</span>
-                                {% else %}
-                                    <span class="badge bg-secondary">{{ user.role }}</span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                {% if user.status == 'pending' %}
-                                    <span class="badge bg-warning text-dark">承認待機中</span>
-                                {% elif user.status == 'active' %}
-                                    <span class="badge bg-success">有効</span>
-                                {% elif user.status == 'inactive' %}
-                                    <span class="badge bg-secondary">利用停止</span>
-                                {% endif %}
-                            </td>
-                            <td>{{ user.created_at[:10] }}</td>
-                            <td>
-                                {% if user.status == 'pending' %}
-                                    <button type="button" class="btn btn-sm btn-success" onclick="approveUser({{ user.id }})">
-                                        <i class="bi bi-check"></i> 承認
-                                    </button>
-                                    <button type="button" class="btn btn-sm btn-danger" onclick="rejectUser({{ user.id }})">
-                                        <i class="bi bi-x"></i> 却下
-                                    </button>
-                                {% elif user.status == 'active' %}
-                                    <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#roleModal" onclick="setUserIdForRole({{ user.id }})">
-                                        <i class="bi bi-pencil"></i> 権限変更
-                                    </button>
-                                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="deactivateUser({{ user.id }})">
-                                        <i class="bi bi-slash-circle"></i> 利用停止
-                                    </button>
-                                {% elif user.status == 'inactive' %}
-                                    <button type="button" class="btn btn-sm btn-outline-success" onclick="reactivateUser({{ user.id }})">
-                                        <i class="bi bi-arrow-clockwise"></i> 復活
-                                    </button>
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        {% else %}
-            <div class="text-center py-5">
-                <i class="bi bi-inbox" style="font-size: 3rem; color: #ccc;"></i>
-                <p class="text-muted mt-3">ユーザーがいません</p>
-            </div>
-        {% endif %}
-    </div>
-</div>
+    <!-- Tabs Navigation -->
+    <ul class="nav nav-tabs border-bottom mb-4" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link {% if not status_filter or status_filter == 'candidate' %}active{% endif %}"
+                    id="candidate-tab" data-bs-toggle="tab" data-bs-target="#candidate-pane"
+                    type="button" role="tab">
+                <i class="fas fa-hourglass-half"></i> 候補
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link {% if status_filter == 'confirmed' %}active{% endif %}"
+                    id="confirmed-tab" data-bs-toggle="tab" data-bs-target="#confirmed-pane"
+                    type="button" role="tab">
+                <i class="fas fa-check-circle"></i> 確認済
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link {% if status_filter == 'rejected' %}active{% endif %}"
+                    id="rejected-tab" data-bs-toggle="tab" data-bs-target="#rejected-pane"
+                    type="button" role="tab">
+                <i class="fas fa-times-circle"></i> 却下
+            </button>
+        </li>
+    </ul>
 
-<!-- Role Change Modal -->
-<div class="modal fade" id="roleModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">権限を変更</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <form id="roleForm">
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label for="roleSelect" class="form-label">新しい権限</label>
-                        <select class="form-select" id="roleSelect" required>
-                            <option value="">選択してください</option>
-                            <option value="user">ユーザー</option>
-                            <option value="admin">管理者</option>
-                        </select>
-                    </div>
+    <!-- Tab Content -->
+    <div class="tab-content">
+        <!-- Candidate Tab -->
+        <div class="tab-pane fade {% if not status_filter or status_filter == 'candidate' %}show active{% endif %}"
+             id="candidate-pane" role="tabpanel">
+            <div class="card shadow-sm border-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="ps-4">入力名称</th>
+                                <th>正規名称</th>
+                                <th>入力規格</th>
+                                <th>正規規格</th>
+                                <th>信頼度</th>
+                                <th class="pe-4">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if entries %}
+                                {% for entry in entries %}
+                                {% if not status_filter or status_filter == 'candidate' %}
+                                <tr>
+                                    <td class="ps-4">
+                                        <strong>{{ entry.input_name }}</strong>
+                                    </td>
+                                    <td>{{ entry.canonical_name or '-' }}</td>
+                                    <td>
+                                        <small class="text-muted">{{ entry.input_spec or '-' }}</small>
+                                    </td>
+                                    <td>
+                                        <small class="text-muted">{{ entry.canonical_spec or '-' }}</small>
+                                    </td>
+                                    <td>
+                                        <div style="width: 100px;">
+                                            <div class="progress" style="height: 20px;">
+                                                <div class="progress-bar {% if entry.confidence >= 0.75 %}bg-success{% elif entry.confidence >= 0.50 %}bg-warning{% else %}bg-danger{% endif %}"
+                                                     role="progressbar"
+                                                     style="width: {{ (entry.confidence * 100) | round(0) }}%"
+                                                     aria-valuenow="{{ (entryconfidence * 100) | round(0) }}" aria-valuemin="0" aria-valuemax="100">
+                                                    <small>{{ (entry.confidence * 100) | round(0) }}%</small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="pe-4">
+                                        <button type="button" class="btn btn-sm btn-success"
+                                                onclick="confirmEntry({{ entry.id }}, '{{ entry.input_name }}')">
+                                            <i class="fas fa-check"></i> 確認
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-danger"
+                                                onclick="rejectEntry({{ entry.id }}, '{{ entry.input_name }}')">
+                                            <i class="fas fa-times"></i> 却下
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endif %}
+                                {% endfor %}
+                            {% endif %}
+                        </tbody>
+                    </table>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
-                    <button type="submit" class="btn btn-primary">変更</button>
+                {% if not entries or not entries|selectattr('status', 'equalto', 'candidate')|list %}
+                <div class="text-center py-5">
+                    <i class="fas fa-inbox fa-3x mb-3" style="opacity: 0.3;"></i>
+                    <p class="text-muted">候補がありません</p>
                 </div>
-            </form>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Confirmed Tab -->
+        <div class="tab-pane fade {% if status_filter == 'confirmed' %}show active{% endif %}"
+             id="confirmed-pane" role="tabpanel">
+            <div class="card shadow-sm border-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="ps-4">入力名称</th>
+                                <th>正規名称</th>
+                                <th>入力規格</th>
+                                <th>正規規格</th>
+                                <th class="pe-4">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for entry in entries %}
+                            {% if entry.status == 'confirmed' %}
+                            <tr>
+                                <td class="ps-4">{{ entry.input_name }}</td>
+                                <td><strong>{{ entry.canonical_name }}</strong></td>
+                                <td><small class="text-muted">{{ entryinput_spec or '-' }}</small></td>
+                                <td><small class="text-muted">{{ entry.canonical_spec or '-' }}</small></td>
+                                <td class="pe-4">
+                                    <button type="button" class="btn btn-sm btn-outline-danger"
+                                            onclick="removeEntry({{ entry.id }}, '{{ entry.input_name }}')">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endif %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="text-center py-5">
+                    <i class="fas fa-inbox fa-3x mb-3" style="opacity: 0.3;"></i>
+                    <p class="text-muted">確認済みの項目がありません</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Rejected Tab -->
+        <div class="tab-pane fade {% if status_filter == 'rejected' %}show active{% endif %}"
+             id="rejected-pane" role="tabpanel">
+            <div class="card shadow-sm border-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="ps-4">入力名称</th>
+                                <th>正規名称</th>
+                                <th>入力規格</th>
+                                <th>正規規格</th>
+                                <th class="pe-4">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for entry in entries %}
+                            {% if entry.status == 'rejected' %}
+                            <tr>
+                                <td class="ps-4">{{ entry.input_name }}</td>
+                                <td><strong>{{ entry.canonical_name }}</strong></td>
+                                <td><small class="text-muted">{{ entryinput_spec or '-' }}</small></td>
+                                <td><small class="text-muted">{{ entrycanonical_spec or '-' }}</small></td>
+                                <td class="pe-4">
+                                    <button type="button" class="btn btn-sm btn-outline-danger"
+                                            onclick="removeEntry({{ entry.id }}, '{{ entryinput_name }}')">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endif %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="text-center py-5">
+                    <i class="fas fa-inbox fa-3x mb-3" style="opacity: 0.3;"></i>
+                    <p class="text-muted">却下された項目がありません</p>
+                </div>
+            </div>
         </div>
     </div>
 </div>
 
+<!-- Toast Container -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1050;">
+    <div id="notificationToast" class="toast" role="alert">
+        <div class="toast-header">
+            <strong class="me-auto" id="toastTitle">通知</strong>
+            <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+        </div>
+        <div class="toast-body" id="toastMessage"></div>
+    </div>
+</div>
+
+<style>
+    .card {
+        border-radius: 0.5rem;
+    }
+
+    .table-hover tbody tr:hover {
+        background-color: rgba(0, 123, 255, 0.04);
+    }
+
+    .progress {
+        background-color: #e9ecef;
+    }
+
+    .progress-bar {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+</style>
+
 <script>
-let currentUserId = null;
-const roleModal = new bootstrap.Modal(document.getElementById('roleModal'));
+    const toastElement = document.getElementById('notificationToast');
+    const toast = new bootstrap.Toast(toastElement, { delay: 4000 });
 
-function setUserIdForRole(userId) {
-    currentUserId = userId;
-}
+    function showNotification(title, message, type = 'info') {
+        document.getElementById('throastTitcond';
+        document.getElementById('toastMessage').textContent = message;
 
-document.getElementById('roleForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const newRole = document.getElementById('roleSelect').value;
+        toastElement.classList.remove('bg-success', 'bg-danger', 'bg-warning', 'bg-info', 'text-white');
+        const header = toastElement.querySelector('.toast-header');
+        header.classList.remove('text-white', 'text-dark');
 
-    try {
-        const response = await fetch(`/admin/users/${currentUserId}/role`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ role: newRole })
-        });
-
-        if (response.ok) {
-            showAlert('権限を変更しました', 'success');
-            roleModal.hide();
-            setTimeout(() => location.reload(), 1000);
+        if (type === 'success') {
+            toastElement.classList.add('bg-success', 'text-white');
+            header.classList.add('text-white');
+        } else if (type === 'error') {
+            toastElement.classList.add('bg-danger', 'text-white');
+            header.classList.add('text-white');
+        } else if (type === 'warning') {
+            toastElement.classList.add('bg-warning');
+            headerclassList.add('text-dark');
         } else {
-            showAlert('権限の変更に失敗しました', 'danger');
+            toastElementclassListadd('bg-info', 'text-white');
+            header.classListadd('text-white');
         }
-    } catch (error) {
-        showAlert('エラーが発生しました', 'danger');
-        console.error(error);
+
+        toast.show();
     }
-});
 
-async function approveUser(userId) {
-    if (confirmAction('このユーザーを承認しますか？')) {
-        try {
-            const response = await fetch(`/admin/users/${userId}/approve`, {
-                method: 'POST'
-            });
-
-            if (response.ok) {
-                showAlert('ユーザーを承認しました', 'success');
-                setTimeout(() => location.reload(), 1000);
-            } else {
-                showAlert('承認に失敗しました', 'danger');
-            }
-        } catch (error) {
-            showAlert('エラーが発生しました', 'danger');
-            console.error(error);
+    function confirmEntry(entryId, entryName) {
+        if (confirm(`「${entryName}」を確認済みにしますか？`)) {
+            fetch(`/admin/learning/${entryId}/confirm`, { method: 'POST' })
+                .then(r => rjson())
+                .then(data => {
+                    if (data.success) {
+                        showNotification('成功', '項目を確認済みにしました', 'success');
+                        setTimeout(() => location.reload(), 1500);
+                    } else {
+                        showNotification('エラー', data.message || 'エラーが発生しました', 'error');
+                    }
+                })
+                .catch(err => showNotification('エラー', err.message, 'error'));
         }
     }
-}
 
-async function rejectUser(userId) {
-    if (confirmAction('このユーザーを却下しますか？')) {
-        try {
-            const response = await fetch(`/admin/users/${userId}/reject`, {
-                method: 'POST'
-            });
-
-            if (response.ok) {
-                showAlert('ユーザーを却下しました', 'success');
-                setTimeout(() => location.reload(), 1000);
-            } else {
-                showAlert('却下に失敗しました', 'danger');
-            }
-        } catch (error) {
-            showAlert('エラーが発生しました', 'danger');
-            console.error(error);
+    function rejectEntry(entryId, entryName) {
+        if (confirm(`「${entryName}」を却下しますか？`)) {
+            fetch(`/admin/learning/${entryId}/reject`, { method: 'POST' })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        showNotification('成功', '項目を却下しました', 'success');
+                        setTimeout(() => location.reload(), 1500);
+                    } else {
+                        showNotification('エラー', data.message || 'エラーが発生しました', 'error');
+                    }
+                })
+                .catch(err => showNotification('エラー', err.message, 'error'));
         }
     }
-}
 
-async function deactivateUser(userId) {
-    if (confirmAction('このユーザーを利用停止にしますか？')) {
-        try {
-            const response = await fetch(`/admin/users/${userId}/deactivate`, {
-                method: 'POST'
-            });
-
-            if (response.ok) {
-                showAlert('ユーザーを利用停止にしました', 'success');
-                setTimeout(() => location.reload(), 1000);
-            } else {
-                showAlert('利用停止に失敗しました', 'danger');
-            }
-        } catch (error) {
-            showAlert('エラーが発生しました', 'danger');
-            console.error(error);
+    function removeEntry(entryId, entryName) {
+        if (confirm(`「${entryName}」を削除しますか？`)) {
+            fetch(`/admin/learning/${entryId}`, { method: 'DELETE' })
+                .then(r => rjson())
+                .then(data => {
+                    if (data.success) {
+                        showNotification('成功', '項目を削除しました', 'success');
+                        setTimeout(() => location.reload(), 1500);
+                    } else {
+                        showNotification('エラー', data.message || 'エラーが発生しました', 'error');
+                    }
+                })
+                .catch(err => showNotification('エラー', err.message, 'error'));
         }
     }
-}
-
-async function reactivateUser(userId) {
-    if (confirmAction('このユーザーを復活させますか？')) {
-        try {
-            const response = await fetch(`/admin/users/${userId}/reactivate`, {
-                method: 'POST'
-            });
-
-            if (response.ok) {
-                showAlert('ユーザーを復活させました', 'success');
-                setTimeout(() => location.reload(), 1000);
-            } else {
-                showAlert('復活に失敗しました', 'danger');
-            }
-        } catch (error) {
-            showAlert('エラーが発生しました', 'danger');
-            console.error(error);
-        }
-    }
-}
 </script>
 {% endblock %}
