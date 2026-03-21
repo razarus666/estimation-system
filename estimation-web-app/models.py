@@ -43,12 +43,18 @@ def init_db():
         name TEXT NOT NULL,
         description TEXT,
         client_name TEXT,
+        location TEXT,
         created_by INTEGER NOT NULL,
         created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
         updated_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
         status TEXT NOT NULL DEFAULT 'active',
         FOREIGN KEY (created_by) REFERENCES users(id)
     )""")
+    # Migration: add location column if missing from existing DB
+    try:
+        c.execute("ALTER TABLE projects ADD COLUMN location TEXT")
+    except Exception:
+        pass
 
     # === アップロードファイル ===
     c.execute("""CREATE TABLE IF NOT EXISTS project_files (

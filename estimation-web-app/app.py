@@ -571,9 +571,10 @@ def create_project():
     """Create new project"""
     if request.method == 'POST':
         try:
-            name = request.form.get('name', '').strip()
+            name = request.form.get('project_name', '').strip()
             description = request.form.get('description', '').strip()
             client_name = request.form.get('client_name', '').strip()
+            location = request.form.get('location', '').strip()
 
             if not name:
                 return render_template('project_new.html', error='プロジェクト名は必須です'), 400
@@ -582,9 +583,9 @@ def create_project():
             cursor = db.cursor()
 
             cursor.execute(
-                '''INSERT INTO projects (name, description, client_name, created_by, created_at, updated_at, status)
-                   VALUES (?, ?, ?, ?, ?, ?, ?)''',
-                (name, description, client_name, current_user.id, datetime.utcnow(), datetime.utcnow(), 'draft')
+                '''INSERT INTO projects (name, description, client_name, location, created_by, created_at, updated_at, status)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)''',
+                (name, description, client_name, location, current_user.id, datetime.utcnow(), datetime.utcnow(), 'draft')
             )
             db.commit()
 
