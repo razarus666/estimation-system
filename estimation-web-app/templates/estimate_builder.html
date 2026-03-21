@@ -816,148 +816,433 @@
       section.className = 'section-group';
       section.dataset.category = category;
 
-      const header = document.createElement('div');
-      header.className = 'section-header';
-      header.innerHTML = `<h3>${category}</h3><div class="section-subtotal">小計: <span class="amount">¥0</span></div>`;
-      header.addEventListener('click', () => this.toggleSection(section));
+      let html = `
+        <div class="section-header" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'none' ? 'block' : 'none'">
+          <h3>${this.escapeHtml(category)}</h3>
+          <div class="section-subtotal">小計: <span class="amount" data-category="${category}">¥0</span></div>
+        </div>
+        <div class="section-body">
+          <table class="section-table">
+            <thead>
+              <tr>
+                <th style="width: 40px;">行</th>
+                <th>名称</th>
+                <th>規格</th>
+                <th>施工条件</th>
+                <th style="width: 80px;">単位</th>
+                <th style="width: 100px;">数量</th>
+                <th style="width: 120px;">材料単価</th>
+                <th style="width: 120px;">材料金額</th>
+                <th style="width: 80px;">歩掛</th>
+                <th style="width: 100px;">労務費</th>
+                <th style="width: 80px;">削除</th>
+              </tr>
+            </thead>
+            <tbody>
+      `;
 
-      const body = document.createElement('div');
-      body.className = 'section-body';
-      const table = this.createSectionTable(details);
-      body.appendChild(table);
-
-      section.appendChild(header);
-      section.appendChild(body);
-      return section;
-    }
-
-    createSectionTable(details) {
-      const table = document.createElement('table');
-      table.className = 'section-table';
-
-      const thead = table.createTHead();
-      const headerRow = thead.insertRow();
-      ['#', '品名', '摘要', '数量', '単位', '単価', '金額'].forEach(label => {
-        const th = document.createElement('th');
-        th.textContent = label;
-        headerRow.appendChild(th);
-      });
-
-      const tbody = table.createTBody();
       details.forEach((detail, index) => {
-        const row = tbody.insertRow();
-        row.className = index % 2 === 1 ? 'alt-row' : '';
-        row.innerHTML = `
-          <td class="row-number">${index + 1}</td>
-          <td class="material-name">${detail.field_name || ''}</td>
-          <td>${detail.remarks || ''}</td>
-          <td class="quantity-cell"><input type="number" class="editable-cell quantity" value="${detail.quantity || 0}" /></td>
-          <td>${detail.unit || ''}</td>
-          <td class="price-cell"><input type="number" class="editable-cell price" value="${detail.unit_price || 0}" /></td>
-          <td class="amount-cell"><span class="amount">${this.formatCurrency(detail.quantity * detail.unit_price)}</span></td>
+        const confidenceClass = this.getConfidenceClass(detail.confidence || 0);
+        const confidenceDot = `<span class="confidence-indicator confidence-${confidenceClass}"></span>`;
+
+        html += `
+          <tr class="${index % 2 === 1 ? 'alt-row' : ''}" data-row-id="${detail.id}">
+            <td class="row-number draggable">⋮ ${detail.row_no || index + 1}</td>
+            <td class="material-name">
+              ${confidenceDot}
+              <span class="editable-cell" contenteditable="true" data-field="material_name">${this.escapeHtml(detail.material_name || '')}</span>
+            </td>
+            <td>
+              <span class="editable-cell" contenteditable="true" data-field="spec">${this.escapeHtml(detail.spec || '')}</span>
+            </td>
+            <td>
+              <span class="editable-cell" contenteditable="true" data-field="construction_method">${this.escapeHtml(detail.construction_method || '')}</span>
+            </td>
+            <td>
+              <span class="editable-cell" contenteditable="true" data-field="unit">${this.escapeHtml(detail.unit || '')}</span>
+            </td>
+            <td class="quantity-cell">
+              <input type="number" class="editable-cell numeric-input" data-field="quantity" value="${detail.quantity || 0}" step="0.01" />
+            </td>
+            <td class="price-cell">
+              <input type="number" class="editable-cell numeric-input" data-field="composite_unit_price" value="${detail.composite_unit_price || 0}" step="0.01" />
+            </td>
+            <td class="amount-cell" data-amount="${detail.id}">¥0</td>
+            <td class="price-cell">
+              <input type="number" class="editable-cell numeric-input" data-field="productivity" value="${detail.productivity || 0}" step="0.01" />
+            </td>
+            <td class="amount-cell" data-labor="${detail.id}">¥0</td>
+            <td>
+              <div class="row-actions">
+                <button class="row-delete-btn" onclick="estimateBuilder.deleteRow(this)">削除</button>
+              </div>
+            </td>
+          </tr>
         `;
       });
 
-      return table;
+      html += `
+            </tbody>
+          </table>
+          <div class="section-footer">
+            <button class="btn btn-secondary" onclick="estimateBuilder.addRowToSection('${category}')">
+              <span class="icon">+</span> 行追加
+            </button>
+            <button class="btn btn-secondary" onclick="estimateBuilder.addSubtotalRow('${category}')">
+              <span class="icon">+</span> 小計追加
+            </button>
+            <button class="btn btn-secondary" onclick="estimateBuilder.addNoteRow('${category}')">
+              <span class="icon">+</span> 備考追加
+            </button>
+          </div>
+        </div>
+      `;
+
+      section.innerHTML = html;
+      return section;
     }
 
-    toggleSection(section) {
-      section.classList.toggle('collapsed');
+    getConfidenceClass(confidence) {
+      if (confidence >= 0.8) return 'green';
+      if (confidence >= 0.5) return 'yellow';
+      return 'red';
     }
 
     attachEventListeners() {
-      document.getElementById('add-free-row-btn')?.addEventListener('click', () => this.addFreeRow());
-      document.getElementById('add-section-btn')?.addEventListener('click', () => this.addSection());
-      document.getElementById('save-btn')?.addEventListener('click', () => this.save());
-      document.getElementById('save-template-btn')?.addEventListener('click', () => this.saveTemplate());
-      document.getElementById('export-excel-btn')?.addEventListener('click', () => this.exportExcel());
-      document.getElementById('print-btn')?.addEventListener('click', () => window.print());
-
-      // Fee calculation listeners
-      ['general_admin_percent', 'statutory_welfare_percent', 'consumption_tax_percent'].forEach(id => {
-        document.getElementById(id)?.addEventListener('change', () => this.calculateTotals());
-      });
-
-      // Detail change listeners
-      document.querySelectorAll('.editable-cell').forEach(cell => {
-        cell.addEventListener('change', () => this.calculateTotals());
-      });
-    }
-
-    addFreeRow() {
-      alert('自由行追加機能は開発中です');
-    }
-
-    addSection() {
-      alert('セクション追加機能は開発中です');
-    }
-
-    calculateTotals() {
-      let totalMaterials = 0, totalLabor = 0, totalExpenses = 0;
-
-      document.querySelectorAll('.section-group').forEach(section => {
-        const table = section.querySelector('table');
-        if (table) {
-          let sectionTotal = 0;
-          table.querySelectorAll('tbody tr').forEach(row => {
-            const quantity = parseFloat(row.querySelector('.quantity')?.value || 0);
-            const price = parseFloat(row.querySelector('.price')?.value || 0);
-            const amount = quantity * price;
-            sectionTotal += amount;
-            row.querySelector('.amount').textContent = this.formatCurrency(amount);
-          });
-          section.querySelector('.amount').textContent = this.formatCurrency(sectionTotal);
-          totalMaterials += sectionTotal;
+      // Numeric input changes
+      document.addEventListener('change', (e) => {
+        if (e.target.classList.contains('numeric-input')) {
+          this.calculateTotals();
         }
       });
 
+      // Input events for real-time calculation
+      document.addEventListener('input', (e) => {
+        if (e.target.classList.contains('numeric-input')) {
+          this.calculateRowAmount(e.target);
+        }
+      });
+
+      // Fee percentage changes
+      document.getElementById('general_admin_percent').addEventListener('change', () => this.calculateTotals());
+      document.getElementById('statutory_welfare_percent').addEventListener('change', () => this.calculateTotals());
+      document.getElementById('consumption_tax_percent').addEventListener('change', () => this.calculateTotals());
+
+      // Button events
+      document.getElementById('save-btn').addEventListener('click', () => this.save());
+      document.getElementById('save-template-btn').addEventListener('click', () => this.saveTemplate());
+      document.getElementById('export-excel-btn').addEventListener('click', () => this.exportExcel());
+      document.getElementById('print-btn').addEventListener('click', () => window.print());
+      document.getElementById('add-free-row-btn').addEventListener('click', () => this.addFreeRow());
+      document.getElementById('add-section-btn').addEventListener('click', () => this.addSection());
+    }
+
+    calculateRowAmount(input) {
+      const row = input.closest('tr');
+      if (!row) return;
+
+      const quantityInput = row.querySelector('[data-field="quantity"]');
+      const priceInput = row.querySelector('[data-field="composite_unit_price"]');
+      const amountCell = row.querySelector('[data-amount]');
+      const productivityInput = row.querySelector('[data-field="productivity"]');
+      const laborCell = row.querySelector('[data-labor]');
+
+      if (quantityInput && priceInput && amountCell) {
+        const quantity = parseFloat(quantityInput.value) || 0;
+        const price = parseFloat(priceInput.value) || 0;
+        const amount = quantity * price;
+        amountCell.textContent = this.formatYen(amount);
+        amountCell.dataset.value = amount;
+      }
+
+      if (productivityInput && laborCell) {
+        const productivity = parseFloat(productivityInput.value) || 0;
+        const labor = productivity * this.laborUnitPrice;
+        laborCell.textContent = this.formatYen(labor);
+        laborCell.dataset.value = labor;
+      }
+    }
+
+    calculateTotals() {
+      let totalMaterials = 0;
+      let totalLabor = 0;
+
+      // Sum all amounts and labor costs
+      document.querySelectorAll('[data-amount]').forEach(cell => {
+        totalMaterials += parseFloat(cell.dataset.value) || 0;
+      });
+
+      document.querySelectorAll('[data-labor]').forEach(cell => {
+        totalLabor += parseFloat(cell.dataset.value) || 0;
+      });
+
+      const totalExpenses = 0; // Can be configured later
       const subtotal = totalMaterials + totalLabor + totalExpenses;
-      const generalAdminPercent = parseFloat(document.getElementById('general_admin_percent')?.value || 0);
-      const statutoryWelfarePercent = parseFloat(document.getElementById('statutory_welfare_percent')?.value || 0);
-      const consumptionTaxPercent = parseFloat(document.getElementById('consumption_tax_percent')?.value || 10);
+
+      // Calculate fees
+      const generalAdminPercent = parseFloat(document.getElementById('general_admin_percent').value) || 0;
+      const statutoryWelfarePercent = parseFloat(document.getElementById('statutory_welfare_percent').value) || 0;
+      const consumptionTaxPercent = parseFloat(document.getElementById('consumption_tax_percent').value) || 0;
 
       const generalAdminFee = subtotal * (generalAdminPercent / 100);
       const statutoryWelfareFee = totalLabor * (statutoryWelfarePercent / 100);
-      const subtotalWithFees = subtotal + generalAdminFee + statutoryWelfareFee;
-      const consumptionTax = subtotalWithFees * (consumptionTaxPercent / 100);
-      const grandTotal = subtotalWithFees + consumptionTax;
+      const afterFees = subtotal + generalAdminFee + statutoryWelfareFee;
+      const consumptionTax = afterFees * (consumptionTaxPercent / 100);
+      const grandTotal = afterFees + consumptionTax;
 
-      document.getElementById('total_materials').textContent = this.formatCurrency(totalMaterials);
-      document.getElementById('total_labor').textContent = this.formatCurrency(totalLabor);
-      document.getElementById('total_expenses').textContent = this.formatCurrency(totalExpenses);
-      document.getElementById('subtotal').textContent = this.formatCurrency(subtotal);
-      document.getElementById('general_admin_fee').textContent = this.formatCurrency(generalAdminFee);
-      document.getElementById('statutory_welfare_fee').textContent = this.formatCurrency(statutoryWelfareFee);
-      document.getElementById('consumption_tax').textContent = this.formatCurrency(consumptionTax);
-      document.getElementById('grand_total').textContent = this.formatCurrency(grandTotal);
+      // Update summary
+      document.getElementById('total_materials').textContent = this.formatYen(totalMaterials);
+      document.getElementById('total_labor').textContent = this.formatYen(totalLabor);
+      document.getElementById('total_expenses').textContent = this.formatYen(totalExpenses);
+      document.getElementById('subtotal').textContent = this.formatYen(subtotal);
+      document.getElementById('general_admin_fee').textContent = this.formatYen(generalAdminFee);
+      document.getElementById('statutory_welfare_fee').textContent = this.formatYen(statutoryWelfareFee);
+      document.getElementById('consumption_tax').textContent = this.formatYen(consumptionTax);
+      document.getElementById('grand_total').textContent = this.formatYen(grandTotal);
+
+      // Update section subtotals
+      this.updateSectionSubtotals();
     }
 
-    formatCurrency(amount) {
-      return '¥' + Math.round(amount).toLocaleString('ja-JP');
+    updateSectionSubtotals() {
+      document.querySelectorAll('.section-group').forEach(section => {
+        const category = section.dataset.category;
+        const rows = section.querySelectorAll('tbody tr');
+        let categoryTotal = 0;
+
+        rows.forEach(row => {
+          const amountCell = row.querySelector('[data-amount]');
+          if (amountCell) {
+            categoryTotal += parseFloat(amountCell.dataset.value) || 0;
+          }
+        });
+
+        const subtotalSpan = document.querySelector(`[data-category="${category}"]`);
+        if (subtotalSpan) {
+          subtotalSpan.textContent = this.formatYen(categoryTotal);
+        }
+      });
     }
 
-    save() {
-      alert('保存機能は開発中です');
+    formatYen(value) {
+      return new Intl.NumberFormat('ja-JP', {
+        style: 'currency',
+        currency: 'JPY',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0
+      }).format(value);
     }
 
-    saveTemplate() {
-      alert('テンプレート保存機能は開発中です');
+    addRowToSection(category) {
+      const section = document.querySelector(`[data-category="${category}"] tbody`);
+      if (!section) return;
+
+      const newRow = document.createElement('tr');
+      newRow.innerHTML = `
+        <td class="row-number draggable">⋮ ${section.children.length + 1}</td>
+        <td class="material-name">
+          <span class="confidence-indicator confidence-red"></span>
+          <span class="editable-cell" contenteditable="true" data-field="material_name"></span>
+        </td>
+        <td><span class="editable-cell" contenteditable="true" data-field="spec"></span></td>
+        <td><span class="editable-cell" contenteditable="true" data-field="construction_method"></span></td>
+        <td><span class="editable-cell" contenteditable="true" data-field="unit"></span></td>
+        <td class="quantity-cell"><input type="number" class="editable-cell numeric-input" data-field="quantity" value="0" step="0.01" /></td>
+        <td class="price-cell"><input type="number" class="editable-cell numeric-input" data-field="composite_unit_price" value="0" step="0.01" /></td>
+        <td class="amount-cell" data-amount="new-${Date.now()}">¥0</td>
+        <td class="price-cell"><input type="number" class="editable-cell numeric-input" data-field="productivity" value="0" step="0.01" /></td>
+        <td class="amount-cell" data-labor="new-${Date.now()}">¥0</td>
+        <td>
+          <div class="row-actions">
+            <button class="row-delete-btn" onclick="estimateBuilder.deleteRow(this)">削除</button>
+          </div>
+        </td>
+      `;
+      section.appendChild(newRow);
+    }
+
+    addSubtotalRow(category) {
+      const section = document.querySelector(`[data-category="${category}"] tbody`);
+      if (!section) return;
+
+      const newRow = document.createElement('tr');
+      newRow.style.background = '#f0f0f0';
+      newRow.style.fontWeight = '600';
+      newRow.innerHTML = `
+        <td colspan="7" style="text-align: right; padding-right: 20px;">小計</td>
+        <td class="amount-cell" style="font-weight: 600;">¥0</td>
+        <td colspan="2"></td>
+      `;
+      section.appendChild(newRow);
+    }
+
+    addNoteRow(category) {
+      const section = document.querySelector(`[data-category="${category}"] tbody`);
+      if (!section) return;
+
+      const newRow = document.createElement('tr');
+      newRow.innerHTML = `
+        <td colspan="11">
+          <span class="editable-cell" contenteditable="true" data-field="note" placeholder="備考を入力..."></span>
+        </td>
+      `;
+      section.appendChild(newRow);
+    }
+
+    addFreeRow() {
+      const container = document.getElementById('details-container');
+      if (!container.querySelector('[data-category="自由行"]')) {
+        const section = document.createElement('div');
+        section.className = 'section-group';
+        section.dataset.category = '自由行';
+        section.innerHTML = `
+          <div class="section-header">
+            <h3>自由行</h3>
+            <div class="section-subtotal">小計: <span class="amount" data-category="自由行">¥0</span></div>
+          </div>
+          <div class="section-body">
+            <table class="section-table">
+              <thead>
+                <tr>
+                  <th style="width: 40px;">行</th>
+                  <th>名称</th>
+                  <th>規格</th>
+                  <th>施工条件</th>
+                  <th style="width: 80px;">単位</th>
+                  <th style="width: 100px;">数量</th>
+                  <th style="width: 120px;">材料単価</th>
+                  <th style="width: 120px;">材料金額</th>
+                  <th style="width: 80px;">歩掛</th>
+                  <th style="width: 100px;">労務費</th>
+                  <th style="width: 80px;">削除</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+            <div class="section-footer">
+              <button class="btn btn-secondary" onclick="estimateBuilder.addRowToSection('自由行')">
+                <span class="icon">+</span> 行追加
+              </button>
+            </div>
+          </div>
+        `;
+        container.appendChild(section);
+      }
+      this.addRowToSection('自由行');
+    }
+
+    addSection() {
+      const newCategory = prompt('新しいセクション名を入力してください:');
+      if (!newCategory) return;
+
+      const container = document.getElementById('details-container');
+      const section = this.createSectionHTML(newCategory, []);
+      container.appendChild(section);
+    }
+
+    deleteRow(btn) {
+      if (confirm('この行を削除しますか？')) {
+        btn.closest('tr').remove();
+        this.calculateTotals();
+      }
+    }
+
+    async save() {
+      const data = this.collectData();
+
+      try {
+        const response = await fetch(`/projects/${this.projectId}/estimate-builder/save`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(data)
+        });
+
+        if (response.ok) {
+          alert('見積書が保存されました');
+        } else {
+          alert('保存に失敗しました');
+        }
+      } catch (error) {
+        console.error('Save error:', error);
+        alert('保存中にエラーが発生しました');
+      }
+    }
+
+    async saveTemplate() {
+      const templateName = prompt('テンプレート名を入力してください:');
+      if (!templateName) return;
+
+      const data = this.collectData();
+      data.template_name = templateName;
+
+      try {
+        const response = await fetch(`/projects/${this.projectId}/estimate-builder/save-template`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(data)
+        });
+
+        if (response.ok) {
+          alert('テンプレートが保存されました');
+        } else {
+          alert('テンプレート保存に失敗しました');
+        }
+      } catch (error) {
+        console.error('Template save error:', error);
+        alert('テンプレート保存中にエラーが発生しました');
+      }
     }
 
     exportExcel() {
-      alert('Excel出力機能は開発中です');
+      window.location.href = `/projects/${this.projectId}/export-excel`;
+    }
+
+    collectData() {
+      const rows = [];
+      let rowNo = 1;
+
+      document.querySelectorAll('.section-group').forEach(section => {
+        const category = section.dataset.category;
+        section.querySelectorAll('tbody tr').forEach(row => {
+          const fields = {};
+          row.querySelectorAll('[data-field]').forEach(cell => {
+            const field = cell.dataset.field;
+            fields[field] = cell.textContent || cell.value;
+          });
+
+          rows.push({
+            row_no: rowNo++,
+            field_category: category,
+            ...fields
+          });
+        });
+      });
+
+      return {
+        estimate_number: document.getElementById('estimate_number').value,
+        estimate_date: document.getElementById('estimate_date').value,
+        estimate_expiry: document.getElementById('estimate_expiry').value,
+        construction_location: document.getElementById('construction_location').value,
+        estimate_conditions: document.getElementById('estimate_conditions').value,
+        general_admin_percent: parseFloat(document.getElementById('general_admin_percent').value) || 0,
+        statutory_welfare_percent: parseFloat(document.getElementById('statutory_welfare_percent').value) || 0,
+        consumption_tax_percent: parseFloat(document.getElementById('consumption_tax_percent').value) || 0,
+        details: rows
+      };
+    }
+
+    escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
     }
   }
 
   // Initialize on page load
-  document.addEventListener('DOMContentLoaded', () => {
-    new EstimateBuilder();
-  });
-
-  // Initialize immediately if DOM is ready
-  if (document.readyState !== 'loading') {
-    new EstimateBuilder();
-  }
+  const estimateBuilder = new EstimateBuilder();
 </script>
-
 {% endblock %}
