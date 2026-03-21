@@ -4007,7 +4007,7 @@ def debug_project(project_id):
 
 # ==================== VERSION & ERROR HANDLERS ====================
 
-APP_VERSION = 'test-excel-v5'
+APP_VERSION = 'test-upload-v6'
 
 @app.route('/debug/version')
 def debug_version():
