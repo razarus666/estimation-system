@@ -4074,6 +4074,107 @@ def debug_test_excel_parser():
         }), 500
 
 
+@app.route('/debug/test-upload')
+@login_required
+def debug_test_upload():
+    """Test full upload flow: create test Excel, upload to project, parse materials"""
+    try:
+        import io, tempfile
+        from openpyxl import Workbook
+
+        # Find or create a test project
+        db = get_db()
+        cursor = db.cursor()
+        cursor.execute('SELECT id FROM projects WHERE created_by = ? ORDER BY id DESC LIMIT 1', (current_user.id,))
+        project = cursor.fetchone()
+        if not project:
+            return jsonify({'status': 'error', 'error': 'No projects found. Create one first.'}), 400
+        project_id = project[0]
+
+        # Create test Excel with full-width space headers
+        wb = Workbook()
+        ws = wb.active
+        ws.title = '内訳'
+        ws['A1'] = '名\u3000\u3000称'
+        ws['B1'] = '規\u3000\u3000格'
+        ws['C1'] = '数量'
+        ws['D1'] = '単位'
+        ws['E1'] = '単\u3000価'
+        ws['F1'] = '金\u3000額'
+        materials_data = [
+            ('高圧受電盤', 'VCB付 7.2kV', 1, '面', 2500000, 2500000),
+            ('LBS盤', '7.2kV 200A', 2, '面', 800000, 1600000),
+            ('変圧器', '500kVA 6.6kV/210V', 1, '台', 1200000, 1200000),
+            ('分電盤', 'MCCB 3P 225A', 3, '面', 350000, 1050000),
+            ('ケーブル', 'CV 38sq-3C', 200, 'm', 1500, 300000),
+        ]
+        for i, (name, spec, qty, unit, price, amount) in enumerate(materials_data, 2):
+            ws[f'A{i}'] = name
+            ws[f'B{i}'] = spec
+            ws[f'C{i}'] = qty
+            ws[f'D{i}'] = unit
+            ws[f'E{i}'] = price
+            ws[f'F{i}'] = amount
+
+        # Save to temp and parse
+        with tempfile.NamedTemporaryFile(suffix='.xlsx', delete=False) as f:
+            wb.save(f.name)
+            temp_path = f.name
+
+        # Parse materials
+        parsed = parse_material_list_excel(temp_path)
+
+        # Save file to project directory
+        project_upload_dir = os.path.join(app.config['UPLOAD_FOLDER'], str(project_id))
+        os.makedirs(project_upload_dir, exist_ok=True)
+        import shutil
+        unique_name = f"test_{uuid.uuid4().hex[:8]}.xlsx"
+        dest_path = os.path.join(project_upload_dir, unique_name)
+        shutil.copy2(temp_path, dest_path)
+        file_size = os.path.getsize(dest_path)
+
+        # Insert file record
+        cursor.execute(
+            '''INSERT INTO project_files (project_id, filename, original_name, file_type, file_size, file_path, uploaded_by, uploaded_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)''',
+            (project_id, unique_name, 'test_material_list.xlsx', 'material_list', file_size, dest_path, current_user.id, datetime.utcnow())
+        )
+        file_id = cursor.lastrowid
+
+        # Insert materials
+        material_count = 0
+        for item in parsed:
+            cursor.execute(
+                '''INSERT INTO materials (project_id, file_id, name, specification, quantity, unit, unit_price, amount, created_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+                (project_id, file_id, item.get('name', ''), item.get('specification', ''),
+                 item.get('quantity', 0), item.get('unit', ''), item.get('unit_price', 0),
+                 item.get('amount', 0), datetime.utcnow())
+            )
+            material_count += 1
+
+        db.commit()
+        os.unlink(temp_path)
+
+        return jsonify({
+            'status': 'ok',
+            'version': APP_VERSION,
+            'project_id': project_id,
+            'file_id': file_id,
+            'material_count': material_count,
+            'first_3_materials': parsed[:3],
+            'message': f'Test upload successful: {material_count} materials parsed and saved'
+        }), 200
+    except Exception as e:
+        import traceback
+        return jsonify({
+            'status': 'error',
+            'version': APP_VERSION,
+            'error': str(e),
+            'traceback': traceback.format_exc()
+        }), 500
+
+
 @app.errorhandler(404)
 def not_found(error):
     """404 error handler"""
