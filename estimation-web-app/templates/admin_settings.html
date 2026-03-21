@@ -1,246 +1,268 @@
 {% extends "base.html" %}
 
-{% block title %}設定 - 電気設備積算・見積システム{% endblock %}
-
 {% block content %}
-<!-- Breadcrumb -->
-<nav aria-label="breadcrumb" class="mb-4">
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a href="/dashboard">ダッシュボード</a></li>
-        <li class="breadcrumb-item active">設定</li>
-    </ol>
-</nav>
-
-<div class="row mb-4">
-    <div class="col-md-8">
-        <h1 class="h2">
-            <i class="bi bi-sliders"></i> システム設定
-        </h1>
-    </div>
-</div>
-
-<div class="row">
-    <div class="col-md-8">
-        <form id="settingsForm">
-            <!-- Company Info Section -->
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h5 class="mb-0">
-                        <i class="bi bi-building"></i> 自社情報
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <div class="mb-3">
-                        <label for="companyName" class="form-label required">自社名</label>
-                        <input type="text" class="form-control" id="companyName" name="company_name" value="{{ settings.company_name or '' }}" required>
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="companyAddress" class="form-label">住所</label>
-                        <input type="text" class="form-control" id="companyAddress" name="company_address" value="{{ settings.company_address or '' }}">
-                    </div>
-
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="companyPhone" class="form-label">TEL</label>
-                            <input type="tel" class="form-control" id="companyPhone" name="company_phone" value="{{ settings.company_phone or '' }}">
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="companyFax" class="form-label">FAX</label>
-                            <input type="tel" class="form-control" id="companyFax" name="company_fax" value="{{ settings.company_fax or '' }}">
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Estimate Defaults Section -->
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h5 class="mb-0">
-                        <i class="bi bi-calculator"></i> 見積デフォルト値
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <div class="mb-3">
-                        <label for="laborUnitPrice" class="form-label required">工事単価(デフォルト)</label>
-                        <div class="input-group">
-                            <span class="input-group-text">¥</span>
-                            <input type="number" class="form-control" id="laborUnitPrice" name="labor_unit_price" value="{{ settings.labor_unit_price or 0 }}" step="0.01" required>
-                            <span class="input-group-text">円/人日</span>
-                        </div>
-                        <small class="form-text text-muted">新規案件の労務単価初期値</small>
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="estimateTitle" class="form-label">見積タイトル</label>
-                        <input type="text" class="form-control" id="estimateTitle" name="estimate_title" value="{{ settings.estimate_title or '' }}" placeholder="見積書">
-                        <small class="form-text text-muted">PDF/Excel出力時に使用されます</small>
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="estimateTerms" class="form-label">見積条件</label>
-                        <textarea class="form-control" id="estimateTerms" name="estimate_terms" rows="3">{{ settings.estimate_terms or '' }}</textarea>
-                        <small class="form-text text-muted">PDF/Excel出力時に含まれます</small>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Matching Parameters Section -->
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h5 class="mb-0">
-                        <i class="bi bi-sliders"></i> 照合パラメータ
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="autoMatchThreshold" class="form-label required">自動採用しきい値</label>
-                            <div class="input-group">
-                                <input type="number" class="form-control" id="autoMatchThreshold" name="auto_match_threshold" value="{{ settings.auto_match_threshold or 0.75 }}" min="0" max="1" step="0.05" required>
-                                <span class="input-group-text">%</span>
-                            </div>
-                            <small class="form-text text-muted">
-                                この信頼度以上なら自動採用(0.0-1.0)
-                            </small>
-                        </div>
-
-                        <div class="col-md-6 mb-3">
-                            <label for="fuzzyMatchThreshold" class="form-label required">あいまい照合しきい値</label>
-                            <div class="input-group">
-                                <input type="number" class="form-control" id="fuzzyMatchThreshold" name="fuzzy_match_threshold" value="{{ settings.fuzzy_match_threshold or 0.50 }}" min="0" max="1" step="0.05" required>
-                                <span class="input-group-text">%</span>
-                            </div>
-                            <small class="form-text text-muted">
-                                この信頼度以上なら候補として表示(0.0-1.0)
-                            </small>
-                        </div>
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="maxCandidates" class="form-label required">最大候補数</label>
-                        <input type="number" class="form-control" id="maxCandidates" name="max_candidates" value="{{ settings.max_candidates or 5 }}" min="1" max="20" required>
-                        <small class="form-text text-muted">
-                            照合時に表示される最大候補数
-                        </small>
-                    </div>
-
-                    <div class="alert alert-info" role="alert">
-                        <i class="bi bi-info-circle"></i>
-                        <strong>パラメータ説明:</strong>
-                        <ul class="mb-0 mt-2">
-                            <li><strong>自動採用しきい値:</strong> この値以上の信頼度なら自動採用します</li>
-                            <li><strong>あいまい照合しきい値:</strong> この値以上なら候補として表示します</li>
-                            <li><strong>最大候補数:</strong> 一つの入力に対して表示する最大候補数</li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-
-            <div class="d-flex gap-2">
-                <button type="submit" class="btn btn-primary btn-lg">
-                    <i class="bi bi-check-circle"></i> 保存
-                    <span class="loading-spinner ms-2"></span>
-                </button>
-                <button type="reset" class="btn btn-outline-secondary btn-lg">
-                    <i class="bi bi-arrow-clockwise"></i> リセット
-                </button>
-            </div>
-        </form>
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <h1 class="h3 mb-0">システム設定</h1>
+        </div>
     </div>
 
-    <div class="col-md-4">
-        <div class="card bg-light">
-            <div class="card-body">
-                <h5 class="card-title mb-3">
-                    <i class="bi bi-lightbulb"></i> ヒント
-                </h5>
-                <ul class="small">
-                    <li class="mb-2">
-                        <strong>自社情報:</strong> 見積書に記載される会社情報です
-                    </li>
-                    <li class="mb-2">
-                        <strong>工事単価:</strong> 労務費の計算に使用されます
-                    </li>
-                    <li class="mb-2">
-                        <strong>見積条件:</strong> 出力される見積書に記載されます
-                    </li>
-                    <li class="mb-2">
-                        <strong>照合パラメータ:</strong> マスタとの自動照合の精度を調整します
-                    </li>
-                    <li>
-                        パラメータを変更したら、既存の案件の照合を再実行する必要があります
-                    </li>
-                </ul>
-            </div>
+    <div class="row">
+        <div class="col-lg-8">
+            <form id="settingsForm">
+                <!-- Company Info -->
+                <div class="card shadow-sm border-0 mb-4">
+                    <div class="card-header bg-white border-bottom">
+                        <h5 class="mb-0">
+                            <i class="fas fa-building"></i> 自社情報
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="company_name" class="form-label">会社名</label>
+                            <input type="text" class="form-control" id="company_name" name="company_name"
+                                   value="{{ settings.get('company_name', {}).get('value', '') if settings else '' }}" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="company_address" class="form-label">住所</label>
+                            <input type="text" class="form-control" id="company_address" name="company_address"
+                                   value="{{ settings.get('company_address', {}).get('value', '') if settings else '' }}">
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="company_tel" class="form-label">電話</label>
+                                <input type="tel" class="form-control" id="company_tel" name="company_tel"
+                                       value="{{ settings.get('company_tel', {}).get('value', '') if settings else '' }}">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="company_fax" class="form-label">FAX</label>
+                                <input type="tel" class="form-control" id="company_fax" name="company_fax"
+                                       value="{{ settings.get('company_fax', {}).get('value', '') if settings else '' }}">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Estimate Settings -->
+                <div class="card shadow-sm border-0 mb-4">
+                    <div class="card-header bg-white border-bottom">
+                        <h5 class="mb-0">
+                            <i class="fas fa-file-invoice"></i> 見積設定
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="labor_unit_price" class="form-label">労務単価</label>
+                            <div class="input-group">
+                                <span class="input-group-text">¥</span>
+                                <input type="number" class="form-control" id="labor_unit_price" name="labor_unit_price"
+                                       value="{{ settings.get('labor_unit_price', {}).get('value', 0) if settings else 0 }}"
+                                       step="0.01" min="0">
+                                <span class="input-group-text">円/人Ɨ�</span>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="estimate_title" class="form-label">見積書タイトル</label>
+                            <input type="text" class="form-control" id="estimate_title" name="estimate_title"
+                                   value="{{ settings.get('estimate_title', {}).get('value', '') if settings else '' }}"
+                                   placeholder="見積書">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="estimate_conditions" class="form-label">見積条件</label>
+                            <textarea class="form-control" id="estimate_conditions" name="estimate_conditions"
+                                      rows="4">{{ settings.get('estimate_conditions', {}).get('value', '') if settings else '' }}</textarea>
+                            <small class="text-muted">見積書に記載される条件</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Matching Parameters -->
+                <div class="card shadow-sm border-0 mb-4">
+                    <div class="card-header bg-white border-bottom">
+                        <h5 class="mb-0">
+                            <i class="fas fa-sliders-h"></i> マッチングパラメーキ
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="auto_adopt_threshold" class="form-label">自動採用しきい値</label>
+                                <div class="input-group">
+                                    <input type="number" class="form-control" id="auto_adopt_threshold"
+                                           name="auto_adopt_threshold"
+                                           value="{{ settings.get("auto_adopt_threshold', {}).get('value', 0.75) if settings else 0.75 }}"
+                                           min="0" max="1" step="0.01">
+                                    <span class="input-group-text">%</span>
+                                </div>
+                                <small class="text-muted">0.0 - 1.0</small>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label for="fuzzy_threshold" class="form-label">あいまい照合しきい値</label>
+                                <div class="input-group">
+                                    <input type="number" class="form-control" id="fuzzy_threshold"
+                                           name="fuzzy_threshold"
+                                           value="{{ settings.get('fuzzy_threshold', {}).get('value', 0.50) if settings else 0.50 }}"
+                                           min="0" max="1" step="0.01">
+                                    <span class="input-group-text">%</span>
+                                </div>
+                                <small class="text-muted">0.0 - 1.0</small>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="max_candidates" class="form-label">最大候補数</label>
+                            <input type="number" class="form-control" id="max_candidates" name="max_candidates"
+                                   value="{{ settings.get('max_candidates', {}).get('value', 5) if settings else 5 }}"
+                                   min="1" max="20">
+                        </div>
+
+                        <div class="alert aplert-info small" role="alert">
+                            <strong>パラメータについて:</strong>
+                            <ul class="mb-0 mt-2">
+                                <li><strong>自動採用:</strong> この値以上の信頼度なら自動採用</li>
+                                <li><strong>あいまい照合:</strong> この値以上なら候補として表示</li>
+                                <li><strong>最大候補数:</strong> 一つの入力に対して表示する最大候補数</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        <i class="fas fa-save"></i> 保存
+                    </button>
+                    <button type="reset" class="btn btn-outline-secondary btn-lg">
+                        <i class="fas fa-redo"></i> リセット
+                    </button>
+                </div>
+            </form>
         </div>
 
-        <div class="card mt-3">
-            <div class="card-body">
-                <h6 class="card-title">
-                    <i class="bi bi-info-circle"></i> システム情報
-                </h6>
-                <dl class="small mb-0">
-                    <dt>バージョン</dt>
-                    <dd>v1.0</dd>
-                    <dt>最終更新</dt>
-                    <dd>{{ last_updated[:10] if last_updated else '未更新' }}</dd>
-                </dl>
+        <!-- Sidebar Info -->
+        <div class="col-lg-4">
+            <div class="card shadow-sm border-0 mb-3">
+                <div class="card-body">
+                    <h6 class="card-title mb-3">
+                        <i class="fas fa-lightbulb"></i> 設定について
+                    </h6>
+                    <ul class="small text-muted">
+                        <li class="mb-2">
+                            <strong>自社情報:</strong><br>
+                            見積書に記載される会社情報です
+                        </li>
+                        <li class="mb-2">
+                            <strong>見積設定:</strong><br>
+                            見積書生成時に使用されま8����Ɠ��ƒ6�73�&�"�"#��7G&��s�898:�8:8;�8+���7G&��s��'#�89�8+�8+�8�8�z�X�^xZ~Y�8�{+�[�n8).���i[N8~8す
+                        </li>
+                    </ul>
+                </div>
             </div>
         </div>
     </div>
 </div>
+
+<!-- Toast Notification -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1050;">
+    <div id="notificationToast" class="toast" role="alert">
+        <div class="toast-header">
+            <strong class="me-auto" id="toastTitle">通知</strong>
+            <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+        </div>
+        <div class="toast-body" id="toastMessage"></div>
+    </div>
+</div>
+
+<style>
+    .card {
+        border-radius: 0.5rem;
+    }
+
+    .form-control, .form-select {
+        border-color: #e0e0e0;
+    }
+
+    .form-control:focus, .form-select:focus {
+        border-color: #0066cc;
+        box-shadow: 0 0 0 0.2rem rgba(0, 102, 204, 0.25);
+    }
+
+    .input-group-text {
+        background-color: #f8f9fa;
+        border-color: #e0e0e0;
+    }
+
+    .alert-info {
+        background-color: #e7f3ff;
+        border-color: #b3d9ff;
+        color: #004085;
+    }
+</style>
 
 <script>
-document.getElementById('settingsForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
+    const toastElement = document.getElementById('notificationToast');
+    const toast = new bootstrap.Toast(toastElement, { delay: 4000 });
 
-    const formData = new FormData(e.target);
-    const data = Object.fromEntries(formData);
+    function showNotification(title, message, type = 'info)) {
+        document.getElementById('toastTitle').textContent = title;
+        document.getElementById('toastMessage').textContent = message;
 
-    // Convert numeric values
-    data.labor_unit_price = parseFloat(data.labor_unit_price);
-    data.auto_match_threshold = parseFloat(data.auto_match_threshold);
-    data.fuzzy_match_threshold = parseFloat(data.fuzzy_match_threshold);
-    data.max_candidates = parseInt(data.max_candidates);
+        toastElement.classList.remove('bg-success', 'bg-danger', 'bg-warning', 'bg-info', 'text-white');
+        const header = toastElement.querySelector('.toast-header');
+        header.classList.remove('text-white', 'text-dark');
 
-    const submitBtn = e.target.querySelector('button[type="submit"]');
-    showLoading(submitBtn.parentElement);
-
-    try {
-        const response = await fetch('/admin/settings', {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
-        });
-
-        if (response.ok) {
-            showAlert('設定を保存しました', 'success');
-        } else {
-            showAlert('保存に失敗しました', 'danger');
+        if (type === 'success') {
+            toastElement.classList.add('bg-success', 'text-white');
+            header.classList.add('text-white');
+        } else if (type === 'error') {
+            toastElement.classList.add('bg-danger', 'text-white');
+            header.classList.add('text-white');
+        } else if (type === 'warning') {
+            toastElement.classList.add('bg-warning');
+            header.classList.add('text-dark');
         }
-    } catch (error) {
-        showAlert('エラーが発生しました', 'danger');
-        console.error(error);
-    } finally {
-        hideLoading(submitBtn.parentElement);
+
+        toast.show();
     }
-});
 
-// Validate thresholds
-function validateThreshold(input) {
-    let value = parseFloat(input.value);
-    if (value < 0) value = 0;
-    if (value > 1) value = 1;
-    input.value = value;
-}
+    document.getElementById('settingsForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
 
-document.getElementById('autoMatchThreshold').addEventListener('change', function() {
-    validateThreshold(this);
-});
+        const formData = new FormData(e.target);
+        const data = {};
 
-document.getElementById('fuzzyMatchThreshold').addEventListener('change', function() {
-    validateThreshold(this);
-});
+        // Build settings object
+        for (let [key, value] of formData.entries()) {
+            if (value) {
+                data[key] = {
+                    value: isNaN(value) ? value : parseFloat(value)
+                };
+            }
+        }
+
+        const submitBtn = e.target.querySelector('button[type="submit"]');
+        submitBtn.disabled = true;
+
+        try {
+            const response = await fetch('/admin/settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            if (response.ok) {
+                showNotification('成功', '設定を保存しま89~8�r�w7V66W72r����V�6R��6��t��F�f�6F���~8*�8:�8;�r�~K��Zَ8�ZKiY~8~8プた', 'error');
+            }
+        } catch (error) {
+            showNotification('エラー', error.message, 'error');
+        } finally {
+            submitBtn.disabled = false;
+        }
+    });
 </script>
 {% endblock %}
