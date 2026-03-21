@@ -261,7 +261,7 @@
                     >
                       <i class="bi bi-download"></i> DL
                     </a>
-                    {% if file.original_name and file.original_name.lower().endswith('.pdf') %}
+                    {% if file.original_name and file.original_name[-4:]|lower == '.pdf' %}
                     <a
                       href="{{ url_for('blueprint_viewer', project_id=project.id, file_id=file.id) }}"
                       class="btn btn-sm btn-primary"

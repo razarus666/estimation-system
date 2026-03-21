@@ -3839,6 +3839,22 @@ def ai_estimate(project_id):
         return jsonify({'error': f'AI見積エラー: {str(e)}'}), 500
 
 
+# ==================== DEBUG ====================
+
+@app.route('/debug/errors')
+@login_required
+def debug_errors():
+    """Show recent errors as JSON for debugging"""
+    try:
+        db = get_db()
+        cursor = db.cursor()
+        cursor.execute('SELECT error_type, error_message, url, created_at FROM error_log ORDER BY created_at DESC LIMIT 20')
+        errors = [{'type': r[0], 'message': r[1], 'url': r[2], 'time': r[3]} for r in cursor.fetchall()]
+        return jsonify({'errors': errors}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 # ==================== ERROR HANDLERS ====================
 
 @app.errorhandler(404)
