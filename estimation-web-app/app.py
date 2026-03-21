@@ -1245,14 +1245,20 @@ def upload_file(project_id):
         }), 200
 
     except Exception as e:
+        error_msg = str(e)
+        # Parsing errors (Excel/CSV format issues) are user errors (400)
+        # Server errors (disk, DB) are 500
+        is_parse_error = any(kw in error_msg for kw in ['解析エラー', 'ヘッダー', 'File is not', 'not a zip'])
+        status_code = 400 if is_parse_error else 500
+
         add_error_log(
             current_user.id,
             'UPLOAD_FILE_ERROR',
-            str(e),
-            str(e),
+            error_msg,
+            error_msg,
             request.url
         )
-        return jsonify({'error': f'ファイルアップロードエラー: {str(e)}'}), 500
+        return jsonify({'error': f'ファイルアップロードエラー: {error_msg}'}), status_code
 
 
 @app.route('/projects/<int:project_id>/run-matching', methods=['POST'])

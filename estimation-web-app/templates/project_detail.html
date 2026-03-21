@@ -621,7 +621,8 @@ function uploadFiles(files) {
       setTimeout(() => location.reload(), 500);
     })
     .catch(error => {
-      showToast('error', `${file.name} のアップロードに失敗しました`);
+      const msg = error.message || 'アップロードに失敗しました';
+      showToast('error', `${file.name}: ${msg}`);
       console.error(error);
     })
     .finally(() => {
