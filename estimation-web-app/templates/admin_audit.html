@@ -2,8 +2,162 @@
 
 {% block content %}
 <div class="container-fluid py-4">
-        
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <h1 class="h3 mb-0">監査ログ</h1>
+        </div>
+    </div>
 
-    
+    <!-- Filter Bar -->
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label small text-muted">ユーザー</label>
+                    <select class="form-select form-select-sm" id="filterUser" onchange="applyFilters()">
+                        <option value="">すべて</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small text-muted">アクション</label>
+                    <select class="form-select form-select-sm" id="filterAction" onchange="applyFilters()">
+                        <option value="">すべて</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small text-muted">レベル</label>
+                    <select class="form-select form-select-sm" id="filterLevel" onchange="applyFilters()">
+                        <option value="">すべて</option>
+                        <option value="INFO">INFO</option>
+                        <option value="WARNING">WARNING</option>
+                        <option value="ERROR">ERROR</option>
+                    </select>
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button class="btn btn-sm btn-outline-secondary w-100" onclick="resetFilters()">
+                        <i class="fas fa-redo"></i> リセット
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 
-    
+    <!-- Logs Table -->
+    <div class="card shadow-sm border-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-4">日時</th>
+                        <th>ユーザー</th>
+                        <th>アクション</th>
+                        <th>対象</th>
+                        <th>レベル</th>
+                        <th class="pe-4">詳細</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if logs %}
+                        {% for log in logs %}
+                        <tr>
+                            <td class="ps-4">
+                                <small class="text-muted">{{ log.timestamp[:19] }}</small>
+                            </td>
+                            <td>{{ log.user_name }}</td>
+                            <td>{{ log.action }}</td>
+                            <td>
+                                <small>{{ log.target or '-' }}</small>
+                            </td>
+                            <td>
+                                {% if log.level == 'INFO' %}
+                                    <span class="badge bg-info">INFO</span>
+                                {% elif log.level == 'WARNING' %}
+                                    <span class="badge bg-warning text-dark">WARNING</span>
+                                {% elif log.level == 'ERROR' %}
+                                    <span class="badge bg-danger">ERROR</span>
+                                {% endif %}
+                            </td>
+                            <td class="pe-4">
+                                <small class="text-muted">{{ log.details or '-' }}</small>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="6" class="text-center py-5 text-muted">
+                                <i class="fas fa-inbox fa-3x mb-3" style="opacity: 0.3;"></i>
+                                <p>ログがありません</p>
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Pagination -->
+    {% if total_pages > 1 %}
+    <nav aria-label="Page navigation" class="mt-4">
+        <ul class="pagination justify-content-center">
+            {% if page > 1 %}
+                <li class="page-item">
+                    <a class="page-link" href="/admin/audit?page=1">最初</a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="/admin/audit?page={{ page - 1 }}">前へ</a>
+                </li>
+            {% endif %}
+
+            <li class="page-item active">
+                <span class="page-link">{{ page }} / {{ total_pages }}</span>
+            </li>
+
+            {% if page < total_pages %}
+                <li class="page-item">
+                    <a class="page-link" href="/admin/audit?page={{ page + 1 }}">次へ</a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="/admin/audit?page={{ total_pages }}">最後</a>
+                </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+</div>
+
+<style>
+    .card {
+        border-radius: 0.5rem;
+    }
+
+    .table-hover tbody tr:hover {
+        background-color: rgba(0, 123, 255, 0.04);
+    }
+
+    .form-select-sm {
+        height: 2.25rem;
+    }
+</style>
+
+<script>
+    function applyFilters() {
+        const user = document.getElementById('filterUser').value;
+        const action = document.getElementById('filterAction').value;
+        const level = document.getElementById('filterLevel').value;
+
+        let url = '/admin/audit?page=1';
+        if (user) url += `&user=${encodeURIComponent(user)}`;
+        if (action) url += `&action=${encodeURIComponent(action)}`;
+        if (level) url += `&level=${encodeURIComponent(level)}`;
+
+        window.location.href = url;
+    }
+
+    function resetFilters() {
+        document.getElementById('filterUser').value = '';
+        document.getElementById('filterAction').value = '';
+        document.getElementById('filterLevel').value = '';
+        window.location.href = '/admin/audit?page=1';
+    }
+</script>
+{% endblock %}

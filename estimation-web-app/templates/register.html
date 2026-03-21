@@ -1,4 +1,499 @@
 <!DOCTYPE html>
 <html lang="ja">
-  
-(
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>新規登録 - 電気設備積算システム</title>
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --color-navy: #1a1f36;
+            --color-white: #ffffff;
+            --color-bg-light: #f8f9fa;
+            --color-text-dark: #1a1f36;
+            --color-text-muted: #6c757d;
+            --color-primary-blue: #3b82f6;
+            --color-primary-blue-dark: #1e40af;
+            --color-border: #e5e7eb;
+            --color-success: #10b981;
+            --color-danger: #ef4444;
+            --color-glass-bg: rgba(255, 255, 255, 0.7);
+            --font-family: 'Inter', 'Noto Sans JP', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            --radius-lg: 16px;
+            --shadow-lg: 0 20px 25px rgba(0, 0, 0, 0.1), 0 10px 10px rgba(0, 0, 0, 0.04);
+            --transition-normal: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            font-family: var(--font-family);
+        }
+
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: var(--color-text-dark);
+        }
+
+        body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Background gradient overlay */
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 600"><defs><filter id="noise"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="4" seed="1" /></filter></defs><rect width="1200" height="600" fill="%23667eea" filter="url(%23noise)" opacity="0.05"/></svg>');
+            pointer-events: none;
+        }
+
+        /* Register container */
+        .register-container {
+            position: relative;
+            z-index: 10;
+            width: 100%;
+            max-width: 420px;
+            padding: 24px;
+            animation: slideInUp 0.6s ease-out;
+        }
+
+        @keyframes slideInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Glass-morphism card */
+        .register-card {
+            background: var(--color-glass-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: var(--radius-lg);
+            padding: 48px 40px;
+            box-shadow: var(--shadow-lg);
+        }
+
+        /* Logo section */
+        .register-logo {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .logo-icon {
+            font-size: 44px;
+            color: var(--color-primary-blue);
+            margin-bottom: 12px;
+            display: block;
+        }
+
+        .logo-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--color-text-dark);
+            margin-bottom: 4px;
+            letter-spacing: -0.5px;
+        }
+
+        .logo-subtitle {
+            font-size: 13px;
+            color: var(--color-text-muted);
+        }
+
+        /* Success message */
+        .success-message {
+            background: rgba(16, 185, 129, 0.08);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            border-radius: 8px;
+            padding: 16px 14px;
+            margin-bottom: 24px;
+            text-align: center;
+            display: none;
+        }
+
+        .success-message.show {
+            display: block;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        .success-icon {
+            font-size: 28px;
+            color: var(--color-success);
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .success-title {
+            font-weight: 600;
+            color: var(--color-text-dark);
+            font-size: 15px;
+            margin-bottom: 4px;
+        }
+
+        .success-text {
+            color: var(--color-success);
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        /* Error messages */
+        .error-message {
+            background: rgba(239, 68, 68, 0.08);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: var(--color-danger);
+            border-radius: 8px;
+            padding: 12px 14px;
+            font-size: 13px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .error-message i {
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+
+        /* Form section */
+        .register-form {
+            margin-bottom: 24px;
+        }
+
+        .register-form.hidden {
+            display: none;
+        }
+
+        .floating-label-group {
+            position: relative;
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            font-weight: 600;
+            font-size: 13px;
+            color: var(--color-text-dark);
+            margin-bottom: 8px;
+            display: block;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .form-label .required {
+            color: var(--color-danger);
+        }
+
+        .form-control {
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            border-radius: 8px;
+            padding: 12px 14px;
+            font-size: 14px;
+            font-family: var(--font-family);
+            transition: all var(--transition-normal);
+            background: rgba(255, 255, 255, 0.9);
+            color: var(--color-text-dark);
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .form-control:focus {
+            border-color: var(--color-primary-blue);
+            background: white;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+            outline: none;
+        }
+
+        .form-control::placeholder {
+            color: var(--color-text-muted);
+        }
+
+        .form-control.error {
+            border-color: var(--color-danger);
+        }
+
+        .form-control.error:focus {
+            box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+        }
+
+        .field-error {
+            color: var(--color-danger);
+            font-size: 12px;
+            margin-top: 4px;
+            display: none;
+        }
+
+        .field-error.show {
+            display: block;
+        }
+
+        /* Register button */
+        .btn-register {
+            width: 100%;
+            background: linear-gradient(135deg, var(--color-success) 0%, #059669 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 12px 18px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all var(--transition-normal);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .btn-register:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(16, 185, 129, 0.3);
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+            color: white;
+            text-decoration: none;
+        }
+
+        .btn-register:active {
+            transform: translateY(0);
+        }
+
+        .btn-register:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+
+        /* Footer links */
+        .register-footer {
+            text-align: center;
+            padding-top: 20px;
+            border-top: 1px solid rgba(0, 0, 0, 0.08);
+        }
+
+        .register-footer p {
+            font-size: 13px;
+            color: var(--color-text-muted);
+            margin-bottom: 8px;
+        }
+
+        .register-footer a {
+            color: var(--color-primary-blue);
+            text-decoration: none;
+            font-weight: 600;
+            transition: color var(--transition-normal);
+        }
+
+        .register-footer a:hover {
+            color: var(--color-primary-blue-dark);
+        }
+
+        /* Spinner */
+        .spinner-border {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Responsive */
+        @media (max-width: 576px) {
+            .register-container {
+                max-width: 100%;
+            }
+
+            .register-card {
+                padding: 36px 24px;
+            }
+
+            .logo-title {
+                font-size: 20px;
+            }
+
+            .logo-icon {
+                font-size: 36px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="register-container">
+        <div class="register-card">
+            <!-- Logo Section -->
+            <div class="register-logo">
+                <span class="logo-icon">⚡</span>
+                <h1 class="logo-title">新規登録</h1>
+                <p class="logo-subtitle">電気設備積算システム</p>
+            </div>
+
+            <!-- Success Message -->
+            <div class="success-message" id="successMessage">
+                <span class="success-icon"><i class="bi bi-check-circle-fill"></i></span>
+                <div class="success-title">登録完了</div>
+                <div class="success-text">ご登録ありがとうございます。<br>管理者承認をお待ちください。</div>
+            </div>
+
+            <!-- Error Messages -->
+            {% if error %}
+            <div class="error-message">
+                <i class="bi bi-exclamation-circle-fill"></i>
+                <span>{{ error }}</span>
+            </div>
+            {% endif %}
+
+            <!-- Flash Messages -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                    <div class="error-message">
+                        <i class="bi bi-exclamation-triangle-fill"></i>
+                        <span>{{ message }}</span>
+                    </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <!-- Registration Form -->
+            <form method="POST" class="register-form" id="registerForm">
+                <div class="floating-label-group">
+                    <label class="form-label" for="full_name">
+                        氏名（本名）<span class="required">*</span>
+                    </label>
+                    <input type="text" class="form-control" id="full_name" name="full_name" placeholder="山田太郎" required>
+                    <div class="field-error" id="full_name_error"></div>
+                </div>
+
+                <div class="floating-label-group">
+                    <label class="form-label" for="email">
+                        メールアドレス<span class="required">*</span>
+                    </label>
+                    <input type="email" class="form-control" id="email" name="email" placeholder="example@company.com" required>
+                    <div class="field-error" id="email_error"></div>
+                </div>
+
+                <div class="floating-label-group">
+                    <label class="form-label" for="password">
+                        パスワード<span class="required">*</span>
+                    </label>
+                    <input type="password" class="form-control" id="password" name="password" placeholder="••••••••" required>
+                    <div class="field-error" id="password_error"></div>
+                </div>
+
+                <div class="floating-label-group">
+                    <label class="form-label" for="password_confirm">
+                        パスワード確認<span class="required">*</span>
+                    </label>
+                    <input type="password" class="form-control" id="password_confirm" name="password_confirm" placeholder="••••••••" required>
+                    <div class="field-error" id="password_confirm_error"></div>
+                </div>
+
+                <button type="submit" class="btn-register" id="registerBtn">
+                    <i class="bi bi-person-plus"></i>
+                    <span>登録</span>
+                </button>
+            </form>
+
+            <!-- Footer Links -->
+            <div class="register-footer">
+                <p>既にアカウントをお持ちですか？</p>
+                <a href="{{ url_for('login') }}">ログインはこちら</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        const registerForm = document.getElementById('registerForm');
+        const registerBtn = document.getElementById('registerBtn');
+        const successMessage = document.getElementById('successMessage');
+
+        // Validate passwords match on input
+        const passwordField = document.getElementById('password');
+        const passwordConfirmField = document.getElementById('password_confirm');
+
+        passwordConfirmField.addEventListener('change', function() {
+            if (this.value !== passwordField.value) {
+                this.classList.add('error');
+                document.getElementById('password_confirm_error').textContent = 'パスワードが一致しません';
+                document.getElementById('password_confirm_error').classList.add('show');
+            } else {
+                this.classList.remove('error');
+                document.getElementById('password_confirm_error').classList.remove('show');
+            }
+        });
+
+        registerForm.addEventListener('submit', function(e) {
+            // Validate full_name is not empty
+            const fullName = document.getElementById('full_name').value.trim();
+            if (!fullName) {
+                e.preventDefault();
+                document.getElementById('full_name').classList.add('error');
+                document.getElementById('full_name_error').textContent = '氏名は必須です';
+                document.getElementById('full_name_error').classList.add('show');
+                return;
+            }
+
+            // Validate password match
+            const password = document.getElementById('password').value;
+            const passwordConfirm = document.getElementById('password_confirm').value;
+
+            if (password !== passwordConfirm) {
+                e.preventDefault();
+                document.getElementById('password_confirm').classList.add('error');
+                document.getElementById('password_confirm_error').textContent = 'パスワードが一致しません';
+                document.getElementById('password_confirm_error').classList.add('show');
+                return;
+            }
+
+            registerBtn.disabled = true;
+            registerBtn.innerHTML = '<span class="spinner-border"></span><span>登録中...</span>';
+        });
+
+        // Clear error on input
+        document.querySelectorAll('.form-control').forEach(field => {
+            field.addEventListener('input', function() {
+                if (this.classList.contains('error')) {
+                    this.classList.remove('error');
+                    const errorId = this.id + '_error';
+                    const errorEl = document.getElementById(errorId);
+                    if (errorEl) {
+                        errorEl.classList.remove('show');
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>

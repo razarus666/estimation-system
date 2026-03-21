@@ -1,4 +1,408 @@
 <!DOCTYPE html>
 <html lang="ja">
-  
-(
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>承認待ち - 電気設備積算システム</title>
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --color-navy: #1a1f36;
+            --color-white: #ffffff;
+            --color-bg-light: #f8f9fa;
+            --color-text-dark: #1a1f36;
+            --color-text-muted: #6c757d;
+            --color-primary-blue: #3b82f6;
+            --color-primary-blue-dark: #1e40af;
+            --color-border: #e5e7eb;
+            --color-warning: #f59e0b;
+            --color-glass-bg: rgba(255, 255, 255, 0.7);
+            --font-family: 'Inter', 'Noto Sans JP', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            --radius-lg: 16px;
+            --shadow-lg: 0 20px 25px rgba(0, 0, 0, 0.1), 0 10px 10px rgba(0, 0, 0, 0.04);
+            --transition-normal: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            font-family: var(--font-family);
+        }
+
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: var(--color-text-dark);
+        }
+
+        body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Background gradient overlay */
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 600"><defs><filter id="noise"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="4" seed="1" /></filter></defs><rect width="1200" height="600" fill="%23667eea" filter="url(%23noise)" opacity="0.05"/></svg>');
+            pointer-events: none;
+        }
+
+        /* Pending container */
+        .pending-container {
+            position: relative;
+            z-index: 10;
+            width: 100%;
+            max-width: 480px;
+            padding: 24px;
+            animation: slideInUp 0.6s ease-out;
+        }
+
+        @keyframes slideInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Glass-morphism card */
+        .pending-card {
+            background: var(--color-glass-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: var(--radius-lg);
+            padding: 48px 40px;
+            box-shadow: var(--shadow-lg);
+            text-align: center;
+        }
+
+        /* Status icon */
+        .status-icon {
+            margin-bottom: 24px;
+        }
+
+        .hourglass-icon {
+            font-size: 72px;
+            color: var(--color-warning);
+            display: inline-block;
+            animation: pulse 2s ease-in-out infinite;
+            margin-bottom: 12px;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(1.05);
+                opacity: 0.8;
+            }
+        }
+
+        /* Title and message */
+        .pending-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--color-text-dark);
+            margin-bottom: 12px;
+            letter-spacing: -0.5px;
+        }
+
+        .pending-message-box {
+            background: rgba(245, 158, 11, 0.08);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            border-radius: 12px;
+            padding: 20px 16px;
+            margin-bottom: 32px;
+        }
+
+        .pending-message-title {
+            font-weight: 600;
+            font-size: 15px;
+            color: var(--color-text-dark);
+            margin-bottom: 8px;
+        }
+
+        .pending-message-text {
+            font-size: 13px;
+            color: #92400e;
+            line-height: 1.6;
+        }
+
+        /* Info section */
+        .info-section {
+            background: linear-gradient(to right, #f8f9fa, #ffffff);
+            border: 1px solid var(--color-border);
+            border-radius: 12px;
+            padding: 20px 16px;
+            margin-bottom: 32px;
+            text-align: left;
+        }
+
+        .info-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .info-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .info-icon {
+            font-size: 18px;
+            color: var(--color-primary-blue);
+            margin-top: 2px;
+            flex-shrink: 0;
+        }
+
+        .info-content {
+            flex: 1;
+        }
+
+        .info-label {
+            font-weight: 600;
+            font-size: 13px;
+            color: var(--color-text-dark);
+            margin-bottom: 2px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .info-value {
+            font-size: 13px;
+            color: var(--color-text-muted);
+        }
+
+        /* Buttons */
+        .button-group {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 12px 16px;
+            border-radius: 8px;
+            border: none;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all var(--transition-normal);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            text-decoration: none;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--color-primary-blue) 0%, var(--color-primary-blue-dark) 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(59, 130, 246, 0.3);
+            color: white;
+            text-decoration: none;
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.3);
+            color: white;
+            text-decoration: none;
+        }
+
+        .btn-logout {
+            background: none;
+            color: var(--color-primary-blue);
+            border: none;
+            font-size: 13px;
+            padding: 0;
+            text-decoration: none;
+        }
+
+        .btn-logout:hover {
+            color: var(--color-primary-blue-dark);
+            text-decoration: underline;
+        }
+
+        /* Waiting animation dots */
+        .waiting-dots {
+            display: inline-block;
+            margin-left: 4px;
+        }
+
+        .dot {
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--color-warning);
+            margin: 0 3px;
+            animation: bounce 1.4s infinite;
+        }
+
+        .dot:nth-child(1) {
+            animation-delay: 0s;
+        }
+
+        .dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes bounce {
+            0%, 60%, 100% {
+                opacity: 0.7;
+                transform: translateY(0);
+            }
+            30% {
+                opacity: 1;
+                transform: translateY(-6px);
+            }
+        }
+
+        /* Footer */
+        .pending-footer {
+            padding-top: 20px;
+            border-top: 1px solid rgba(0, 0, 0, 0.08);
+            text-align: center;
+        }
+
+        .footer-text {
+            font-size: 12px;
+            color: var(--color-text-muted);
+            margin-bottom: 8px;
+        }
+
+        /* Responsive */
+        @media (max-width: 576px) {
+            .pending-container {
+                max-width: 100%;
+            }
+
+            .pending-card {
+                padding: 36px 24px;
+            }
+
+            .pending-title {
+                font-size: 20px;
+            }
+
+            .hourglass-icon {
+                font-size: 56px;
+            }
+
+            .button-group {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="pending-container">
+        <div class="pending-card">
+            <!-- Status Icon -->
+            <div class="status-icon">
+                <div class="hourglass-icon">⏳</div>
+            </div>
+
+            <!-- Title -->
+            <h1 class="pending-title">承認待ち中</h1>
+
+            <!-- Message Box -->
+            <div class="pending-message-box">
+                <div class="pending-message-title">アカウントは管理者の承認待ちです</div>
+                <div class="pending-message-text">
+                    ご登録ありがとうございます。<br>
+                    管理者がアカウントを確認し、有効化するまで暫くお待ちください。
+                </div>
+            </div>
+
+            <!-- Info Section -->
+            <div class="info-section">
+                <div class="info-item">
+                    <div class="info-icon"><i class="bi bi-info-circle"></i></div>
+                    <div class="info-content">
+                        <div class="info-label">待機中</div>
+                        <div class="info-value">
+                            管理者の承認
+                            <span class="waiting-dots">
+                                <span class="dot"></span>
+                                <span class="dot"></span>
+                                <span class="dot"></span>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                <div class="info-item">
+                    <div class="info-icon"><i class="bi bi-clock"></i></div>
+                    <div class="info-content">
+                        <div class="info-label">通常の処理時間</div>
+                        <div class="info-value">1～3営業日以内</div>
+                    </div>
+                </div>
+                <div class="info-item">
+                    <div class="info-icon"><i class="bi bi-envelope"></i></div>
+                    <div class="info-content">
+                        <div class="info-label">通知方法</div>
+                        <div class="info-value">登録時のメールアドレスに通知されます</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Buttons -->
+            <div class="button-group">
+                <a href="{{ url_for('logout') }}" class="btn btn-primary">
+                    <i class="bi bi-box-arrow-right"></i>
+                    <span>ログアウト</span>
+                </a>
+            </div>
+
+            <!-- Footer -->
+            <div class="pending-footer">
+                <div class="footer-text">ご質問がある場合は、管理者にお問い合わせください。</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

@@ -1,1 +1,258 @@
-6E¢éÝ
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container-fluid px-4 py-5">
+  <!-- Header -->
+  <div class="row align-items-center mb-5">
+    <div class="col">
+      <h1 class="h2 fw-bold text-primary mb-1">ダッシュボード</h1>
+      <p class="text-secondary mb-0">プロジェクト管理と見積状況の確認</p>
+    </div>
+    <div class="col-auto">
+      <a href="{{ url_for('create_project') }}" class="btn btn-primary btn-lg">
+        <i class="bi bi-plus-lg"></i> 新規案件作成
+      </a>
+    </div>
+  </div>
+
+  <!-- KPI Cards -->
+  <div class="row g-3 mb-5">
+    <!-- Total Projects -->
+    <div class="col-12 col-sm-6 col-lg-3">
+      <div class="card border-0 shadow-sm kpi-card" style="background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%);">
+        <div class="card-body">
+          <div class="d-flex align-items-center justify-content-between">
+            <div>
+              <p class="text-secondary mb-1 small">案件数</p>
+              <h3 class="h2 fw-bold mb-0" style="color: var(--primary);">{{ stats.total_projects }}</h3>
+            </div>
+            <div class="display-6" style="color: var(--primary); opacity: 0.3;">
+              <i class="bi bi-folder2"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- AI Auto Estimates -->
+    <div class="col-12 col-sm-6 col-lg-3">
+      <div class="card border-0 shadow-sm kpi-card" style="background: linear-gradient(135deg, #e8f5e9 0%, #f1f8e9 100%);">
+        <div class="card-body">
+          <div class="d-flex align-items-center justify-content-between">
+            <div>
+              <p class="text-secondary mb-1 small">AI自動見積件数</p>
+              <h3 class="h2 fw-bold mb-0" style="color: var(--success);">{{ stats.total_estimates }}</h3>
+            </div>
+            <div class="display-6" style="color: var(--success); opacity: 0.3;">
+              <i class="bi bi-lightbulb"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Needs Review -->
+    <div class="col-12 col-sm-6 col-lg-3">
+      <div class="card border-0 shadow-sm kpi-card" style="background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);">
+        <div class="card-body">
+          <div class="d-flex align-items-center justify-content-between">
+            <div>
+              <p class="text-secondary mb-1 small">要確認件数</p>
+              <h3 class="h2 fw-bold mb-0" style="color: var(--warning);">{{ stats.needs_review }}</h3>
+            </div>
+            <div class="display-6" style="color: var(--warning); opacity: 0.3;">
+              <i class="bi bi-exclamation-circle"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Error Count -->
+    <div class="col-12 col-sm-6 col-lg-3">
+      <div class="card border-0 shadow-sm kpi-card" style="background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%);">
+        <div class="card-body">
+          <div class="d-flex align-items-center justify-content-between">
+            <div>
+              <p class="text-secondary mb-1 small">エラー件数</p>
+              <h3 class="h2 fw-bold mb-0" style="color: var(--danger);">{{ stats.error_count }}</h3>
+            </div>
+            <div class="display-6" style="color: var(--danger); opacity: 0.3;">
+              <i class="bi bi-bug"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Second Row KPI Cards -->
+  <div class="row g-3 mb-5">
+    <!-- Total Amount -->
+    <div class="col-12 col-lg-6">
+      <div class="card border-0 shadow-sm kpi-card">
+        <div class="card-body">
+          <p class="text-secondary mb-2 small">合計見積金額</p>
+          <h2 class="h1 fw-bold mb-0" style="color: var(--primary);">
+            ¥{{ "{:,.0f}".format(stats.total_amount) }}
+          </h2>
+        </div>
+      </div>
+    </div>
+
+    <!-- Total Productivity -->
+    <div class="col-12 col-lg-6">
+      <div class="card border-0 shadow-sm kpi-card">
+        <div class="card-body">
+          <p class="text-secondary mb-2 small">合計歩掛</p>
+          <h2 class="h1 fw-bold mb-0" style="color: var(--primary);">
+            {{ "{:.2f}".format(stats.total_productivity) }}
+          </h2>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Projects Table -->
+  <div class="card border-0 shadow-sm mb-5">
+    <div class="card-header bg-white border-bottom px-4 py-3">
+      <div class="row align-items-center">
+        <div class="col">
+          <h5 class="mb-0 fw-bold">案件一覧</h5>
+        </div>
+        <div class="col-auto">
+          <div class="input-group input-group-sm" style="width: 250px;">
+            <span class="input-group-text bg-white border-end-0">
+              <i class="bi bi-search"></i>
+            </span>
+            <input
+              type="text"
+              class="form-control border-start-0"
+              id="searchInput"
+              placeholder="案件名または顧客名で検索..."
+              autocomplete="off"
+            >
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body p-0">
+      {% if projects %}
+      <div class="table-responsive">
+        <table class="table table-hover mb-0" id="projectsTable">
+          <thead class="bg-light">
+            <tr>
+              <th class="px-4 py-3" style="font-weight: 600; color: var(--text-secondary); font-size: 0.875rem;">案件名</th>
+              <th class="px-4 py-3" style="font-weight: 600; color: var(--text-secondary); font-size: 0.875rem;">顧客名</th>
+              <th class="px-4 py-3" style="font-weight: 600; color: var(--text-secondary); font-size: 0.875rem;">ステータス</th>
+              <th class="px-4 py-3" style="font-weight: 600; color: var(--text-secondary); font-size: 0.875rem;">作成日</th>
+              <th class="px-4 py-3 text-center" style="font-weight: 600; color: var(--text-secondary); font-size: 0.875rem;">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for project in projects %}
+            <tr class="align-middle project-row" data-project-name="{{ project.name }}" data-client-name="{{ project.client_name }}">
+              <td class="px-4 py-3">
+                <span class="fw-500">{{ project.name }}</span>
+              </td>
+              <td class="px-4 py-3">
+                <span class="text-secondary">{{ project.client_name or '-' }}</span>
+              </td>
+              <td class="px-4 py-3">
+                {% set status_colors = {
+                  'draft': ('#6b7280', 'グレー'),
+                  'active': ('#4f6ef7', '進行中'),
+                  'matched': ('#22c55e', '照合完了'),
+                  'estimated': ('#a855f7', '見積完了')
+                } %}
+                {% set status_info = status_colors.get(project.status, ('#6b7280', project.status)) %}
+                <span
+                  class="badge rounded-pill"
+                  style="background-color: {{ status_info[0] }}20; color: {{ status_info[0] }};"
+                >
+                  {{ status_info[1] }}
+                </span>
+              </td>
+              <td class="px-4 py-3">
+                <span class="text-secondary small">{{ project.created_at[:10] if project.created_at else '-' }}</span>
+              </td>
+              <td class="px-4 py-3 text-center">
+                <a
+                  href="{{ url_for('project_detail', project_id=project.id) }}"
+                  class="btn btn-sm btn-outline-primary"
+                >
+                  詳細
+                </a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="text-center py-5">
+        <div class="mb-3" style="font-size: 3rem; opacity: 0.3;">
+          <i class="bi bi-inbox"></i>
+        </div>
+        <h5 class="text-secondary mb-2">案件がまだ登録されていません</h5>
+        <p class="text-secondary small mb-3">新規案件を作成して、見積管理を始めましょう</p>
+        <a href="{{ url_for('create_project') }}" class="btn btn-primary">
+          <i class="bi bi-plus-lg"></i> 新規案件作成
+        </a>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<style>
+.kpi-card {
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
+}
+
+.table-hover tbody tr:hover {
+  background-color: #f9fafb;
+}
+
+#projectsTable tbody tr {
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.btn-outline-primary {
+  color: var(--primary);
+  border-color: var(--primary);
+  transition: all 0.2s;
+}
+.btn-outline-primary:hover {
+  background-color: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const searchInput = document.getElementById('searchInput');
+  const projectRows = document.querySelectorAll('.project-row');
+
+  searchInput.addEventListener('keyup', function(e) {
+    const searchTerm = e.target.value.toLowerCase().trim();
+
+    projectRows.forEach(row => {
+      const projectName = row.getAttribute('data-project-name').toLowerCase();
+      const clientName = row.getAttribute('data-client-name').toLowerCase();
+
+      if (projectName.includes(searchTerm) || clientName.includes(searchTerm)) {
+        row.style.display = '';
+      } else {
+        row.style.display = 'none';
+      }
+    });
+  });
+});
+</script>
+{% endblock %}

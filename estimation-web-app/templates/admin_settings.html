@@ -2,8 +2,273 @@
 
 {% block content %}
 <div class="container-fluid py-4">
-        
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <h1 class="h3 mb-0">システム設定</h1>
+        </div>
+    </div>
 
-    
+    <div class="row">
+        <div class="col-lg-8">
+            <form id="settingsForm">
+                <!-- Company Info -->
+                <div class="card shadow-sm border-0 mb-4">
+                    <div class="card-header bg-white border-bottom">
+                        <h5 class="mb-0">
+                            <i class="fas fa-building"></i> 自社情報
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="company_name" class="form-label">会社名</label>
+                            <input type="text" class="form-control" id="company_name" name="company_name"
+                                   value="{{ settings.get('company_name', {}).get('value', '') if settings else '' }}" required>
+                        </div>
 
-    
+                        <div class="mb-3">
+                            <label for="company_address" class="form-label">住所</label>
+                            <input type="text" class="form-control" id="company_address" name="company_address"
+                                   value="{{ settings.get('company_address', {}).get('value', '') if settings else '' }}">
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="company_tel" class="form-label">電話</label>
+                                <input type="tel" class="form-control" id="company_tel" name="company_tel"
+                                       value="{{ settings.get('company_tel', {}).get('value', '') if settings else '' }}">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="company_fax" class="form-label">FAX</label>
+                                <input type="tel" class="form-control" id="company_fax" name="company_fax"
+                                       value="{{ settings.get('company_fax', {}).get('value', '') if settings else '' }}">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Estimate Settings -->
+                <div class="card shadow-sm border-0 mb-4">
+                    <div class="card-header bg-white border-bottom">
+                        <h5 class="mb-0">
+                            <i class="fas fa-file-invoice"></i> 見積設定
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="labor_unit_price" class="form-label">労務単価</label>
+                            <div class="input-group">
+                                <span class="input-group-text">¥</span>
+                                <input type="number" class="form-control" id="labor_unit_price" name="labor_unit_price"
+                                       value="{{ settings.get('labor_unit_price', {}).get('value', 0) if settings else 0 }}"
+                                       step="0.01" min="0">
+                                <span class="input-group-text">円/人日</span>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="estimate_title" class="form-label">見積書タイトル</label>
+                            <input type="text" class="form-control" id="estimate_title" name="estimate_title"
+                                   value="{{ settings.get('estimate_title', {}).get('value', '') if settings else '' }}"
+                                   placeholder="見積書">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="estimate_conditions" class="form-label">見積条件</label>
+                            <textarea class="form-control" id="estimate_conditions" name="estimate_conditions"
+                                      rows="4">{{ settings.get('estimate_conditions', {}).get('value', '') if settings else '' }}</textarea>
+                            <small class="text-muted">見積書に記載される条件</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Matching Parameters -->
+                <div class="card shadow-sm border-0 mb-4">
+                    <div class="card-header bg-white border-bottom">
+                        <h5 class="mb-0">
+                            <i class="fas fa-sliders-h"></i> マッチングパラメータ
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="auto_adopt_threshold" class="form-label">自動採用しきい値</label>
+                                <div class="input-group">
+                                    <input type="number" class="form-control" id="auto_adopt_threshold"
+                                           name="auto_adopt_threshold"
+                                           value="{{ settings.get('auto_adopt_threshold', {}).get('value', 0.75) if settings else 0.75 }}"
+                                           min="0" max="1" step="0.01">
+                                    <span class="input-group-text">%</span>
+                                </div>
+                                <small class="text-muted">0.0 - 1.0</small>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label for="fuzzy_threshold" class="form-label">あいまい照合しきい値</label>
+                                <div class="input-group">
+                                    <input type="number" class="form-control" id="fuzzy_threshold"
+                                           name="fuzzy_threshold"
+                                           value="{{ settings.get('fuzzy_threshold', {}).get('value', 0.50) if settings else 0.50 }}"
+                                           min="0" max="1" step="0.01">
+                                    <span class="input-group-text">%</span>
+                                </div>
+                                <small class="text-muted">0.0 - 1.0</small>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="max_candidates" class="form-label">最大候補数</label>
+                            <input type="number" class="form-control" id="max_candidates" name="max_candidates"
+                                   value="{{ settings.get('max_candidates', {}).get('value', 5) if settings else 5 }}"
+                                   min="1" max="20">
+                        </div>
+
+                        <div class="alert alert-info small" role="alert">
+                            <strong>パラメータについて:</strong>
+                            <ul class="mb-0 mt-2">
+                                <li><strong>自動採用:</strong> この値以上の信頼度なら自動採用</li>
+                                <li><strong>あいまい照合:</strong> この値以上なら候補として表示</li>
+                                <li><strong>最大候補数:</strong> 一つの入力に対して表示する最大候補数</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        <i class="fas fa-save"></i> 保存
+                    </button>
+                    <button type="reset" class="btn btn-outline-secondary btn-lg">
+                        <i class="fas fa-redo"></i> リセット
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Sidebar Info -->
+        <div class="col-lg-4">
+            <div class="card shadow-sm border-0 mb-3">
+                <div class="card-body">
+                    <h6 class="card-title mb-3">
+                        <i class="fas fa-lightbulb"></i> 設定について
+                    </h6>
+                    <ul class="small text-muted">
+                        <li class="mb-2">
+                            <strong>自社情報:</strong><br>
+                            見積書に記載される会社情報です
+                        </li>
+                        <li class="mb-2">
+                            <strong>見積設定:</strong><br>
+                            見積書生成時に使用されます
+                        </li>
+                        <li class="mb-2">
+                            <strong>パラメータ:</strong><br>
+                            マスタとの自動照合の精度を調整します
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast Notification -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1050;">
+    <div id="notificationToast" class="toast" role="alert">
+        <div class="toast-header">
+            <strong class="me-auto" id="toastTitle">通知</strong>
+            <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+        </div>
+        <div class="toast-body" id="toastMessage"></div>
+    </div>
+</div>
+
+<style>
+    .card {
+        border-radius: 0.5rem;
+    }
+
+    .form-control, .form-select {
+        border-color: #e0e0e0;
+    }
+
+    .form-control:focus, .form-select:focus {
+        border-color: #0066cc;
+        box-shadow: 0 0 0 0.2rem rgba(0, 102, 204, 0.25);
+    }
+
+    .input-group-text {
+        background-color: #f8f9fa;
+        border-color: #e0e0e0;
+    }
+
+    .alert-info {
+        background-color: #e7f3ff;
+        border-color: #b3d9ff;
+        color: #004085;
+    }
+</style>
+
+<script>
+    const toastElement = document.getElementById('notificationToast');
+    const toast = new bootstrap.Toast(toastElement, { delay: 4000 });
+
+    function showNotification(title, message, type = 'info') {
+        document.getElementById('toastTitle').textContent = title;
+        document.getElementById('toastMessage').textContent = message;
+
+        toastElement.classList.remove('bg-success', 'bg-danger', 'bg-warning', 'bg-info', 'text-white');
+        const header = toastElement.querySelector('.toast-header');
+        header.classList.remove('text-white', 'text-dark');
+
+        if (type === 'success') {
+            toastElement.classList.add('bg-success', 'text-white');
+            header.classList.add('text-white');
+        } else if (type === 'error') {
+            toastElement.classList.add('bg-danger', 'text-white');
+            header.classList.add('text-white');
+        } else if (type === 'warning') {
+            toastElement.classList.add('bg-warning');
+            header.classList.add('text-dark');
+        }
+
+        toast.show();
+    }
+
+    document.getElementById('settingsForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const formData = new FormData(e.target);
+        const data = {};
+
+        // Build settings object
+        for (let [key, value] of formData.entries()) {
+            if (value) {
+                data[key] = {
+                    value: isNaN(value) ? value : parseFloat(value)
+                };
+            }
+        }
+
+        const submitBtn = e.target.querySelector('button[type="submit"]');
+        submitBtn.disabled = true;
+
+        try {
+            const response = await fetch('/admin/settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            if (response.ok) {
+                showNotification('成功', '設定を保存しました', 'success');
+            } else {
+                showNotification('エラー', '保存に失敗しました', 'error');
+            }
+        } catch (error) {
+            showNotification('エラー', error.message, 'error');
+        } finally {
+            submitBtn.disabled = false;
+        }
+    });
+</script>
+{% endblock %}
