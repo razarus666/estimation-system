@@ -5,332 +5,803 @@
   <!-- Toast Container -->
   <div id="toastContainer" style="position: fixed; bottom: 20px; right: 20px; z-index: 1050;"></div>
 
-  <!-- Header -->
-  <div class="d-flex justify-content-between align-items-center mb-4">
-    <div>
-      <h1>{{ project.name }}</h1>
-      <p class="text-muted mb-0">{{ project.description }}</p>
-    </div>
-    <div class="btn-group">
-      <a href="{% url 'estimate_builder' project.id %}" class="btn btn-primary">
-        <i class="bi bi-calculator"></i> 見積を作成
-      </a>
-      <button class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#editProjectModal">
-        <i class="bi bi-pencil"></i> 編集
-      </button>
-      <button class="btn btn-danger" onclick="deleteProject()">
-        <i class="bi bi-trash"></i> 削除
-      </button>
-    </div>
-  </div>
-
-  <!-- Project Info Cards -->
-  <div class="row mb-4">
-    <div class="col-md-3">
-      <div class="card">
-        <div class="card-body">
-          <h6 class="card-title text-muted">顧客名</h6>
-          <p class="card-text">{{ project.client_name }}</p>
-        </div>
-      </div>
-    </div>
-    <div class="col-md-3">
-      <div class="card">
-        <div class="card-body">
-          <h6 class="card-title text-muted">状況</h6>
-          <p class="card-text">
-            {% if project.status == 'draft' %}
-              <span class="badge bg-warning">下書き</span>
-            {% elif project.status == 'active' %}
-              <span class="badge bg-info">進行中</span>
-            {% elif project.status == 'completed' %}
-              <span class="badge bg-success">完了</span>
-            {% else %}
-              <span class="badge bg-secondary">{{ project.status }}</span>
+  <!-- Project Header -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-body py-4 px-5">
+      <div class="row align-items-center">
+        <div class="col">
+          <h1 class="h2 fw-bold mb-2">{{ project.name }}</h1>
+          <div class="d-flex gap-3 align-items-center">
+            {% if project.client_name %}
+            <span class="text-secondary">
+              <i class="bi bi-person-check"></i> {{ project.client_name }}
+            </span>
             {% endif %}
-          </p>
+            {% set status_colors = {
+              'draft': ('#6b7280', 'グレー'),
+              'active': ('#4f6ef7', '進行中'),
+              'matched': ('#22c55e', '照合完了'),
+              'estimated': ('#a855f7', '見積完了')
+            } %}
+            {% set status_info = status_colors.get(project.status, ('#6b7280', project.status)) %}
+            <span
+              class="badge rounded-pill"
+              style="background-color: {{ status_info[0] }}20; color: {{ status_info[0] }}; font-size: 0.875rem;"
+            >
+              {{ status_info[1] }}
+            </span>
+            <span class="text-secondary small">
+              作成: {{ project.created_at[:10] if project.created_at else '-' }}
+            </span>
+          </div>
         </div>
-      </div>
-    </div>
-    <div class="col-md-3">
-      <div class="card">
-        <div class="card-body">
-          <h6 class="card-title text-muted">作成日</h6>
-          <p class="card-text">{{ project.created_at|date:"Y-m-d" }}</p>
-        </div>
-      </div>
-    </div>
-    <div class="col-md-3">
-      <div class="card">
-        <div class="card-body">
-          <h6 class="card-title text-muted">見積数</h6>
-          <p class="card-text">{{ project.estimates.count }}</p>
+        <div class="col-auto">
+          <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> 戻る
+          </a>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Estimates List -->
-  <div class="card mb-4">
-    <div class="card-header d-flex justify-content-between align-items-center">
-      <h5 class="mb-0">見積一覧</h5>
-      <a href="{% url 'estimate_builder' project.id %}" class="btn btn-sm btn-primary">
-        <i class="bi bi-plus"></i> 新規作成
-      </a>
+  <!-- Tab Navigation -->
+  <ul class="nav nav-tabs border-bottom mb-4" role="tablist" style="border-color: #e5e7eb;">
+    <li class="nav-item" role="presentation">
+      <button
+        class="nav-link active fw-500"
+        id="tab-overview"
+        data-bs-toggle="tab"
+        data-bs-target="#overview"
+        type="button"
+        role="tab"
+      >
+        <i class="bi bi-info-circle me-2"></i>概要
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button
+        class="nav-link fw-500"
+        id="tab-files"
+        data-bs-toggle="tab"
+        data-bs-target="#files"
+        type="button"
+        role="tab"
+      >
+        <i class="bi bi-file-earmark me-2"></i>ファイル
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button
+        class="nav-link fw-500"
+        id="tab-materials"
+        data-bs-toggle="tab"
+        data-bs-target="#materials"
+        type="button"
+        role="tab"
+      >
+        <i class="bi bi-list-ul me-2"></i>材料リスト
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button
+        class="nav-link fw-500"
+        id="tab-matching"
+        data-bs-toggle="tab"
+        data-bs-target="#matching"
+        type="button"
+        role="tab"
+      >
+        <i class="bi bi-lightning me-2"></i>AI照合結果
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button
+        class="nav-link fw-500"
+        id="tab-estimates"
+        data-bs-toggle="tab"
+        data-bs-target="#estimates"
+        type="button"
+        role="tab"
+      >
+        <i class="bi bi-receipt me-2"></i>見積明細
+      </button>
+    </li>
+  </ul>
+
+  <!-- Tab Content -->
+  <div class="tab-content">
+    <!-- Overview Tab -->
+    <div class="tab-pane fade show active" id="overview" role="tabpanel">
+      <div class="row g-4">
+        <div class="col-lg-8">
+          <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-bottom px-5 py-3">
+              <h6 class="mb-0 fw-bold">プロジェクト情報</h6>
+            </div>
+            <div class="card-body px-5 py-4">
+              <div class="row mb-4">
+                <div class="col-md-6">
+                  <p class="text-secondary small mb-1">案件名</p>
+                  <p class="fw-500">{{ project.name }}</p>
+                </div>
+                <div class="col-md-6">
+                  <p class="text-secondary small mb-1">顧客名</p>
+                  <p class="fw-500">{{ project.client_name or '-' }}</p>
+                </div>
+              </div>
+              {% if project.description %}
+              <div class="mb-4">
+                <p class="text-secondary small mb-1">説明</p>
+                <p class="fw-500" style="white-space: pre-wrap;">{{ project.description }}</p>
+              </div>
+              {% endif %}
+              <div class="row">
+                <div class="col-md-6">
+                  <p class="text-secondary small mb-1">ステータス</p>
+                  <p class="fw-500">{{ status_info[1] }}</p>
+                </div>
+                <div class="col-md-6">
+                  <p class="text-secondary small mb-1">作成日時</p>
+                  <p class="fw-500">{{ project.created_at[:16] if project.created_at else '-' }}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-4">
+          <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-white border-bottom px-5 py-3">
+              <h6 class="mb-0 fw-bold">見積サマリー</h6>
+            </div>
+            <div class="card-body px-5 py-4">
+              <div class="mb-3">
+                <p class="text-secondary small mb-1">見積件数</p>
+                <p class="h5 fw-bold mb-0">{{ estimate_count }}</p>
+              </div>
+              <div class="mb-3">
+                <p class="text-secondary small mb-1">合計見積金額</p>
+                <p class="h5 fw-bold mb-0" style="color: var(--primary);">
+                  ¥{{ "{:,.0f}".format(total_amount) }}
+                </p>
+              </div>
+              <div class="mb-0">
+                <p class="text-secondary small mb-1">合計歩掛</p>
+                <p class="h5 fw-bold mb-0">{{ "{:.2f}".format(total_productivity) }}</p>
+              </div>
+            </div>
+          </div>
+          {% if labor_unit_price %}
+          <div class="card border-0 shadow-sm" style="background-color: #f0f7ff;">
+            <div class="card-body px-5 py-4">
+              <p class="text-secondary small mb-1">労務単価</p>
+              <p class="h5 fw-bold mb-0" style="color: var(--primary);">
+                ¥{{ "{:,.0f}".format(labor_unit_price) }}/時間
+              </p>
+            </div>
+          </div>
+          {% endif %}
+        </div>
+      </div>
     </div>
-    <div class="card-body">
-      {% if project.estimates.all %}
-        <div class="table-responsive">
-          <table class="table table-hover">
-            <thead>
-              <tr>
-                <th>見積番号</th>
-                <th>作成日</th>
-                <th>更新日</th>
-                <th>金額</th>
-                <th>状況</th>
-                <th>操作</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for estimate in project.estimates.all %}
+
+    <!-- Files Tab -->
+    <div class="tab-pane fade" id="files" role="tabpanel">
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body p-5">
+          <!-- Upload Area -->
+          <div
+            id="dropZone"
+            class="border-2 border-dashed rounded-3 p-5 text-center"
+            style="border-color: #d1d5db; background-color: #f9fafb; cursor: pointer; transition: all 0.2s;"
+          >
+            <div class="mb-3" style="font-size: 2rem; color: var(--primary);">
+              <i class="bi bi-cloud-arrow-up"></i>
+            </div>
+            <h6 class="fw-bold mb-2">ファイルをアップロード</h6>
+            <p class="text-secondary small mb-0">
+              ドラッグ&ドロップまたはクリックしてファイルを選択してください
+            </p>
+            <input
+              type="file"
+              id="fileInput"
+              style="display: none;"
+              accept=".xls,.xlsx,.csv,.pdf,.txt"
+              multiple
+            >
+          </div>
+
+          <!-- Upload Progress -->
+          <div id="uploadProgress" style="display: none; margin-top: 1.5rem;">
+            <div class="progress" style="height: 4px;">
+              <div
+                id="progressBar"
+                class="progress-bar"
+                role="progressbar"
+                style="width: 0%; background-color: var(--primary);"
+              ></div>
+            </div>
+            <p class="text-secondary small mt-2 mb-0">
+              <i class="spinner-border spinner-border-sm me-2" role="status"></i>
+              <span id="uploadStatus">アップロード中...</span>
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Files List -->
+      {% if files %}
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white border-bottom px-5 py-3">
+          <h6 class="mb-0 fw-bold">アップロード済みファイル</h6>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover mb-0">
+              <thead class="bg-light">
                 <tr>
-                  <td>{{ estimate.estimate_number }}</td>
-                  <td>{{ estimate.created_at|date:"Y-m-d" }}</td>
-                  <td>{{ estimate.updated_at|date:"Y-m-d" }}</td>
-                  <td>{{ estimate.grand_total|currency }}</td>
-                  <td>
-                    {% if estimate.status == 'draft' %}
-                      <span class="badge bg-warning">下書き</span>
-                    {% elif estimate.status == 'sent' %}
-                      <span class="badge bg-info">送信済み</span>
-                    {% elif estimate.status == 'accepted' %}
-                      <span class="badge bg-success">受理</span>
-                    {% elif estimate.status == 'rejected' %}
-                      <span class="badge bg-danger">却下</span>
-                    {% endif %}
+                  <th class="px-5 py-3 fw-600 text-secondary small">ファイル名</th>
+                  <th class="px-5 py-3 fw-600 text-secondary small">アップロード日時</th>
+                  <th class="px-5 py-3 text-center fw-600 text-secondary small">操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for file in files %}
+                <tr class="align-middle">
+                  <td class="px-5 py-3">
+                    <i class="bi bi-file-earmark me-2"></i>
+                    <span class="fw-500">{{ file.original_name or file.file_name }}</span>
                   </td>
-                  <td>
-                    <a href="#" class="btn btn-sm btn-info" onclick="viewEstimate({{ estimate.id }})">
-                      <i class="bi bi-eye"></i> 表示
-                    </a>
-                    <a href="#" class="btn btn-sm btn-secondary" onclick="editEstimate({{ estimate.id }})">
-                      <i class="bi bi-pencil"></i> 編集
-                    </a>
-                    <a href="#" class="btn btn-sm btn-danger" onclick="deleteEstimate({{ estimate.id }})">
-                      <i class="bi bi-trash"></i> 削除
+                  <td class="px-5 py-3 text-secondary small">
+                    {{ file.created_at[:16] if file.created_at else '-' }}
+                  </td>
+                  <td class="px-5 py-3 text-center">
+                    <a
+                      href="{{ url_for('download_file', project_id=project.id, file_id=file.id) }}"
+                      class="btn btn-sm btn-outline-primary"
+                      download
+                    >
+                      <i class="bi bi-download"></i> DL
                     </a>
                   </td>
                 </tr>
-              {% endfor %}
-            </tbody>
-          </table>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
         </div>
-      {% else %}
-        <p class="text-muted">まだ見積が作成されていません。</p>
+      </div>
       {% endif %}
     </div>
-  </div>
 
-  <!-- Project Timeline -->
-  <div class="card mb-4">
-    <div class="card-header">
-      <h5 class="mb-0">活動履歴</h5>
-    </div>
-    <div class="card-body">
-      <div class="timeline">
-        <div class="timeline-item">
-          <div class="timeline-marker bg-primary"></div>
-          <div class="timeline-content">
-            <h6>プロジェクト作成</h6>
-            <p class="text-muted small">{{ project.created_at|date:"Y-m-d H:i" }}</p>
+    <!-- Materials Tab -->
+    <div class="tab-pane fade" id="materials" role="tabpanel">
+      {% if materials %}
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white border-bottom px-5 py-3">
+          <h6 class="mb-0 fw-bold">材料リスト</h6>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover mb-0">
+              <thead class="bg-light">
+                <tr>
+                  <th class="px-5 py-3 fw-600 text-secondary small">材料名</th>
+                  <th class="px-5 py-3 fw-600 text-secondary small">規格</th>
+                  <th class="px-5 py-3 fw-600 text-secondary small">数量</th>
+                  <th class="px-5 py-3 fw-600 text-secondary small">単位</th>
+                  <th class="px-5 py-3 fw-600 text-secondary small">施工方法</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for material in materials %}
+                <tr class="align-middle">
+                     <td class="px-5 py-3 fw-500">{{ material.material_name }}</td>
+                  <td class="px-5 py-3 text-secondary">{{ material.spec or '-' }}</td>
+                  <td class="px-5 py-3 text-secondary">{{ material.quantity or '-' }}</td>
+                  <td class="px-5 py-3 text-secondary">{{ material.unit or '-' }}</td>
+                  <td class="px-5 py-3 text-secondary small">{{ material.construction_method or '-' }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
           </div>
         </div>
-        {% for estimate in project.estimates.all %}
-          <div class="timeline-item">
-            <div class="timeline-marker bg-info"></div>
-            <div class="timeline-content">
-              <h6>見積作成: {{ estimate.estimate_number }}</h6>
-              <p class="text-muted small">{{ estimate.created_at|date:"Y-m-d H:i" }}</p>
+      </div>
+      {% else %}
+      <div class="card border-0 shadow-sm">
+        <div class="card-body text-center py-5">
+          <div class="mb-3" style="font-size: 2rem; opacity: 0.3;">
+            <i class="bi bi-inbox"></i>
+          </div>
+          <p class="text-secondary mb-0">材料リストは.xlsxまたは.csvファイルをアップロードしてください</p>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- AI Matching Tab -->
+    <div class="tab-pane fade" id="matching" role="tabpanel">
+      <div class="mb-4">
+        <button
+          id="runMatchingBtn"
+          class="btn btn-primary btn-lg"
+          onclick="runMatching({{ project.id }})"
+        >
+          <i class="bi bi-lightning me-2"></i>AI自動照合を実行
+        </button>
+      </div>
+
+      <!-- Loading State -->
+      <div id="matchingLoading" style="display: none;">
+        <div class="card border-0 shadow-sm">
+          <div class="card-body text-center py-5">
+            <div class="mb-3">
+              <div class="spinner-border" role="status" style="color: var(--primary);">
+                <span class="visually-hidden">読み込み中...</span>
+              </div>
+            </div>
+            <p class="fw-500 mb-1">AIが材料を解析中...</p>
+            <p class="text-secondary small">これには数秒かかる場合があります</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Results -->
+      {% if match_results %}
+      <div id="matchingResults">
+        <div class="card border-0 shadow-sm">
+          <div class="card-header bg-white border-bottom px-5 py-3">
+            <h6 class="mb-0 fw-bold">照合結果</h6>
+          </div>
+          <div class="card-body p-0">
+            <div class="table-responsive">
+              <table class="table table-hover mb-0">
+                <thead class="bg-light">
+                  <tr>
+                    <th class="px-5 py-3 fw-600 text-secondary small">材料名</th>
+                    <th class="px-5 py-3 fw-600 text-secondary small">マスタ名称</th>
+                    <th class="px-5 py-3 fw-600 text-secondary small">信頼度</th>
+                    <th class="px-5 py-3 fw-600 text-secondary small">マッチ種別</th>
+                    <th class="px-5 py-3 fw-600 text-secondary small">採用理由</th>
+                    <th class="px-5 py-3 text-center fw-600 text-secondary small">操作</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for result in match_results %}
+                  <tr class="align-middle">
+                    <td class="px-5 py-3 fw-500">{{ result.material_name }}</td>
+                    <td class="px-5 py-3">
+                      <span class="fw-500">{{ result.master_name }}</span>
+                    </td>
+                    <td class="px-5 py-3">
+                      <div style="width: 120px;">
+                        {% set confidence = result.confidence or 0 %}
+                        {% if confidence >= 0.75 %}
+                          {% set bar_color = 'var(--success)' %}
+                          {% set text_color = 'var(--success)' %}
+                        {% elif confidence >= 0.50 %}
+                          {% set bar_color = 'var(--warning)' %}
+                          {% set text_color = 'var(--warning)' %}
+                        {% else %}
+                          {% set bar_color = 'var(--danger)' %}
+                          {% set text_color = 'var(--danger)' %}
+                        {% endif %}
+                        <div class="progress" style="height: 20px; border-radius: 4px;">
+                          <div
+                            class="progress-bar"
+                            role="progressbar"
+                            style="width: {{ confidence * 100 }}%; background-color: {{ bar_color }};"
+                          ></div>
+                        </div>
+                        <small style="color: {{ text_color }}; font-weight: 600;">{{ "{:.0f}".format(confidence * 100) }}%</small>
+                      </div>
+                    </td>
+                    <td class="px-5 py-3">
+                      {% set match_type_colors = {
+                        'exact': ('#22c55e', '完全一致'),
+                        'normalized': ('#3b82f6', '正規化'),
+                        'name_match': ('#06b6d4', '名称'),
+                        'fuzzy': ('#f59e0b', 'あいまい'),
+                        'unmatched': ('#ef4444', '未照合')
+                      } %}
+                      {% set match_type_info = match_type_colors.get(result.match_type, ('#6b7280', result.match_type)) %}
+                      <span
+                        class="badge rounded-pill"
+                        style="background-color: {{ match_type_info[0] }}20; color: {{ match_type_info[0] }}; font-size: 0.75rem;"
+                      >
+                        {{ match_type_info[1] }}
+                      </span>
+                    </td>
+                    <td class="px-5 py-3 small text-secondary">{{ result.reason or '-' }}</td>
+                    <td class="px-5 py-3 text-center">
+                      <button
+                        class="btn btn-sm btn-outline-primary"
+                        onclick="showCandidatesModal({{ project.id }}, {{ result.id }})"
+                      >
+                        候補一覧
+                      </button>
+                    </td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
             </div>
           </div>
-        {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Estimates Tab -->
+    <div class="tab-pane fade" id="estimates" role="tabpanel">
+      <div class="mb-4 d-flex gap-2">
+        <button
+          id="addRowBtn"
+          class="btn btn-outline-primary"
+          onclick="addEstimateRow({{ project.id }})"
+        >
+          <i class="bi bi-plus-lg me-2"></i>行追加
+        </button>
+        <a
+          href="{{ url_for('export_excel', project_id=project.id) }}"
+          class="btn btn-outline-success"
+        >
+          <i class="bi bi-file-earmark-excel me-2"></i>Excel出力
+        </a>
+      </div>
+
+      <div class="card border-0 shadow-sm">
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover mb-0" id="estimatesTable">
+              <thead class="bg-light">
+                <tr>
+                  <th class="px-5 py-3 fw-600 text-secondary small" style="width: 60px;">行番号</th>
+                  <th class="px-5 py-3 fw-600 text-secondary small">分野</th>
+                  <th class="px-5 py-3 fw-600 text-secondary small">名称</th>
+                  <th class="px-5 py-3 fw-600 text-secondary small">規格</th>
+                  <th class="px-5 py-3 fw-600 text-secondary small">施工条件</th>
+                  <th class="px-5 py-3 fw-600 text-secondary small">単位</th>
+                  <th class="px-5 py-3 fw-600 text-secondary small text-end">数量</th>
+                  <th class="px-5 py-3 fw-600 text-secondary small text-end">単価</th>
+                  <th class="px-5 py-3 fw-600 text-secondary small text-end">金額</th>
+                  <th class="px-5 py-3 fw-600 text-secondary small text-end">歩掛</th>
+                  <th class="px-5 py-3 fw-600 text-secondary small text-end">歩掛合計</th>
+                </tr>
+              </thead>
+              <tbody id="estimatesBody">
+                <!-- Estimates rows will be populated via JavaScript -->
+              </tbody>
+              <tfoot class="bg-light">
+                <tr>
+                  <td colspan="8" class="px-5 py-3 text-end fw-600">合計：</td>
+                  <td class="px-5 py-3 text-end fw-600" id="totalAmount">¥0</td>
+                  <td colspan="2" class="px-5 py-3"></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 </div>
 
-<!-- Edit Project Modal -->
-<div class="modal fade" id="editProjectModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">プロジェクトを編集</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+<!-- Candidates Modal -->
+<div class="modal fade" id="candidatesModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content border-0">
+      <div class="modal-header bg-light border-bottom px-5">
+        <h5 class="modal-title fw-bold">マッチ候補一覧</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
-      <div class="modal-body">
-        <form id="editProjectForm">
-          <div class="mb-3">
-            <label for="projectName" class="form-label">プロジェクト名</label>
-            <input type="text" class="form-control" id="projectName" value="{{ project.name }}" required>
+      <div class="modal-body p-0">
+        <div id="candidatesLoading" class="text-center py-5">
+          <div class="spinner-border mb-3" style="color: var(--primary);">
+            <span class="visually-hidden">読み込み中...</span>
           </div>
-          <div class="mb-3">
-            <label for="clientName" class="form-label">顧客名</label>
-            <input type="text" class="form-control" id="clientName" value="{{ project.client_name }}" required>
-          </div>
-          <div class="mb-3">
-            <label for="description" class="form-label">説明</label>
-            <textarea class="form-control" id="description" rows="3">{{ project.description }}</textarea>
-          </div>
-        </form>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
-        <button type="button" class="btn btn-primary" onclick="saveProjectEdit()">保存</button>
+          <p class="text-secondary">読み込み中...</p>
+        </div>
+        <div id="candidatesList"></div>
       </div>
     </div>
   </div>
 </div>
 
 <style>
-  .timeline {
-    position: relative;
-    padding: 20px 0;
-  }
+.nav-link {
+  color: var(--text-secondary);
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding-bottom: 0.75rem;
+  transition: all 0.2s;
+}
+.nav-link:hover {
+  color: var(--text-primary);
+  border-bottom-color: var(--primary);
+}
+.nav-link.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+  background: none;
+}
 
-  .timeline-item {
-    display: flex;
-    margin-bottom: 30px;
-  }
+#dropZone:hover {
+  border-color: var(--primary);
+  background-color: #f0f7ff;
+}
+#dropZone.dragover {
+  border-color: var(--primary);
+  background-color: #f0f7ff;
+}
 
-  .timeline-marker {
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    margin-top: 5px;
-    margin-right: 15px;
-  }
+.fw-600 {
+  font-weight: 600;
+}
 
-  .timeline-content {
-    flex: 1;
-  }
-
-  .timeline-content h6 {
-    margin: 0 0 5px 0;
-  }
+.editable-cell {
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.editable-cell:hover {
+  background-color: #f0f7ff;
+}
+.editable-cell input {
+  width: 100%;
+  border: 1px solid var(--primary);
+  border-radius: 4px;
+  padding: 4px 8px;
+}
 </style>
 
 <script>
-  function editProject() {
-    // Open edit modal
-    const modal = new bootstrap.Modal(document.getElementById('editProjectModal'));
-    modal.show();
+// File Upload Handling
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+
+dropZone.addEventListener('click', () => fileInput.click());
+
+dropZone.addEventListener('dragover', (e) => {
+  e.preventDefault();
+  dropZone.classList.add('dragover');
+});
+
+dropZone.addEventListener('dragleave', () => {
+  dropZone.classList.remove('dragover');
+});
+
+dropZone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  dropZone.classList.remove('dragover');
+  const files = e.dataTransfer.files;
+  if (files.length > 0) {
+    uploadFiles(files);
   }
+});
 
-  function saveProjectEdit() {
-    const projectName = document.getElementById('projectName').value;
-    const clientName = document.getElementById('clientName').value;
-    const description = document.getElementById('description').value;
+fileInput.addEventListener('change', (e) => {
+  uploadFiles(e.target.files);
+});
 
-    fetch('{% url "project_detail" project.id %}', {
+function uploadFiles(files) {
+  const uploadProgress = document.getElementById('uploadProgress');
+  const progressBar = document.getElementById('progressBar');
+  const uploadStatus = document.getElementById('uploadStatus');
+
+  uploadProgress.style.display = 'block';
+
+  Array.from(files).forEach((file, index) => {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    uploadStatus.textContent = `${file.name} をアップロード中...`;
+
+    fetch(`/projects/{{ project.id }}/upload`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRFToken': '{{ csrf_token }}'
-      },
-      body: JSON.stringify({
-        name: projectName,
-        client_name: clientName,
-        description: description
-      })
+      body: formData
     })
-    .then(response => response.json())
-    .then(data => {
-      if (data.success) {
-        showToast('プロジェクトを更新しました', 'success');
-        setTimeout(() => location.reload(), 1500);
-      } else {
-        showToast('エラーが発生しました: ' + data.error, 'danger');
-      }
+    .then(response => {
+      if (!response.ok) throw new Error('Upload failed');
+      showToast('success', `${file.name} をアップロードしました`);
+      setTimeout(() => location.reload(), 500);
     })
     .catch(error => {
-      showToast('エラーが発生しました', 'danger');
-      console.error('Error:', error);
+      showToast('error', `${file.name} のアップロードに失敗しました`);
+      console.error(error);
     });
-  }
+  });
+}
 
-  function deleteProject() {
-    if (confirm('本当にこのプロジェクトを削除しますか？')) {
-      fetch('{% url "project_delete" project.id %}', {
-        method: 'DELETE',
-        headers: {
-          'X-CSRFToken': '{{ csrf_token }}'
-        }
-      })
-      .then(response => response.json())
-      .then(data => {
-        if (data.success) {
-          showToast('プロジェクトを削除しました', 'success');
-          setTimeout(() => window.location.href = '{% url "project_list" %}', 1500);
-        } else {
-          showToast('エラーが発生しました: ' + data.error, 'danger');
-        }
-      })
-      .catch(error => {
-        showToast('エラーが発生しました', 'danger');
-        console.error('Error:', error);
-      });
+// Toast Notifications
+function showToast(type, message) {
+  const toastContainer = document.getElementById('toastContainer');
+  const toastId = 'toast-' + Date.now();
+
+  const bgColor = type === 'success' ? 'var(--success)' : type === 'error' ? 'var(--danger)' : 'var(--warning)';
+  const icon = type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'exclamation-triangle';
+
+  const toastHTML = `
+    <div id="${toastId}" class="card border-0 shadow-sm" style="background-color: ${bgColor};">
+      <div class="card-body px-4 py-3 text-white d-flex align-items-center gap-3">
+        <i class="bi bi-${icon}"></i>
+        <span>${message}</span>
+      </div>
+    </div>
+  `;
+
+  toastContainer.insertAdjacentHTML('beforeend', toastHTML);
+
+  setTimeout(() => {
+    const toast = document.getElementById(toastId);
+    if (toast) {
+      toast.style.opacity = '0';
+      toast.style.transition = 'opacity 0.3s';
+      setTimeout(() => toast.remove(), 300);
     }
-  }
+  }, 3000);
+}
 
-  function viewEstimate(estimateId) {
-    window.location.href = `/estimate/${estimateId}/`;
-  }
+// AI Matching
+function runMatching(projectId) {
+  const runBtn = document.getElementById('runMatchingBtn');
+  const loadingDiv = document.getElementById('matchingLoading');
 
-  function editEstimate(estimateId) {
-    window.location.href = `/estimate-builder/${estimateId}/`;
-  }
+  runBtn.disabled = true;
+  loadingDiv.style.display = 'block';
 
-  function deleteEstimate(estimateId) {
-    if (confirm('本当にこの見積を削除しますか？')) {
-      fetch(`/api/estimate/${estimateId}/`, {
-        method: 'DELETE',
-        headers: {
-          'X-CSRFToken': '{{ csrf_token }}'
-        }
-      })
-      .then(response => response.json())
-      .then(data => {
-        if (data.success) {
-          showToast('見積を削除しました', 'success');
-          setTimeout(() => location.reload(), 1500);
-        } else {
-          showToast('エラーが発生しました: ' + data.error, 'danger');
-        }
-      })
-      .catch(error => {
-        showToast('エラーが発生しました', 'danger');
-        console.error('Error:', error);
-      });
+  fetch(`/projects/${projectId}/run-matching`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
     }
-  }
+  })
+  .then(response => {
+    if (!response.ok) throw new Error('Matching failed');
+    return response.json();
+  })
+  .then(data => {
+    showToast('success', 'AI照合が完了しました');
+    setTimeout(() => location.reload(), 500);
+  })
+  .catch(error => {
+    showToast('error', 'AI照合に失敗しました');
+    console.error(error);
+    runBtn.disabled = false;
+    loadingDiv.style.display = 'none';
+  });
+}
 
-  function showToast(message, type = 'info') {
-    const toastContainer = document.getElementById('toastContainer');
-    const toast = document.createElement('div');
-    toast.className = `alert alert-${type} alert-dismissible fade show`;
-    toast.innerHTML = `
-      ${message}
-      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    `;
-    toastContainer.appendChild(toast);
+// Show Candidates Modal
+function showCandidatesModal(projectId, matchId) {
+  const modal = new bootstrap.Modal(document.getElementById('candidatesModal'));
+  const candidatesList = document.getElementById('candidatesList');
+  const candidatesLoading = document.getElementById('candidatesLoading');
 
-    // Auto dismiss after 5 seconds
-    setTimeout(() => {
-      toast.classList.remove('show');
-      setTimeout(() => toast.remove(), 150);
-    }, 5000);
+  candidatesLoading.style.display = 'block';
+  candidatesList.innerHTML = '';
+
+  modal.show();
+
+  fetch(`/projects/${projectId}/match-candidates/${matchId}`, {
+    method: 'GET'
+  })
+  .then(response => {
+    if (!response.ok) throw new Error('Failed to load candidates');
+    return response.json();
+  })
+  .then(data => {
+    candidatesLoading.style.display = 'none';
+
+    if (!data.candidates || data.candidates.length === 0) {
+      candidatesList.innerHTML = '<div class="p-5 text-center text-secondary">候補がありません</div>';
+      return;
+    }
+
+    let html = '<div class="list-group">';
+    data.candidates.forEach(candidate => {
+      const confidence = (candidate.confidence * 100).toFixed(0);
+      html += `
+        <div class="list-group-item px-5 py-3 border-0 border-bottom">
+          <div class="d-flex justify-content-between align-items-start mb-2">
+            <h6 class="fw-bold mb-0">${candidate.name}</h6>
+            <span class="badge" style="background-color: var(--primary); opacity: 0.8;">${confidence}%</span>
+          </div>
+          <p class="text-secondary small mb-3">${candidate.spec || '-'}</p>
+          <button
+            class="btn btn-sm btn-primary"
+            onclick="adoptCandidate(${data.project_id}, ${data.match_id}, ${candidate.id})"
+          >
+            <i class="bi bi-check-lg me-1"></i>この候補を採用
+          </button>
+        </div>
+      `;
+    });
+    html += '</div>';
+    candidatesList.innerHTML = html;
+  })
+  .catch(error => {
+    candidatesLoading.style.display = 'none';
+    candidatesList.innerHTML = '<div class="p-5 text-center text-danger">読み込みエラー</div>';
+    console.error(error);
+  });
+}
+
+function adoptCandidate(projectId, matchId, candidateId) {
+  fetch(`/projects/${projectId}/adopt-candidate`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      match_id: matchId,
+      candidate_id: candidateId
+    })
+  })
+  .then(response => {
+    if (!response.ok) throw new Error('Adoption failed');
+    showToast('success', '候補を採用しました');
+    setTimeout(() => location.reload(), 500);
+  })
+  .catch(error => {
+    showToast('error', '候補の採用に失敗しました');
+    console.error(error);
+  });
+}
+
+// Add Estimate Row
+function addEstimateRow(projectId) {
+  fetch(`/projects/${projectId}/estimates/add-row`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    }
+  })
+  .then(response => {
+    if (!response.ok) throw new Error('Failed to add row');
+    return response.json();
+  })
+  .then(data => {
+    showToast('success', '行を追加しました');
+    setTimeout(() => location.reload(), 500);
+  })
+  .catch(error => {
+    showToast('error', '行の追加に失敗しました');
+    console.error(error);
+  });
+}
+
+// Edit Estimate Cell
+function editEstimateCell(projectId, detailId, field, currentValue) {
+  const newValue = prompt(`${field} を編集してください:`, currentValue);
+  if (newValue === null || newValue === currentValue) return;
+
+  fetch(`/projects/${projectId}/estimates/${detailId}/edit`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      [field]: newValue
+    })
+  })
+  .then(response => {
+    if (!response.ok) throw new Error('Update failed');
+    showToast('success', '更新しました');
+    setTimeout(() => location.reload(), 500);
+  })
+  .catch(error => {
+    showToast('error', '更新に失敗しました');
+    console.error(error);
+  });
+}
+
+// Initialize (placeholder for loading estimates)
+document.addEventListener('DOMContentLoaded', function() {
+  // Load estimates data if available
+  const estimatesBody = document.getElementById('estimatesBody');
+  if (estimatesBody) {
+    // Estimates would be populated by Flask backend or via API call
   }
+});
 </script>
-
 {% endblock %}
