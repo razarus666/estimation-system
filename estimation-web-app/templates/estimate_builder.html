@@ -101,6 +101,42 @@
     </div>
   </div>
 
+  <!-- Data Import Section -->
+  <div class="data-import-section" style="background: white; border-radius: 8px; padding: 24px; margin-bottom: 30px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+    <h2 style="font-size: 18px; margin-bottom: 20px;">データ取込・AI見積</h2>
+    <div style="display: flex; gap: 16px; flex-wrap: wrap; align-items: center;">
+      <div style="flex: 1; min-width: 300px;">
+        <label style="display: block; font-size: 13px; font-weight: 600; margin-bottom: 8px; color: #666;">材料リスト・図面アップロード</label>
+        <div style="display: flex; gap: 8px;">
+          <input type="file" id="estimateFileInput" accept=".xls,.xlsx,.csv,.tsv,.pdf,.txt,.shd,.str,.rak,.mdb" multiple
+                 style="flex: 1; padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px;">
+          <button class="btn btn-primary" onclick="uploadEstimateFile()" id="uploadEstFileBtn" style="white-space: nowrap;">
+            <span class="icon" style="margin-right: 4px;">📤</span> アップロード
+          </button>
+        </div>
+        <div id="estimateUploadStatus" style="display: none; margin-top: 8px; font-size: 13px; color: #3b82f6;">
+          <span class="spinner-border spinner-border-sm me-1"></span> アップロード中...
+        </div>
+      </div>
+      <div style="display: flex; gap: 8px;">
+        <button class="btn btn-success" onclick="runAiEstimateFromBuilder()" id="aiEstimateBtn" style="white-space: nowrap;">
+          <span class="icon" style="margin-right: 4px;">🤖</span> AI自動見積実行
+        </button>
+        <button class="btn btn-secondary" onclick="loadEstimateDetails()" style="white-space: nowrap;">
+          <span class="icon" style="margin-right: 4px;">🔄</span> 見積データ読込
+        </button>
+      </div>
+    </div>
+    <div id="aiEstimateProgress" style="display: none; margin-top: 16px; padding: 16px; background: #f0f7ff; border-radius: 8px; text-align: center;">
+      <div class="spinner-border mb-2" style="color: #3b82f6;"></div>
+      <p style="margin: 0; font-weight: 500; color: #1e40af;">AIが材料リストと図面を照合中...</p>
+      <p style="margin: 4px 0 0; font-size: 13px; color: #6b7280;">積算マスタ・材料データマスタを参照しています</p>
+    </div>
+    <div id="aiEstimateResult" style="display: none; margin-top: 16px; padding: 16px; background: #f0fdf4; border-radius: 8px; border: 1px solid #bbf7d0;">
+      <p style="margin: 0; font-weight: 600; color: #166534;" id="aiResultMessage"></p>
+    </div>
+  </div>
+
   <!-- Detail Sections -->
   <div class="estimate-details">
     <h2>見積明細</h2>
@@ -1244,5 +1280,128 @@
 
   // Initialize on page load
   const estimateBuilder = new EstimateBuilder();
+
+  // Upload file from estimate builder
+  function uploadEstimateFile() {
+    const fileInput = document.getElementById('estimateFileInput');
+    const statusDiv = document.getElementById('estimateUploadStatus');
+    const btn = document.getElementById('uploadEstFileBtn');
+
+    if (!fileInput.files.length) {
+      alert('ファイルを選択してください');
+      return;
+    }
+
+    btn.disabled = true;
+    statusDiv.style.display = 'block';
+
+    const projectId = {{ project.id }};
+    const promises = Array.from(fileInput.files).map(file => {
+      const formData = new FormData();
+      formData.append('file', file);
+      return fetch(`/projects/${projectId}/upload`, {
+        method: 'POST',
+        body: formData
+      }).then(r => r.json());
+    });
+
+    Promise.all(promises)
+      .then(results => {
+        const success = results.filter(r => r.success).length;
+        const fail = results.filter(r => !r.success).length;
+        if (success > 0) {
+          alert(`${success}件のファイルをアップロードしました` + (fail > 0 ? `（${fail}件失敗）` : ''));
+        } else {
+          alert('アップロードに失敗しました: ' + (results[0]?.error || '不明なエラー'));
+        }
+      })
+      .catch(err => {
+        alert('アップロードエラー: ' + err.message);
+      })
+      .finally(() => {
+        btn.disabled = false;
+        statusDiv.style.display = 'none';
+        fileInput.value = '';
+      });
+  }
+
+  // Run AI estimation from builder
+  function runAiEstimateFromBuilder() {
+    const btn = document.getElementById('aiEstimateBtn');
+    const progressDiv = document.getElementById('aiEstimateProgress');
+    const resultDiv = document.getElementById('aiEstimateResult');
+
+    btn.disabled = true;
+    progressDiv.style.display = 'block';
+    resultDiv.style.display = 'none';
+
+    const projectId = {{ project.id }};
+    fetch(`/projects/${projectId}/ai-estimate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    })
+    .then(r => r.json())
+    .then(data => {
+      progressDiv.style.display = 'none';
+      if (data.error) {
+        resultDiv.style.display = 'block';
+        resultDiv.style.background = '#fef2f2';
+        resultDiv.style.borderColor = '#fecaca';
+        document.getElementById('aiResultMessage').textContent = 'エラー: ' + data.error;
+        document.getElementById('aiResultMessage').style.color = '#991b1b';
+      } else {
+        resultDiv.style.display = 'block';
+        resultDiv.style.background = '#f0fdf4';
+        resultDiv.style.borderColor = '#bbf7d0';
+        document.getElementById('aiResultMessage').textContent = data.message || 'AI見積完了';
+        document.getElementById('aiResultMessage').style.color = '#166534';
+        // Reload estimate details
+        setTimeout(() => location.reload(), 1000);
+      }
+    })
+    .catch(err => {
+      progressDiv.style.display = 'none';
+      resultDiv.style.display = 'block';
+      resultDiv.style.background = '#fef2f2';
+      resultDiv.style.borderColor = '#fecaca';
+      document.getElementById('aiResultMessage').textContent = 'エラー: ' + err.message;
+      document.getElementById('aiResultMessage').style.color = '#991b1b';
+    })
+    .finally(() => {
+      btn.disabled = false;
+    });
+  }
+
+  // Load estimate details from server
+  function loadEstimateDetails() {
+    const projectId = {{ project.id }};
+    fetch(`/projects/${projectId}/estimates`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.estimates && data.estimates.length > 0) {
+          // Clear existing rows
+          document.getElementById('details-container').innerHTML = '';
+          // Load into estimate builder
+          data.estimates.forEach(est => {
+            estimateBuilder.addRow({
+              field_category: est.field_category || '',
+              material_name: est.material_name || '',
+              spec: est.spec || '',
+              construction_method: est.construction_method || '',
+              unit: est.unit || '',
+              quantity: est.quantity || 0,
+              composite_unit_price: est.composite_unit_price || 0,
+              productivity: est.productivity || 0,
+              remarks: est.remarks || ''
+            });
+          });
+          estimateBuilder.recalculate();
+          alert(`${data.estimates.length}件の見積明細を読み込みました`);
+        } else {
+          alert('見積明細がありません。先にAI見積を実行してください。');
+        }
+      })
+      .catch(err => alert('読み込みエラー: ' + err.message));
+  }
 </script>
 {% endblock %}

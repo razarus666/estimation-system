@@ -915,8 +915,8 @@
                 </a>
             </li>
             <li>
-                <a href="#"
-                   class="{% if request.endpoint and 'files' in request.endpoint %}active{% endif %}">
+                <a href="{{ url_for('shared_files') if current_user.is_authenticated else '#' }}"
+                   class="{% if request.endpoint and 'shared_files' in request.endpoint %}active{% endif %}">
                     <i class="bi bi-file-earmark"></i>
                     <span>共有ファイル</span>
                 </a>

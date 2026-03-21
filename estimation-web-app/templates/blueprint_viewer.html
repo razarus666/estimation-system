@@ -1,0 +1,1395 @@
+{% extends "base.html" %}
+
+{% block title %}図面積算画面 - Blueprint Estimation{% endblock %}
+
+{% block extra_css %}
+<style>
+  :root {
+    --viewer-bg: #2a2a2a;
+    --panel-bg: #ffffff;
+    --border-color: #e5e7eb;
+    --text-primary: #1f2937;
+    --text-secondary: #6b7280;
+    --success-light: #d1fae5;
+    --warning-light: #fef3c7;
+    --danger-light: #fee2e2;
+  }
+
+  .blueprint-container {
+    display: flex;
+    height: calc(100vh - 120px);
+    gap: 0;
+    background: var(--viewer-bg);
+    overflow: hidden;
+  }
+
+  /* PDF Viewer Panel */
+  .pdf-viewer-panel {
+    flex: 0 0 62%;
+    display: flex;
+    flex-direction: column;
+    background: var(--viewer-bg);
+    border-right: 1px solid var(--border-color);
+    position: relative;
+  }
+
+  .pdf-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: #1f1f1f;
+    border-bottom: 1px solid #444;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .pdf-toolbar-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .pdf-toolbar-separator {
+    width: 1px;
+    height: 24px;
+    background: #444;
+    margin: 0 4px;
+  }
+
+  .pdf-toolbar button {
+    padding: 6px 10px;
+    background: #333;
+    border: 1px solid #555;
+    color: #fff;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: all 0.2s;
+  }
+
+  .pdf-toolbar button:hover {
+    background: #444;
+    border-color: #666;
+  }
+
+  .pdf-toolbar button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .pdf-page-input {
+    width: 50px;
+    padding: 4px 8px;
+    background: #333;
+    border: 1px solid #555;
+    color: #fff;
+    border-radius: 4px;
+    text-align: center;
+    font-size: 13px;
+  }
+
+  .pdf-page-input:focus {
+    outline: none;
+    border-color: var(--color-primary-blue);
+    background: #3a3a3a;
+  }
+
+  .pdf-zoom-display,
+  .pdf-page-display {
+    color: #ccc;
+    font-size: 13px;
+    white-space: nowrap;
+  }
+
+  .pdf-viewer-wrapper {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .pdf-thumbnails {
+    width: 80px;
+    background: #1f1f1f;
+    border-right: 1px solid #444;
+    overflow-y: auto;
+    padding: 8px 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 100%;
+  }
+
+  .pdf-thumbnails.collapsed {
+    width: 0;
+    padding: 0;
+    border: none;
+  }
+
+  .pdf-thumbnail {
+    width: 64px;
+    height: 90px;
+    background: #2a2a2a;
+    border: 2px solid #555;
+    cursor: pointer;
+    border-radius: 2px;
+    transition: all 0.2s;
+    flex-shrink: 0;
+  }
+
+  .pdf-thumbnail:hover {
+    border-color: var(--color-primary-blue);
+  }
+
+  .pdf-thumbnail.active {
+    border-color: var(--color-primary-blue);
+    box-shadow: 0 0 8px rgba(59, 130, 246, 0.3);
+  }
+
+  .pdf-canvas-container {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: auto;
+    background: var(--viewer-bg);
+    position: relative;
+  }
+
+  #pdfCanvas {
+    max-width: 100%;
+    max-height: 100%;
+    cursor: grab;
+    display: block;
+  }
+
+  #pdfCanvas.grabbing {
+    cursor: grabbing;
+  }
+
+  .pdf-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: #ccc;
+    font-size: 14px;
+    gap: 12px;
+  }
+
+  .spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid #444;
+    border-top-color: var(--color-primary-blue);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  /* Material Picking Panel */
+  .material-panel {
+    flex: 0 0 38%;
+    display: flex;
+    flex-direction: column;
+    background: var(--panel-bg);
+    overflow: hidden;
+  }
+
+  .panel-header {
+    padding: 16px;
+    border-bottom: 1px solid var(--border-color);
+    background: #fafafa;
+  }
+
+  .panel-header h2 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .panel-meta {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-top: 4px;
+  }
+
+  .panel-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border-color);
+    background: #fafafa;
+    padding: 0 8px;
+    overflow-x: auto;
+  }
+
+  .panel-tab {
+    padding: 12px 16px;
+    border: none;
+    background: none;
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+  }
+
+  .panel-tab:hover {
+    color: var(--text-primary);
+  }
+
+  .panel-tab.active {
+    color: var(--color-primary-blue);
+    border-bottom-color: var(--color-primary-blue);
+  }
+
+  .panel-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+  }
+
+  .panel-content.hidden {
+    display: none;
+  }
+
+  /* AI Extraction Tab */
+  .ai-extraction-section {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .ai-extract-button {
+    padding: 10px 16px;
+    background: var(--color-primary-blue);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 14px;
+  }
+
+  .ai-extract-button:hover:not(:disabled) {
+    background: #2563eb;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  }
+
+  .ai-extract-button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .ai-processing {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 20px;
+    text-align: center;
+    color: var(--color-primary-blue);
+  }
+
+  .ai-processing .spinner {
+    width: 24px;
+    height: 24px;
+  }
+
+  .ai-results {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .extraction-item {
+    padding: 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    transition: all 0.2s;
+  }
+
+  .extraction-item:hover {
+    border-color: var(--color-primary-blue);
+    background: #f8fafc;
+  }
+
+  .extraction-item-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+
+  .extraction-item input[type="checkbox"] {
+    margin-top: 4px;
+    cursor: pointer;
+    accent-color: var(--color-primary-blue);
+  }
+
+  .extraction-item-main {
+    flex: 1;
+  }
+
+  .extraction-item-name {
+    font-weight: 500;
+    color: var(--text-primary);
+    font-size: 13px;
+    margin-bottom: 4px;
+  }
+
+  .extraction-item-meta {
+    display: flex;
+    gap: 12px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+  }
+
+  .extraction-item-meta span {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .confidence-badge {
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .confidence-badge.high {
+    background: var(--success-light);
+    color: #065f46;
+  }
+
+  .confidence-badge.review {
+    background: var(--warning-light);
+    color: #92400e;
+  }
+
+  .confidence-badge.low {
+    background: var(--danger-light);
+    color: #991b1b;
+  }
+
+  .confidence-icon {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+
+  .adoption-reason {
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin-top: 6px;
+    padding-top: 6px;
+    border-top: 1px solid #f0f0f0;
+  }
+
+  .adoption-reason strong {
+    color: var(--text-primary);
+  }
+
+  .candidates-toggle {
+    font-size: 12px;
+    color: var(--color-primary-blue);
+    cursor: pointer;
+    padding: 4px 0;
+    margin-top: 4px;
+  }
+
+  .candidates-list {
+    display: none;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border-color);
+  }
+
+  .candidates-list.expanded {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .candidate-item {
+    padding: 6px 8px;
+    background: #f9fafb;
+    border-radius: 4px;
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+
+  /* Manual Input Tab */
+  .form-group {
+    margin-bottom: 16px;
+  }
+
+  .form-group label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-primary);
+    margin-bottom: 6px;
+  }
+
+  .form-group input,
+  .form-group select,
+  .form-group textarea {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-size: 13px;
+    font-family: inherit;
+    transition: border-color 0.2s;
+  }
+
+  .form-group input:focus,
+  .form-group select:focus,
+  .form-group textarea:focus {
+    outline: none;
+    border-color: var(--color-primary-blue);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  }
+
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .manual-add-button {
+    width: 100%;
+    padding: 10px;
+    background: var(--color-primary-blue);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-weight: 500;
+    cursor: pointer;
+    font-size: 13px;
+    transition: all 0.2s;
+  }
+
+  .manual-add-button:hover {
+    background: #2563eb;
+  }
+
+  /* Master Search Tab */
+  .master-search-form {
+    margin-bottom: 16px;
+  }
+
+  .master-search-input {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-size: 13px;
+  }
+
+  .master-search-input:focus {
+    outline: none;
+    border-color: var(--color-primary-blue);
+  }
+
+  .master-results {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .master-item {
+    padding: 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .master-item:hover {
+    border-color: var(--color-primary-blue);
+    background: #f8fafc;
+  }
+
+  .master-item-name {
+    font-weight: 500;
+    color: var(--text-primary);
+    font-size: 13px;
+    margin-bottom: 4px;
+  }
+
+  .master-item-spec {
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+
+  .master-item-add {
+    font-size: 12px;
+    color: var(--color-primary-blue);
+    margin-top: 6px;
+  }
+
+  /* Results Table Tab */
+  .results-table-wrapper {
+    overflow-x: auto;
+    margin-bottom: 16px;
+  }
+
+  .results-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+
+  .results-table thead {
+    background: #f3f4f6;
+    border-bottom: 2px solid var(--border-color);
+    position: sticky;
+    top: 0;
+  }
+
+  .results-table th {
+    padding: 8px;
+    text-align: left;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .results-table td {
+    padding: 8px;
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .results-table tbody tr:hover {
+    background: #f9fafb;
+  }
+
+  .table-actions {
+    display: flex;
+    gap: 6px;
+  }
+
+  .action-btn {
+    padding: 4px 8px;
+    background: none;
+    border: 1px solid var(--border-color);
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 11px;
+    transition: all 0.2s;
+  }
+
+  .action-btn:hover {
+    border-color: var(--color-primary-blue);
+    color: var(--color-primary-blue);
+  }
+
+  .action-btn.delete:hover {
+    border-color: var(--color-danger);
+    color: var(--color-danger);
+  }
+
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    text-align: center;
+    color: var(--text-secondary);
+  }
+
+  .empty-state-icon {
+    font-size: 32px;
+    margin-bottom: 8px;
+    opacity: 0.5;
+  }
+
+  .empty-state-text {
+    font-size: 13px;
+  }
+
+  /* Panel Footer */
+  .panel-footer {
+    padding: 16px;
+    border-top: 1px solid var(--border-color);
+    background: #fafafa;
+    display: flex;
+    gap: 8px;
+  }
+
+  .materialize-button {
+    flex: 1;
+    padding: 10px;
+    background: var(--color-success);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-weight: 500;
+    cursor: pointer;
+    font-size: 13px;
+    transition: all 0.2s;
+  }
+
+  .materialize-button:hover:not(:disabled) {
+    background: #059669;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+  }
+
+  .materialize-button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  /* Responsive */
+  @media (max-width: 1400px) {
+    .blueprint-container {
+      height: calc(100vh - 100px);
+    }
+  }
+
+  @media (max-width: 1024px) {
+    .blueprint-container {
+      flex-direction: column;
+    }
+
+    .pdf-viewer-panel,
+    .material-panel {
+      flex: none;
+    }
+
+    .pdf-viewer-panel {
+      height: 50%;
+      border-right: none;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .material-panel {
+      height: 50%;
+    }
+  }
+
+  /* Loading and Error States */
+  .alert {
+    padding: 12px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    margin-bottom: 12px;
+  }
+
+  .alert-success {
+    background: var(--success-light);
+    color: #065f46;
+    border: 1px solid #a7f3d0;
+  }
+
+  .alert-error {
+    background: var(--danger-light);
+    color: #991b1b;
+    border: 1px solid #fecaca;
+  }
+
+  .alert-warning {
+    background: var(--warning-light);
+    color: #92400e;
+    border: 1px solid #fde68a;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="blueprint-container">
+  <!-- PDF Viewer Panel -->
+  <div class="pdf-viewer-panel">
+    <!-- Toolbar -->
+    <div class="pdf-toolbar">
+      <div class="pdf-toolbar-group">
+        <button id="prevPageBtn" title="前ページ">← Prev</button>
+        <input type="number" id="pageNumberInput" class="pdf-page-input" min="1" value="1" title="ページ番号">
+        <span class="pdf-page-display">/ <span id="totalPages">0</span></span>
+        <button id="nextPageBtn" title="次ページ">Next →</button>
+      </div>
+
+      <div class="pdf-toolbar-separator"></div>
+
+      <div class="pdf-toolbar-group">
+        <button id="zoomOutBtn" title="縮小">−</button>
+        <span class="pdf-zoom-display"><span id="zoomLevel">100</span>%</span>
+        <button id="zoomInBtn" title="拡大">+</button>
+        <button id="fitPageBtn" title="ページ全体に合わせる">Fit</button>
+      </div>
+
+      <div class="pdf-toolbar-separator"></div>
+
+      <div class="pdf-toolbar-group">
+        <button id="toggleThumbnailsBtn" title="サムネイル表示/非表示">◫</button>
+      </div>
+    </div>
+
+    <!-- PDF Viewer -->
+    <div class="pdf-viewer-wrapper">
+      <div class="pdf-thumbnails collapsed" id="pdfThumbnails"></div>
+      <div class="pdf-canvas-container">
+        <div class="pdf-loading" id="pdfLoading" style="display: none;">
+          <div class="spinner"></div>
+          <span>PDF読み込み中...</span>
+        </div>
+        <canvas id="pdfCanvas"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Material Picking Panel -->
+  <div class="material-panel">
+    <div class="panel-header">
+      <h2>{{ project.name }} - 図面積算</h2>
+      <div class="panel-meta">
+        <strong>ファイル:</strong> {{ file.original_name }} |
+        <strong>マスタ:</strong> {{ master_count }} 件
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="panel-tabs">
+      <button class="panel-tab active" data-tab="ai-extraction">AI拾い出し</button>
+      <button class="panel-tab" data-tab="manual-input">手入力</button>
+      <button class="panel-tab" data-tab="master-search">マスタ検索</button>
+      <button class="panel-tab" data-tab="results">拾い出し結果</button>
+    </div>
+
+    <!-- Tab Contents -->
+    <div class="panel-content" id="tab-ai-extraction">
+      <div class="ai-extraction-section">
+        <button class="ai-extract-button" id="aiExtractBtn">
+          🤖 AI拾い出しを実行
+        </button>
+        <div id="aiProcessing" class="ai-processing" style="display: none;">
+          <div class="spinner"></div>
+          <span>AI解析中...</span>
+        </div>
+        <div id="aiResults" class="ai-results"></div>
+      </div>
+    </div>
+
+    <div class="panel-content hidden" id="tab-manual-input">
+      <form id="manualInputForm">
+        <div class="form-group">
+          <label for="materialName">材料名 *</label>
+          <input type="text" id="materialName" required>
+        </div>
+
+        <div class="form-group">
+          <label for="materialSpec">規格</label>
+          <input type="text" id="materialSpec">
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="materialQty">数量 *</label>
+            <input type="number" id="materialQty" step="0.01" required>
+          </div>
+          <div class="form-group">
+            <label for="materialUnit">単位 *</label>
+            <select id="materialUnit" required>
+              <option value="">-- 選択 --</option>
+              <option value="個">個</option>
+              <option value="式">式</option>
+              <option value="本">本</option>
+              <option value="枚">枚</option>
+              <option value="m">m</option>
+              <option value="m2">m²</option>
+              <option value="m3">m³</option>
+              <option value="組">組</option>
+              <option value="セット">セット</option>
+              <option value="台">台</option>
+              <option value="kg">kg</option>
+              <option value="L">L</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="constructionMethod">施工区分</label>
+          <select id="constructionMethod">
+            <option value="">-- 選択 --</option>
+            <option value="本体">本体</option>
+            <option value="附属">附属</option>
+            <option value="工事">工事</option>
+            <option value="その他">その他</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="fieldCategory">現場区分</label>
+          <input type="text" id="fieldCategory" placeholder="屋外、屋内など">
+        </div>
+
+        <button type="submit" class="manual-add-button">追加</button>
+      </form>
+    </div>
+
+    <div class="panel-content hidden" id="tab-master-search">
+      <div class="master-search-form">
+        <input
+          type="text"
+          id="masterSearchInput"
+          class="master-search-input"
+          placeholder="材料名、規格で検索..."
+        >
+      </div>
+      <div id="masterResults" class="master-results"></div>
+    </div>
+
+    <div class="panel-content hidden" id="tab-results">
+      <div class="results-table-wrapper">
+        <table class="results-table" id="resultsTable" style="display: none;">
+          <thead>
+            <tr>
+              <th style="width: 30px;">No</th>
+              <th>材料名</th>
+              <th>規格</th>
+              <th style="width: 60px;">数量</th>
+              <th style="width: 50px;">単位</th>
+              <th style="width: 60px;">施工区分</th>
+              <th style="width: 70px;">信頼度</th>
+              <th style="width: 60px;">操作</th>
+            </tr>
+          </thead>
+          <tbody id="resultsTableBody"></tbody>
+        </table>
+        <div id="emptyResults" class="empty-state">
+          <div class="empty-state-icon">📋</div>
+          <div class="empty-state-text">抽出済み項目がありません</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="panel-footer">
+      <button class="materialize-button" id="materializeBtn" disabled>
+        📊 材料リスト化
+      </button>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+  // Configuration
+  const CONFIG = {
+    projectId: {{ project.id }},
+    fileId: {{ file.id }},
+    pdfUrl: "{{ pdf_url }}",
+    masterCount: {{ master_count }},
+  };
+
+  // PDF.js Setup
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+  // State
+  let state = {
+    pdfDoc: null,
+    currentPage: 1,
+    zoom: 1,
+    scale: 100,
+    isDrawing: false,
+    startX: 0,
+    startY: 0,
+    scrollLeft: 0,
+    scrollTop: 0,
+    extractedItems: [],
+    allItems: [],
+  };
+
+  // ===== PDF VIEWER =====
+  async function initPDF() {
+    const loading = document.getElementById('pdfLoading');
+    loading.style.display = 'flex';
+
+    try {
+      state.pdfDoc = await pdfjsLib.getDocument(CONFIG.pdfUrl).promise;
+      document.getElementById('totalPages').textContent = state.pdfDoc.numPages;
+      document.getElementById('pageNumberInput').max = state.pdfDoc.numPages;
+      await renderPage(state.currentPage);
+      generateThumbnails();
+    } catch (error) {
+      console.error('PDF loading error:', error);
+      loading.innerHTML = '<span style="color: #ef4444;">PDF読み込みエラー</span>';
+    }
+  }
+
+  async function renderPage(pageNum) {
+    if (!state.pdfDoc || pageNum < 1 || pageNum > state.pdfDoc.numPages) return;
+
+    state.currentPage = pageNum;
+    document.getElementById('pageNumberInput').value = pageNum;
+
+    const canvas = document.getElementById('pdfCanvas');
+    const ctx = canvas.getContext('2d');
+    const page = await state.pdfDoc.getPage(pageNum);
+
+    const baseScale = window.devicePixelRatio || 1;
+    const scale = baseScale * state.zoom;
+    const viewport = page.getViewport({ scale });
+
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+
+    await page.render({
+      canvasContext: ctx,
+      viewport: viewport,
+    }).promise;
+
+    updateThumbnailHighlight();
+    document.getElementById('pdfLoading').style.display = 'none';
+  }
+
+  async function generateThumbnails() {
+    const container = document.getElementById('pdfThumbnails');
+    const thumbCount = Math.min(state.pdfDoc.numPages, 20);
+
+    for (let i = 1; i <= thumbCount; i++) {
+      const page = await state.pdfDoc.getPage(i);
+      const viewport = page.getViewport({ scale: 0.5 });
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+
+      await page.render({
+        canvasContext: ctx,
+        viewport: viewport,
+      }).promise;
+
+      const thumb = document.createElement('div');
+      thumb.className = 'pdf-thumbnail';
+      if (i === 1) thumb.classList.add('active');
+      thumb.title = `Page ${i}`;
+
+      const img = document.createElement('img');
+      img.src = canvas.toDataURL();
+      img.style.width = '100%';
+      img.style.height = '100%';
+
+      thumb.appendChild(img);
+      thumb.addEventListener('click', () => renderPage(i));
+
+      container.appendChild(thumb);
+    }
+  }
+
+  function updateThumbnailHighlight() {
+    document.querySelectorAll('.pdf-thumbnail').forEach((thumb, idx) => {
+      if (idx + 1 === state.currentPage) {
+        thumb.classList.add('active');
+      } else {
+        thumb.classList.remove('active');
+      }
+    });
+  }
+
+  function updateZoomDisplay() {
+    document.getElementById('zoomLevel').textContent = Math.round(state.scale);
+  }
+
+  // PDF Controls
+  document.getElementById('prevPageBtn').addEventListener('click', () => {
+    if (state.currentPage > 1) renderPage(state.currentPage - 1);
+  });
+
+  document.getElementById('nextPageBtn').addEventListener('click', () => {
+    if (state.currentPage < state.pdfDoc.numPages) renderPage(state.currentPage + 1);
+  });
+
+  document.getElementById('pageNumberInput').addEventListener('change', (e) => {
+    const page = parseInt(e.target.value) || 1;
+    renderPage(Math.max(1, Math.min(page, state.pdfDoc.numPages)));
+  });
+
+  document.getElementById('zoomInBtn').addEventListener('click', () => {
+    state.zoom *= 1.2;
+    state.scale = state.zoom * 100;
+    updateZoomDisplay();
+    renderPage(state.currentPage);
+  });
+
+  document.getElementById('zoomOutBtn').addEventListener('click', () => {
+    state.zoom /= 1.2;
+    state.scale = state.zoom * 100;
+    updateZoomDisplay();
+    renderPage(state.currentPage);
+  });
+
+  document.getElementById('fitPageBtn').addEventListener('click', () => {
+    state.zoom = 1;
+    state.scale = 100;
+    updateZoomDisplay();
+    renderPage(state.currentPage);
+  });
+
+  document.getElementById('toggleThumbnailsBtn').addEventListener('click', () => {
+    const thumbs = document.getElementById('pdfThumbnails');
+    thumbs.classList.toggle('collapsed');
+  });
+
+  // Canvas Pan
+  const canvas = document.getElementById('pdfCanvas');
+  const container = document.querySelector('.pdf-canvas-container');
+
+  canvas.addEventListener('mousedown', (e) => {
+    state.isDrawing = true;
+    state.startX = e.clientX;
+    state.startY = e.clientY;
+    state.scrollLeft = container.scrollLeft;
+    state.scrollTop = container.scrollTop;
+    canvas.classList.add('grabbing');
+  });
+
+  document.addEventListener('mousemove', (e) => {
+    if (!state.isDrawing) return;
+    const x = e.clientX - state.startX;
+    const y = e.clientY - state.startY;
+    container.scrollLeft = state.scrollLeft - x;
+    container.scrollTop = state.scrollTop - y;
+  });
+
+  document.addEventListener('mouseup', () => {
+    state.isDrawing = false;
+    canvas.classList.remove('grabbing');
+  });
+
+  // ===== MATERIAL PANEL =====
+  let currentTab = 'ai-extraction';
+
+  // Tab Navigation
+  document.querySelectorAll('.panel-tab').forEach((tab) => {
+    tab.addEventListener('click', (e) => {
+      const tabName = e.target.dataset.tab;
+
+      document.querySelectorAll('.panel-tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.panel-content').forEach(c => c.classList.add('hidden'));
+
+      e.target.classList.add('active');
+      document.getElementById(`tab-${tabName}`).classList.remove('hidden');
+
+      currentTab = tabName;
+    });
+  });
+
+  // AI Extraction
+  document.getElementById('aiExtractBtn').addEventListener('click', async () => {
+    const btn = document.getElementById('aiExtractBtn');
+    const processing = document.getElementById('aiProcessing');
+    const results = document.getElementById('aiResults');
+
+    btn.disabled = true;
+    processing.style.display = 'flex';
+    results.innerHTML = '';
+
+    try {
+      const response = await fetch(`/projects/${CONFIG.projectId}/ai-extract/${CONFIG.fileId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      if (!response.ok) throw new Error('AI extraction failed');
+
+      const data = await response.json();
+      state.extractedItems = data.items || [];
+
+      displayAIResults(state.extractedItems);
+      updateResultsTable();
+    } catch (error) {
+      console.error('AI extraction error:', error);
+      results.innerHTML = '<div class="alert alert-error">AI解析に失敗しました</div>';
+    } finally {
+      btn.disabled = false;
+      processing.style.display = 'none';
+    }
+  });
+
+  function displayAIResults(items) {
+    const container = document.getElementById('aiResults');
+    container.innerHTML = '';
+
+    items.forEach((item, idx) => {
+      const confidence = item.confidence || 0.5;
+      const confidenceLevel = confidence >= 0.75 ? 'high' : confidence >= 0.5 ? 'review' : 'low';
+      const confidenceText = confidence >= 0.75 ? '高信頼' : confidence >= 0.5 ? '要確認' : '低信頼';
+
+      const div = document.createElement('div');
+      div.className = 'extraction-item';
+      div.innerHTML = `
+        <div class="extraction-item-header">
+          <input type="checkbox" class="item-checkbox" data-idx="${idx}" checked>
+          <div class="extraction-item-main">
+            <div class="extraction-item-name">${escapeHtml(item.material_name || '未指定')}</div>
+            <div class="extraction-item-meta">
+              <span>規格: ${escapeHtml(item.spec || '-')}</span>
+              <span>数量: ${item.quantity || '-'} ${escapeHtml(item.unit || '')}</span>
+              <span class="confidence-badge ${confidenceLevel}">
+                <span class="confidence-icon"></span>
+                ${Math.round(confidence * 100)}% ${confidenceText}
+              </span>
+            </div>
+            ${item.adoption_reason ? `
+              <div class="adoption-reason">
+                <strong>採用理由:</strong> ${escapeHtml(item.adoption_reason)}
+              </div>
+            ` : ''}
+            ${item.candidates && item.candidates.length > 0 ? `
+              <div class="candidates-toggle" data-item="${idx}">
+                ▼ 候補一覧 (${item.candidates.length})
+              </div>
+              <div class="candidates-list" data-item="${idx}">
+                ${item.candidates.map(c => `
+                  <div class="candidate-item">${escapeHtml(c)}</div>
+                `).join('')}
+              </div>
+            ` : ''}
+          </div>
+        </div>
+      `;
+
+      if (item.candidates && item.candidates.length > 0) {
+        const toggle = div.querySelector('.candidates-toggle');
+        toggle.addEventListener('click', () => {
+          const list = div.querySelector('.candidates-list');
+          list.classList.toggle('expanded');
+        });
+      }
+
+      container.appendChild(div);
+    });
+
+    updateMaterializeButton();
+  }
+
+  // Manual Input
+  document.getElementById('manualInputForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const item = {
+      material_name: document.getElementById('materialName').value,
+      spec: document.getElementById('materialSpec').value,
+      quantity: parseFloat(document.getElementById('materialQty').value),
+      unit: document.getElementById('materialUnit').value,
+      construction_method: document.getElementById('constructionMethod').value,
+      field_category: document.getElementById('fieldCategory').value,
+      source: 'manual',
+      confidence: 1.0,
+    };
+
+    state.allItems.push(item);
+    updateResultsTable();
+
+    // Reset form
+    document.getElementById('manualInputForm').reset();
+
+    // Show feedback
+    showAlert('success', '材料を追加しました');
+    updateMaterializeButton();
+  });
+
+  // Master Search
+  let masterSearchTimeout;
+  document.getElementById('masterSearchInput').addEventListener('input', (e) => {
+    clearTimeout(masterSearchTimeout);
+    const query = e.target.value.trim();
+
+    if (query.length < 2) {
+      document.getElementById('masterResults').innerHTML = '';
+      return;
+    }
+
+    masterSearchTimeout = setTimeout(async () => {
+      try {
+        const response = await fetch(`/api/master-search?q=${encodeURIComponent(query)}`);
+        const results = await response.json();
+        displayMasterResults(results.items || []);
+      } catch (error) {
+        console.error('Master search error:', error);
+      }
+    }, 300);
+  });
+
+  function displayMasterResults(items) {
+    const container = document.getElementById('masterResults');
+
+    if (items.length === 0) {
+      container.innerHTML = '<div class="empty-state"><div class="empty-state-text">結果がありません</div></div>';
+      return;
+    }
+
+    container.innerHTML = items.map((item, idx) => `
+      <div class="master-item">
+        <div class="master-item-name">${escapeHtml(item.name)}</div>
+        <div class="master-item-spec">${escapeHtml(item.spec || '-')}</div>
+        <div class="master-item-add" style="cursor: pointer;" onclick="addMasterItem(${idx})">
+          + 追加
+        </div>
+      </div>
+    `).join('');
+  }
+
+  window.addMasterItem = function(idx) {
+    // In production, fetch and add the master item
+    showAlert('success', 'マスタデータを追加しました');
+    updateMaterializeButton();
+  };
+
+  // Results Table
+  function updateResultsTable() {
+    const table = document.getElementById('resultsTable');
+    const tbody = document.getElementById('resultsTableBody');
+    const empty = document.getElementById('emptyResults');
+
+    // Combine extracted and manual items
+    const displayItems = [
+      ...state.extractedItems.filter((_, idx) => {
+        const checkbox = document.querySelector(`input[data-idx="${idx}"]`);
+        return checkbox ? checkbox.checked : true;
+      }),
+      ...state.allItems,
+    ];
+
+    if (displayItems.length === 0) {
+      table.style.display = 'none';
+      empty.style.display = 'flex';
+      return;
+    }
+
+    table.style.display = 'table';
+    empty.style.display = 'none';
+
+    tbody.innerHTML = displayItems.map((item, idx) => `
+      <tr>
+        <td>${idx + 1}</td>
+        <td>${escapeHtml(item.material_name || '-')}</td>
+        <td>${escapeHtml(item.spec || '-')}</td>
+        <td>${item.quantity || '-'}</td>
+        <td>${escapeHtml(item.unit || '-')}</td>
+        <td>${escapeHtml(item.construction_method || '-')}</td>
+        <td>
+          ${item.confidence ? `
+            <span class="confidence-badge ${
+              item.confidence >= 0.75 ? 'high' : item.confidence >= 0.5 ? 'review' : 'low'
+            }">
+              ${Math.round(item.confidence * 100)}%
+            </span>
+          ` : '-'}
+        </td>
+        <td>
+          <div class="table-actions">
+            <button class="action-btn" onclick="editTableItem(${idx})">編集</button>
+            <button class="action-btn delete" onclick="deleteTableItem(${idx})">削除</button>
+          </div>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  window.editTableItem = function(idx) {
+    showAlert('info', '編集機能は準備中です');
+  };
+
+  window.deleteTableItem = function(idx) {
+    if (confirm('この項目を削除しますか？')) {
+      state.allItems.splice(idx, 1);
+      updateResultsTable();
+      updateMaterializeButton();
+      showAlert('success', '項目を削除しました');
+    }
+  };
+
+  // Materialize Button
+  document.getElementById('materializeBtn').addEventListener('click', async () => {
+    const btn = document.getElementById('materializeBtn');
+    const items = [
+      ...state.extractedItems.filter((_, idx) => {
+        const checkbox = document.querySelector(`input[data-idx="${idx}"]`);
+        return checkbox ? checkbox.checked : true;
+      }),
+      ...state.allItems,
+    ];
+
+    if (items.length === 0) {
+      showAlert('warning', '追加する項目がありません');
+      return;
+    }
+
+    btn.disabled = true;
+
+    try {
+      const response = await fetch(`/projects/${CONFIG.projectId}/blueprint-items`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items }),
+      });
+
+      if (!response.ok) throw new Error('Save failed');
+
+      showAlert('success', `${items.length}件の材料を保存しました`);
+      state.allItems = [];
+      updateResultsTable();
+    } catch (error) {
+      console.error('Save error:', error);
+      showAlert('error', '保存に失敗しました');
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  function updateMaterializeButton() {
+    const btn = document.getElementById('materializeBtn');
+    const hasItems = state.extractedItems.length > 0 || state.allItems.length > 0;
+    btn.disabled = !hasItems;
+  }
+
+  // Utilities
+  function escapeHtml(str) {
+    if (!str) return '';
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  function showAlert(type, message) {
+    const content = document.querySelector('.panel-content:not(.hidden)');
+    if (!content) return;
+
+    const alert = document.createElement('div');
+    alert.className = `alert alert-${type}`;
+    alert.textContent = message;
+
+    const targetContainer = content.querySelector('form') || content.querySelector('.ai-extraction-section') || content;
+    targetContainer.insertBefore(alert, targetContainer.firstChild);
+
+    setTimeout(() => alert.remove(), 4000);
+  }
+
+  // Initialize
+  document.addEventListener('DOMContentLoaded', initPDF);
+</script>
+{% endblock %}

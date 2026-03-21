@@ -257,10 +257,18 @@
                   <td class="px-5 py-3 text-center">
                     <a
                       href="{{ url_for('download_file', project_id=project.id, file_id=file.id) }}"
-                      class="btn btn-sm btn-outline-primary"
+                      class="btn btn-sm btn-outline-primary me-1"
                     >
                       <i class="bi bi-download"></i> DL
                     </a>
+                    {% if file.original_name and file.original_name.lower().endswith('.pdf') %}
+                    <a
+                      href="{{ url_for('blueprint_viewer', project_id=project.id, file_id=file.id) }}"
+                      class="btn btn-sm btn-primary"
+                    >
+                      <i class="bi bi-rulers"></i> 積算
+                    </a>
+                    {% endif %}
                   </td>
                 </tr>
                 {% endfor %}
@@ -320,13 +328,20 @@
 
     <!-- AI Matching Tab -->
     <div class="tab-pane fade" id="matching" role="tabpanel">
-      <div class="mb-4">
+      <div class="mb-4 d-flex gap-2 flex-wrap">
         <button
           id="runMatchingBtn"
           class="btn btn-primary btn-lg"
           onclick="runMatching({{ project.id }})"
         >
           <i class="bi bi-lightning me-2"></i>AI自動照合を実行
+        </button>
+        <button
+          id="runAiEstimateBtn"
+          class="btn btn-success btn-lg"
+          onclick="runAiEstimate({{ project.id }})"
+        >
+          <i class="bi bi-robot me-2"></i>AI自動見積を実行
         </button>
       </div>
 
@@ -671,6 +686,32 @@ function runMatching(projectId) {
     console.error(error);
     runBtn.disabled = false;
     loadingDiv.style.display = 'none';
+  });
+}
+
+// AI Estimate
+function runAiEstimate(projectId) {
+  const btn = document.getElementById('runAiEstimateBtn');
+  const loadingDiv = document.getElementById('matchingLoading');
+
+  btn.disabled = true;
+  if (loadingDiv) loadingDiv.style.display = 'block';
+
+  fetch(`/projects/${projectId}/ai-estimate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' }
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.error) throw new Error(data.error);
+    showToast('success', data.message || 'AI見積が完了しました');
+    setTimeout(() => location.reload(), 500);
+  })
+  .catch(error => {
+    showToast('error', `AI見積エラー: ${error.message}`);
+    console.error(error);
+    btn.disabled = false;
+    if (loadingDiv) loadingDiv.style.display = 'none';
   });
 }
 

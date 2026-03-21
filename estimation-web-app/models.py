@@ -284,6 +284,52 @@ def init_db():
         created_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
     )""")
 
+    # === 共有ファイル ===
+    c.execute("""CREATE TABLE IF NOT EXISTS shared_files (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        project_id INTEGER NOT NULL,
+        original_name TEXT NOT NULL,
+        stored_path TEXT NOT NULL,
+        file_type TEXT NOT NULL DEFAULT 'other',
+        file_size INTEGER DEFAULT 0,
+        uploaded_by INTEGER NOT NULL,
+        uploaded_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+        FOREIGN KEY (project_id) REFERENCES projects(id),
+        FOREIGN KEY (uploaded_by) REFERENCES users(id)
+    )""")
+
+    # === 図面拾い出しアイテム ===
+    c.execute("""CREATE TABLE IF NOT EXISTS blueprint_items (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        project_id INTEGER NOT NULL,
+        file_id INTEGER NOT NULL,
+        page_number INTEGER DEFAULT 1,
+        material_name TEXT,
+        spec TEXT,
+        quantity REAL DEFAULT 0,
+        unit TEXT,
+        construction_method TEXT,
+        field_category TEXT,
+        confidence REAL DEFAULT 0,
+        match_type TEXT DEFAULT 'manual',
+        reason TEXT,
+        master_id INTEGER,
+        is_adopted INTEGER DEFAULT 1,
+        created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+        FOREIGN KEY (project_id) REFERENCES projects(id),
+        FOREIGN KEY (file_id) REFERENCES project_files(id)
+    )""")
+
+    # === PDF解析テキストキャッシュ ===
+    c.execute("""CREATE TABLE IF NOT EXISTS pdf_page_text (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        file_id INTEGER NOT NULL,
+        page_number INTEGER NOT NULL,
+        text_content TEXT,
+        created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+        FOREIGN KEY (file_id) REFERENCES project_files(id)
+    )""")
+
     # === 初期設定データ ===
     settings_defaults = [
         ("company_name", "", "自社名"),

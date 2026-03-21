@@ -3144,6 +3144,701 @@ def update_settings():
         return jsonify({'error': f'設定更新エラー: {str(e)}'}), 500
 
 
+# ==================== BLUEPRINT VIEWER ====================
+
+@app.route('/projects/<int:project_id>/blueprint/<int:file_id>')
+@login_required
+def blueprint_viewer(project_id, file_id):
+    """Blueprint viewer with PDF display and material picking"""
+    try:
+        db = get_db()
+        cursor = db.cursor()
+
+        # Check project ownership
+        cursor.execute('SELECT id, name, client_name, description, status FROM projects WHERE id = ?', (project_id,))
+        project = cursor.fetchone()
+        if not project:
+            return render_template('error.html', error='プロジェクトが見つかりません'), 404
+
+        # Get file info
+        cursor.execute(
+            'SELECT id, file_type, original_name FROM project_files WHERE id = ? AND project_id = ?',
+            (file_id, project_id)
+        )
+        file_row = cursor.fetchone()
+        if not file_row:
+            return render_template('error.html', error='ファイルが見つかりません'), 404
+
+        # Get existing blueprint items
+        cursor.execute(
+            '''SELECT id, page_number, material_name, spec, quantity, unit,
+                      construction_method, field_category, confidence, match_type, reason, is_adopted
+               FROM blueprint_items
+               WHERE project_id = ? AND file_id = ?
+               ORDER BY id''',
+            (project_id, file_id)
+        )
+        materials = [dict(r) for r in cursor.fetchall()]
+
+        # Get master data count
+        cursor.execute('SELECT COUNT(*) FROM estimate_master')
+        master_count = cursor.fetchone()[0]
+
+        return render_template(
+            'blueprint_viewer.html',
+            project={'id': project[0], 'name': project[1], 'client_name': project[2],
+                     'description': project[3], 'status': project[4]},
+            file={'id': file_row[0], 'file_type': file_row[1], 'original_name': file_row[2]},
+            materials=materials,
+            master_count=master_count,
+            pdf_url=url_for('serve_file', project_id=project_id, file_id=file_id)
+        )
+
+    except Exception as e:
+        add_error_log(current_user.id, 'BLUEPRINT_VIEWER_ERROR', str(e), str(e), request.url)
+        return render_template('error.html', error='図面ビューア読み込みエラー'), 500
+
+
+@app.route('/projects/<int:project_id>/file/<int:file_id>/serve')
+@login_required
+def serve_file(project_id, file_id):
+    """Serve a project file for viewing in browser"""
+    try:
+        db = get_db()
+        cursor = db.cursor()
+        cursor.execute(
+            'SELECT stored_path, original_name, file_type FROM project_files WHERE id = ? AND project_id = ?',
+            (file_id, project_id)
+        )
+        file_row = cursor.fetchone()
+        if not file_row:
+            return jsonify({'error': 'ファイルが見つかりません'}), 404
+
+        stored_path = file_row[0]
+        original_name = file_row[1]
+        ext = original_name.rsplit('.', 1)[1].lower() if '.' in original_name else ''
+
+        mime_types = {
+            'pdf': 'application/pdf',
+            'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'xls': 'application/vnd.ms-excel',
+            'csv': 'text/csv',
+            'txt': 'text/plain',
+        }
+        mimetype = mime_types.get(ext, 'application/octet-stream')
+
+        return send_file(stored_path, mimetype=mimetype, as_attachment=False, download_name=original_name)
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/projects/<int:project_id>/ai-extract/<int:file_id>', methods=['POST'])
+@login_required
+def ai_extract(project_id, file_id):
+    """AI extraction of electrical equipment from PDF blueprint"""
+    try:
+        db = get_db()
+        cursor = db.cursor()
+
+        # Get file path
+        cursor.execute(
+            'SELECT stored_path, original_name FROM project_files WHERE id = ? AND project_id = ?',
+            (file_id, project_id)
+        )
+        file_row = cursor.fetchone()
+        if not file_row:
+            return jsonify({'error': 'ファイルが見つかりません'}), 404
+
+        stored_path = file_row[0]
+
+        # Check if we already have cached text
+        cursor.execute('SELECT page_number, text_content FROM pdf_page_text WHERE file_id = ? ORDER BY page_number', (file_id,))
+        cached_pages = cursor.fetchall()
+
+        if cached_pages:
+            page_texts = {r[0]: r[1] for r in cached_pages}
+        else:
+            # Extract text from PDF
+            page_texts = {}
+            try:
+                with pdfplumber.open(stored_path) as pdf:
+                    for page_num, page in enumerate(pdf.pages, 1):
+                        text = page.extract_text() or ""
+                        page_texts[page_num] = text
+                        # Cache it
+                        cursor.execute(
+                            'INSERT INTO pdf_page_text (file_id, page_number, text_content) VALUES (?,?,?)',
+                            (file_id, page_num, text)
+                        )
+                db.commit()
+            except Exception as pdf_err:
+                return jsonify({'error': f'PDF解析エラー: {str(pdf_err)}'}), 500
+
+        # AI extraction: parse electrical equipment from text
+        extracted_items = extract_electrical_equipment(page_texts)
+
+        # Match against master data
+        master_data = load_master_data()
+        if master_data:
+            from matching_engine import build_indexes, match_single_material
+            indexes = build_indexes(master_data)
+
+            for item in extracted_items:
+                candidates = match_single_material(item, master_data, indexes, max_candidates=3)
+                if candidates and candidates[0]['confidence'] > 0:
+                    best = candidates[0]
+                    item['confidence'] = best['confidence']
+                    item['match_type'] = best['match_type']
+                    item['reason'] = best['reason']
+                    item['master_id'] = best['master_id']
+                    item['master_name'] = best['master_name']
+                    item['candidates'] = candidates
+                else:
+                    item['confidence'] = 0.3
+                    item['match_type'] = 'ai_detected'
+                    item['reason'] = 'AI図面解析による検出（マスタ未照合）'
+                    item['candidates'] = []
+
+        return jsonify({
+            'success': True,
+            'items': extracted_items,
+            'total_pages': len(page_texts),
+            'message': f'{len(extracted_items)}件の電気設備を検出しました'
+        }), 200
+
+    except Exception as e:
+        add_error_log(current_user.id, 'AI_EXTRACT_ERROR', str(e), str(e), request.url)
+        return jsonify({'error': f'AI解析エラー: {str(e)}'}), 500
+
+
+def extract_electrical_equipment(page_texts):
+    """Extract electrical equipment items from PDF text using pattern matching"""
+    import re
+
+    # Electrical equipment patterns
+    patterns = {
+        'ケーブル': [
+            r'(CV[VTFS]*)\s*[-]?\s*(\d+(?:\.\d+)?)\s*(?:sq|mm|㎟)?(?:\s*[-x×]\s*(\d+)C?)?',
+            r'(VVF|VVR|IV|HIV|EM[-\s]?(?:CE|EEF|IC|IE))\s*[-]?\s*(\d+(?:\.\d+)?)\s*(?:sq|mm)?(?:\s*[-x×]\s*(\d+)C?)?',
+            r'(VCTF|CVVS?|CPEV|AE)\s*[-]?\s*(\d+(?:\.\d+)?)\s*[-x×]\s*(\d+)(?:C|P)?',
+        ],
+        '電線管': [
+            r'(E|G|C|PF|CD|HIVE|FEP|VE)\s*(\d+)',
+            r'(薄鋼電線管|厚鋼電線管|ねじなし電線管|合成樹脂管|PF管|CD管|FEP管|硬質ビニル管)\s*[-]?\s*(\d+)',
+        ],
+        'ケーブルラック': [
+            r'(ケーブルラック|cable\s*rack)\s*[-]?\s*(\d+)\s*[x×]\s*(\d+)',
+            r'(はしご形|トレー形|メッシュ形).*?ラック\s*[-]?\s*(\d+)',
+        ],
+        '配電盤・分電盤': [
+            r'(配電盤|分電盤|動力盤|電灯盤|制御盤|MCC|MCCB|P[-\s]?\d+|L[-\s]?\d+)',
+        ],
+        '照明器具': [
+            r'(LED[照明灯具]*|蛍光灯|ダウンライト|シーリング|スポットライト|非常灯|誘導灯)',
+            r'(\d+W|ワット)\s*(LED|蛍光)',
+        ],
+        'コンセント・スイッチ': [
+            r'(コンセント|アウトレット|タンブラスイッチ|TS|WN\d+)',
+            r'(1P|2P|3P)\s*(\d+A)\s*(接地|アース|E)?',
+        ],
+        '配管ヒーター': [
+            r'(配管ヒーター|ヒーティングケーブル|ヒートトレース|自己制御型)',
+            r'(SRF|SRL|BTV|QTVR)\s*[-]?\s*(\d+)',
+        ],
+        '監視制御': [
+            r'(監視制御|SCADA|PLC|シーケンサ|リモートI/O|中央監視)',
+            r'(計装|変換器|トランスミッタ|信号変換)',
+        ],
+        '幹線': [
+            r'(高圧幹線|低圧幹線|幹線|バスダクト)',
+            r'(CV[T]?)\s*(\d+)\s*(?:sq|mm)?\s*[-x×]\s*(\d+)C',
+        ],
+        '接地': [
+            r'(接地工事|アース|接地極|接地線|A種|B種|C種|D種)\s*(接地)?',
+            r'(IV|GV)\s*(\d+)\s*(?:sq|mm)?\s*(緑|G)',
+        ],
+    }
+
+    extracted = []
+    seen = set()
+
+    for page_num, text in page_texts.items():
+        if not text:
+            continue
+
+        for category, pattern_list in patterns.items():
+            for pattern in pattern_list:
+                matches = re.finditer(pattern, text, re.IGNORECASE)
+                for match in matches:
+                    full_match = match.group(0).strip()
+                    if len(full_match) < 2:
+                        continue
+
+                    # Build a unique key to avoid duplicates
+                    key = f"{category}:{full_match}"
+                    if key in seen:
+                        # Increment quantity instead
+                        for item in extracted:
+                            if item.get('_key') == key:
+                                item['quantity'] = item.get('quantity', 1) + 1
+                                break
+                        continue
+                    seen.add(key)
+
+                    # Build item
+                    item = {
+                        '_key': key,
+                        'page_number': page_num,
+                        'material_name': _build_material_name(category, match),
+                        'spec': _build_spec(match),
+                        'quantity': 1,
+                        'unit': _get_default_unit(category),
+                        'construction_method': '',
+                        'field_category': category,
+                        'confidence': 0.5,
+                        'match_type': 'ai_detected',
+                        'reason': f'AI図面解析: ページ{page_num}で検出',
+                    }
+                    extracted.append(item)
+
+    # Clean up internal keys
+    for item in extracted:
+        item.pop('_key', None)
+
+    return extracted
+
+
+def _build_material_name(category, match):
+    """Build material name from regex match"""
+    groups = [g for g in match.groups() if g]
+    if category == 'ケーブル':
+        return groups[0] if groups else category
+    elif category == '電線管':
+        return groups[0] if groups else '電線管'
+    return groups[0] if groups else category
+
+
+def _build_spec(match):
+    """Build specification from regex match"""
+    groups = [g for g in match.groups() if g]
+    if len(groups) > 1:
+        return ' '.join(groups[1:])
+    return ''
+
+
+def _get_default_unit(category):
+    """Get default unit for a material category"""
+    unit_map = {
+        'ケーブル': 'm',
+        '電線管': 'm',
+        'ケーブルラック': 'm',
+        '配電盤・分電盤': '面',
+        '照明器具': '台',
+        'コンセント・スイッチ': '個',
+        '配管ヒーター': 'm',
+        '監視制御': '式',
+        '幹線': 'm',
+        '接地': '式',
+    }
+    return unit_map.get(category, '式')
+
+
+@app.route('/projects/<int:project_id>/blueprint-items', methods=['POST'])
+@login_required
+def save_blueprint_items(project_id):
+    """Save blueprint extracted items"""
+    try:
+        db = get_db()
+        cursor = db.cursor()
+
+        data = request.get_json()
+        items = data.get('items', [])
+        file_id = data.get('file_id')
+
+        if not file_id:
+            return jsonify({'error': 'file_id is required'}), 400
+
+        saved_count = 0
+        for item in items:
+            cursor.execute(
+                '''INSERT INTO blueprint_items
+                   (project_id, file_id, page_number, material_name, spec, quantity, unit,
+                    construction_method, field_category, confidence, match_type, reason, master_id, is_adopted)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)''',
+                (project_id, file_id, item.get('page_number', 1),
+                 item.get('material_name', ''), item.get('spec', ''),
+                 float(item.get('quantity', 0)), item.get('unit', ''),
+                 item.get('construction_method', ''), item.get('field_category', ''),
+                 float(item.get('confidence', 0)), item.get('match_type', 'manual'),
+                 item.get('reason', ''), item.get('master_id'),
+                 1 if item.get('is_adopted', True) else 0)
+            )
+            saved_count += 1
+
+        db.commit()
+
+        return jsonify({
+            'success': True,
+            'message': f'{saved_count}件の拾い出しアイテムを保存しました',
+            'saved_count': saved_count
+        }), 200
+
+    except Exception as e:
+        add_error_log(current_user.id, 'SAVE_BLUEPRINT_ITEMS_ERROR', str(e), str(e), request.url)
+        return jsonify({'error': f'保存エラー: {str(e)}'}), 500
+
+
+@app.route('/projects/<int:project_id>/blueprint-items/to-material-list', methods=['POST'])
+@login_required
+def blueprint_items_to_material_list(project_id):
+    """Convert blueprint items to material list for estimation"""
+    try:
+        db = get_db()
+        cursor = db.cursor()
+
+        data = request.get_json()
+        file_id = data.get('file_id')
+
+        # Get adopted blueprint items
+        cursor.execute(
+            '''SELECT material_name, spec, quantity, unit, construction_method, field_category
+               FROM blueprint_items
+               WHERE project_id = ? AND file_id = ? AND is_adopted = 1
+               ORDER BY id''',
+            (project_id, file_id)
+        )
+        items = cursor.fetchall()
+
+        if not items:
+            return jsonify({'error': '採用済みアイテムがありません'}), 400
+
+        # Get max row_no in material_list
+        cursor.execute('SELECT COALESCE(MAX(row_no), 0) FROM material_list WHERE project_id = ?', (project_id,))
+        max_row = cursor.fetchone()[0]
+
+        count = 0
+        for i, item in enumerate(items, 1):
+            cursor.execute(
+                '''INSERT INTO material_list
+                   (project_id, row_no, material_name, spec, quantity, unit, construction_method, field_category, drawing_ref)
+                   VALUES (?,?,?,?,?,?,?,?,?)''',
+                (project_id, max_row + i, item[0], item[1], item[2], item[3], item[4], item[5], f'図面拾い出し')
+            )
+            count += 1
+
+        db.commit()
+
+        return jsonify({
+            'success': True,
+            'message': f'{count}件を材料リストに追加しました',
+            'count': count
+        }), 200
+
+    except Exception as e:
+        add_error_log(current_user.id, 'BLUEPRINT_TO_MATERIAL_ERROR', str(e), str(e), request.url)
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/master-search')
+@login_required
+def master_search():
+    """Search master data for material selection"""
+    try:
+        query = request.args.get('q', '').strip()
+        if not query or len(query) < 1:
+            return jsonify({'results': []}), 200
+
+        db = get_db()
+        cursor = db.cursor()
+
+        # Search by name, spec, category
+        search_term = f'%{query}%'
+        cursor.execute(
+            '''SELECT id, material_name, spec_summary, construction_method, unit,
+                      composite_unit_price, field_category, source_page, category_no
+               FROM estimate_master
+               WHERE material_name LIKE ? OR spec_summary LIKE ? OR field_category LIKE ? OR category_no LIKE ?
+               LIMIT 50''',
+            (search_term, search_term, search_term, search_term)
+        )
+
+        results = []
+        for row in cursor.fetchall():
+            results.append({
+                'id': row[0],
+                'material_name': row[1],
+                'spec': row[2],
+                'construction_method': row[3],
+                'unit': row[4],
+                'composite_unit_price': float(row[5] or 0),
+                'field_category': row[6],
+                'source_page': row[7],
+                'category_no': row[8],
+            })
+
+        return jsonify({'results': results}), 200
+
+    except Exception as e:
+        return jsonify({'error': str(e), 'results': []}), 500
+
+
+# ==================== SHARED FILES ====================
+
+@app.route('/shared-files')
+@login_required
+def shared_files():
+    """Shared files management page"""
+    try:
+        db = get_db()
+        cursor = db.cursor()
+
+        project_id = request.args.get('project_id', type=int)
+
+        # Get projects for sidebar
+        if current_user.is_admin():
+            cursor.execute(
+                'SELECT id, name, client_name, created_at, created_by FROM projects ORDER BY created_at DESC'
+            )
+        else:
+            cursor.execute(
+                'SELECT id, name, client_name, created_at, created_by FROM projects WHERE created_by = ? ORDER BY created_at DESC',
+                (current_user.id,)
+            )
+        projects = [dict(r) for r in cursor.fetchall()]
+
+        # Get files
+        if project_id:
+            cursor.execute(
+                '''SELECT sf.id, sf.project_id, p.name as project_name, sf.original_name,
+                          sf.file_type, sf.file_size, u.full_name as uploaded_by_name, sf.uploaded_at
+                   FROM shared_files sf
+                   JOIN projects p ON sf.project_id = p.id
+                   JOIN users u ON sf.uploaded_by = u.id
+                   WHERE sf.project_id = ?
+                   ORDER BY sf.uploaded_at DESC''',
+                (project_id,)
+            )
+        elif current_user.is_admin():
+            cursor.execute(
+                '''SELECT sf.id, sf.project_id, p.name as project_name, sf.original_name,
+                          sf.file_type, sf.file_size, u.full_name as uploaded_by_name, sf.uploaded_at
+                   FROM shared_files sf
+                   JOIN projects p ON sf.project_id = p.id
+                   JOIN users u ON sf.uploaded_by = u.id
+                   ORDER BY sf.uploaded_at DESC'''
+            )
+        else:
+            cursor.execute(
+                '''SELECT sf.id, sf.project_id, p.name as project_name, sf.original_name,
+                          sf.file_type, sf.file_size, u.full_name as uploaded_by_name, sf.uploaded_at
+                   FROM shared_files sf
+                   JOIN projects p ON sf.project_id = p.id
+                   JOIN users u ON sf.uploaded_by = u.id
+                   WHERE p.created_by = ?
+                   ORDER BY sf.uploaded_at DESC''',
+                (current_user.id,)
+            )
+        files = [dict(r) for r in cursor.fetchall()]
+
+        # Format file sizes
+        for f in files:
+            size = f.get('file_size', 0) or 0
+            if size >= 1048576:
+                f['file_size_display'] = f'{size / 1048576:.1f} MB'
+            elif size >= 1024:
+                f['file_size_display'] = f'{size / 1024:.1f} KB'
+            else:
+                f['file_size_display'] = f'{size} B'
+
+        current_project = None
+        if project_id:
+            for p in projects:
+                if p['id'] == project_id:
+                    current_project = p
+                    break
+
+        return render_template(
+            'shared_files.html',
+            projects=projects,
+            current_project=current_project,
+            files=files,
+            is_admin=current_user.is_admin()
+        )
+
+    except Exception as e:
+        add_error_log(current_user.id, 'SHARED_FILES_ERROR', str(e), str(e), request.url)
+        return render_template('error.html', error='共有ファイル読み込みエラー'), 500
+
+
+@app.route('/shared-files/upload', methods=['POST'])
+@login_required
+def upload_shared_file():
+    """Upload a shared file"""
+    try:
+        if 'file' not in request.files:
+            return jsonify({'error': 'ファイルが選択されていません'}), 400
+
+        file = request.files['file']
+        sf_project_id = request.form.get('project_id', type=int)
+
+        if not sf_project_id:
+            return jsonify({'error': '案件を選択してください'}), 400
+
+        if file.filename == '':
+            return jsonify({'error': 'ファイルが選択されていません'}), 400
+
+        original_name = file.filename
+        file_ext = original_name.rsplit('.', 1)[1].lower() if '.' in original_name else ''
+
+        # Create shared upload directory
+        shared_dir = os.path.join(app.config['UPLOAD_FOLDER'], 'shared', str(sf_project_id))
+        os.makedirs(shared_dir, exist_ok=True)
+
+        # Save file
+        unique_filename = f"{uuid.uuid4().hex}.{file_ext}" if file_ext else f"{uuid.uuid4().hex}"
+        file_path = os.path.join(shared_dir, unique_filename)
+        file.save(file_path)
+
+        file_size = os.path.getsize(file_path)
+
+        # Determine file type
+        type_map = {'pdf': 'PDF', 'xlsx': 'Excel', 'xls': 'Excel', 'csv': 'CSV',
+                     'tsv': 'TSV', 'txt': 'テキスト', 'shd': 'SHD', 'str': 'STR'}
+        file_type = type_map.get(file_ext, 'その他')
+
+        db = get_db()
+        cursor = db.cursor()
+        cursor.execute(
+            '''INSERT INTO shared_files
+               (project_id, original_name, stored_path, file_type, file_size, uploaded_by)
+               VALUES (?,?,?,?,?,?)''',
+            (sf_project_id, original_name, file_path, file_type, file_size, current_user.id)
+        )
+        db.commit()
+
+        return jsonify({
+            'success': True,
+            'message': f'{original_name} をアップロードしました'
+        }), 200
+
+    except Exception as e:
+        add_error_log(current_user.id, 'UPLOAD_SHARED_FILE_ERROR', str(e), str(e), request.url)
+        return jsonify({'error': f'アップロードエラー: {str(e)}'}), 500
+
+
+@app.route('/shared-files/download/<int:sf_file_id>')
+@login_required
+def download_shared_file(sf_file_id):
+    """Download a shared file"""
+    try:
+        db = get_db()
+        cursor = db.cursor()
+        cursor.execute(
+            'SELECT stored_path, original_name FROM shared_files WHERE id = ?',
+            (sf_file_id,)
+        )
+        file_row = cursor.fetchone()
+        if not file_row:
+            return jsonify({'error': 'ファイルが見つかりません'}), 404
+
+        return send_file(file_row[0], as_attachment=True, download_name=file_row[1])
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/shared-files/delete/<int:sf_file_id>', methods=['DELETE'])
+@login_required
+def delete_shared_file(sf_file_id):
+    """Delete a shared file (admin only)"""
+    try:
+        if not current_user.is_admin():
+            return jsonify({'error': '管理者権限が必要です'}), 403
+
+        db = get_db()
+        cursor = db.cursor()
+        cursor.execute('SELECT stored_path FROM shared_files WHERE id = ?', (sf_file_id,))
+        file_row = cursor.fetchone()
+        if not file_row:
+            return jsonify({'error': 'ファイルが見つかりません'}), 404
+
+        # Delete file from disk
+        if os.path.exists(file_row[0]):
+            os.remove(file_row[0])
+
+        cursor.execute('DELETE FROM shared_files WHERE id = ?', (sf_file_id,))
+        db.commit()
+
+        return jsonify({'success': True, 'message': 'ファイルを削除しました'}), 200
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+# ==================== AI ESTIMATION ====================
+
+@app.route('/projects/<int:project_id>/ai-estimate', methods=['POST'])
+@login_required
+def ai_estimate(project_id):
+    """AI-powered estimation: match materials against master and create estimate"""
+    try:
+        db = get_db()
+        cursor = db.cursor()
+
+        # Check project
+        cursor.execute('SELECT created_by FROM projects WHERE id = ?', (project_id,))
+        project = cursor.fetchone()
+        if not project or (project[0] != current_user.id and not current_user.is_admin()):
+            return jsonify({'error': 'アクセス権限がありません'}), 403
+
+        # Run matching engine
+        results = run_project_matching(project_id, current_user.id)
+
+        if 'error' in results:
+            return jsonify({'error': results['error']}), 400
+
+        # Get labor unit price
+        cursor.execute("SELECT setting_value FROM estimate_settings WHERE setting_key='labor_unit_price'")
+        lup_row = cursor.fetchone()
+        labor_unit_price = float(lup_row[0]) if lup_row else 25000
+
+        # Calculate totals
+        cursor.execute(
+            '''SELECT COALESCE(SUM(amount), 0), COALESCE(SUM(productivity_total), 0), COUNT(*)
+               FROM estimate_details WHERE project_id = ?''',
+            (project_id,)
+        )
+        totals = cursor.fetchone()
+        total_material = totals[0]
+        total_productivity = totals[1]
+        total_labor = total_productivity * labor_unit_price
+        detail_count = totals[2]
+
+        # Update project status
+        cursor.execute(
+            'UPDATE projects SET status = ?, updated_at = ? WHERE id = ?',
+            ('estimated', datetime.utcnow(), project_id)
+        )
+        db.commit()
+
+        return jsonify({
+            'success': True,
+            'message': f'AI見積完了: {detail_count}件の明細を作成しました',
+            'results': results,
+            'totals': {
+                'material_cost': total_material,
+                'labor_cost': total_labor,
+                'productivity_total': total_productivity,
+                'detail_count': detail_count,
+            }
+        }), 200
+
+    except Exception as e:
+        add_error_log(current_user.id, 'AI_ESTIMATE_ERROR', str(e), str(e), request.url)
+        return jsonify({'error': f'AI見積エラー: {str(e)}'}), 500
+
+
 # ==================== ERROR HANDLERS ====================
 
 @app.errorhandler(404)
