@@ -137,866 +137,19 @@
     </div>
   </div>
 
-  <!-- Conditions Sec           background: rgba(255, 255, 255, 0.1);
-            color: white;
-        }
-
-        .sidebar-nav a.active {
-            background: rgba(59, 130, 246, 0.2);
-            color: #60a5fa;
-            font-weight: 600;
-        }
-
-        .sidebar-nav a.active::before {
-            content: '';
-            position: absolute;
-            left: 0;
-            top: 50%;
-            transform: translateY(-50%);
-            width: 3px;
-            height: 24px;
-            background: #60a5fa;
-            border-radius: 0 3px 3px 0;
-        }
-
-        .sidebar-nav i {
-            font-size: 18px;
-            width: 18px;
-            text-align: center;
-        }
-
-        /* Sidebar Sections */
-        .sidebar-section {
-            margin-bottom: 24px;
-        }
-
-        .sidebar-section-title {
-            font-size: 11px;
-            font-weight: 700;
-            color: rgba(255, 255, 255, 0.5);
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            padding: 12px 14px;
-            margin-bottom: 8px;
-        }
-
-        /* Sidebar Scrollbar */
-        .sidebar::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        .sidebar::-webkit-scrollbar-track {
-            background: transparent;
-        }
-
-        .sidebar::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 3px;
-        }
-
-        .sidebar::-webkit-scrollbar-thumb:hover {
-            background: rgba(255, 255, 255, 0.3);
-        }
-
-        /* ========== Top Header ========== */
-        .header {
-            position: fixed;
-            top: 0;
-            left: 260px;
-            right: 0;
-            height: 70px;
-            background: var(--color-white);
-            border-bottom: 1px solid var(--color-border);
-            padding: 0 32px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            z-index: 999;
-            transition: left var(--transition-normal);
-            box-shadow: var(--shadow-sm);
-        }
-
-        .header.sidebar-collapsed {
-            left: 0;
-        }
-
-        .header-left {
-            display: flex;
-            align-items: center;
-            gap: 24px;
-        }
-
-        .sidebar-toggle {
-            background: none;
-            border: none;
-            font-size: 20px;
-            color: var(--color-text-dark);
-            cursor: pointer;
-            padding: 8px;
-            border-radius: var(--radius-md);
-            transition: all var(--transition-fast);
-            display: none;
-        }
-
-        .sidebar-toggle:hover {
-            background: var(--color-bg-light);
-        }
-
-        /* ========== Main Content Area ========== */
-        .main-content {
-            margin-left: 260px;
-            margin-top: 70px;
-            padding: 32px;
-            flex: 1;
-            transition: margin-left var(--transition-normal);
-            background: var(--color-bg-light);
-            min-height: calc(100vh - 70px);
-        }
-
-        .main-content.sidebar-collapsed {
-            margin-left: 0;
-        }
-
-        /* ========== Content Container ========== */
-        .content-wrapper {
-            max-width: 1400px;
-            margin: 0 auto;
-        }
-
-        /* ========== Cards & Components ========== */
-        .card {
-            background: var(--color-white);
-            border: 1px solid var(--color-border);
-            border-radius: var(--radius-lg);
-            box-shadow: var(--shadow-md);
-            transition: all var(--transition-normal);
-            overflow: hidden;
-        }
-
-        .card:hover {
-            box-shadow: var(--shadow-lg);
-            border-color: #d1d5db;
-        }
-
-        .card-header {
-            background: linear-gradient(to right, #f8f9fa, #ffffff);
-            border-bottom: 1px solid var(--color-border);
-            padding: 20px 24px;
-        }
-
-        .card-body {
-            padding: 24px;
-        }
-
-        /* ========== Glass Morphism ========== */
-        .glass {
-            background: var(--color-glass-bg);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            border-radius: var(--radius-lg);
-        }
-
-        /* ========== Buttons ========== */
-        .btn {
-            font-weight: 500;
-            border-radius: var(--radius-md);
-            border: none;
-            transition: all var(--transition-fast);
-            padding: 10px 18px;
-            font-size: 14px;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            cursor: pointer;
-        }
-
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-md);
-        }
-
-        .btn-primary {
-            background: var(--color-primary-blue);
-            color: white;
-        }
-
-        .btn-primary:hover {
-            background: var(--color-primary-blue-dark);
-            color: white;
-        }
-
-        .btn-success {
-            background: var(--color-success);
-            color: white;
-        }
-
-        .btn-success:hover {
-            background: #059669;
-            color: white;
-        }
-
-        .btn-warning {
-            background: var(--color-warning);
-            color: white;
-        }
-
-        .btn-warning:hover {
-            background: #d97706;
-            color: white;
-        }
-
-        .btn-danger {
-            background: var(--color-danger);
-            color: white;
-        }
-
-        .btn-danger:hover {
-            background: #dc2626;
-            color: white;
-        }
-
-        .btn-secondary {
-            background: #e5e7eb;
-            color: var(--color-text-dark);
-        }
-
-        .btn-secondary:hover {
-            background: #d1d5db;
-            color: var(--color-text-dark);
-        }
-
-        .btn-lg {
-            padding: 12px 28px;
-            font-size: 15px;
-        }
-
-        .btn-sm {
-            padding: 6px 12px;
-            font-size: 13px;
-        }
-
-        /* ========== Forms ========== */
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        .form-label {
-            font-weight: 600;
-            font-size: 14px;
-            color: var(--color-text-dark);
-            margin-bottom: 8px;
-            display: block;
-        }
-
-        .form-control {
-            border: 1px solid var(--color-border);
-            border-radius: var(--radius-md);
-            padding: 10px 14px;
-            font-size: 14px;
-            font-family: var(--font-family);
-            transition: all var(--transition-fast);
-            background: white;
-            color: var(--color-text-dark);
-        }
-
-        .form-control:focus {
-            border-color: var(--color-primary-blue);
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-            outline: none;
-        }
-
-        .form-control::placeholder {
-            color: var(--color-text-muted);
-        }
-
-        .floating-label {
-            position: relative;
-        }
-
-        .floating-label .form-control {
-            padding-top: 20px;
-            padding-bottom: 6px;
-        }
-
-        .floating-label label {
-            position: absolute;
-            top: 10px;
-            left: 14px;
-            font-size: 12px;
-            font-weight: 500;
-            color: var(--color-text-muted);
-            pointer-events: none;
-            transition: all var(--transition-fast);
-        }
-
-        .floating-label .form-control:focus ~ label,
-        .floating-label .form-control:not(:placeholder-shown) ~ label {
-            top: 4px;
-            font-size: 11px;
-            color: var(--color-primary-blue);
-            font-weight: 600;
-        }
-
-        /* ========== Color-coded Status ========== */
-        .status-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 6px 12px;
-            border-radius: var(--radius-md);
-            font-size: 13px;
-            font-weight: 600;
-        }
-
-        .status-high {
-            background: rgba(16, 185, 129, 0.1);
-            color: var(--color-success);
-        }
-
-        .status-review {
-            background: rgba(245, 158, 11, 0.1);
-            color: var(--color-warning);
-        }
-
-        .status-low {
-            background: rgba(239, 68, 68, 0.1);
-            color: var(--color-danger);
-        }
-
-        /* ========== Loading Overlay ========== */
-        .loading-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.4);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            z-index: 2000;
-            backdrop-filter: blur(4px);
-        }
-
-        .loading-overlay.show {
-            display: flex;
-        }
-
-        .loading-spinner {
-            background: var(--color-white);
-            padding: 32px;
-            border-radius: var(--radius-lg);
-            text-align: center;
-            box-shadow: var(--shadow-lg);
-        }
-
-        .spinner {
-            display: inline-block;
-            width: 48px;
-            height: 48px;
-            border: 4px solid #e5e7eb;
-            border-top-color: var(--color-primary-blue);
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-            margin-bottom: 16px;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        .spinner-text {
-            font-size: 14px;
-            color: var(--color-text-muted);
-            margin-bottom: 8px;
-        }
-
-        /* ========== Toast Notifications ========== */
-        .toast-container {
-            position: fixed;
-            top: 24px;
-            right: 24px;
-            z-index: 2001;
-            pointer-events: none;
-        }
-
-        .toast {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            background: var(--color-white);
-            border: 1px solid var(--color-border);
-            border-radius: var(--radius-md);
-            padding: 16px 20px;
-            margin-bottom: 12px;
-            box-shadow: var(--shadow-lg);
-            animation: slideIn 0.3s ease-out;
-            pointer-events: auto;
-            min-width: 320px;
-            max-width: 400px;
-        }
-
-        .toast.success {
-            border-left: 4px solid var(--color-success);
-        }
-
-        .toast.error {
-            border-left: 4px solid var(--color-danger);
-        }
-
-        .toast.warning {
-            border-left: 4px solid var(--color-warning);
-        }
-
-        .toast.info {
-            border-left: 4px solid var(--color-primary-blue);
-        }
-
-        .toast-icon {
-            font-size: 18px;
-            flex-shrink: 0;
-        }
-
-        .toast.success .toast-icon {
-            color: var(--color-success);
-        }
-
-        .toast.error .toast-icon {
-            color: var(--color-danger);
-        }
-
-        .toast.warning .toast-icon {
-            color: var(--color-warning);
-        }
-
-        .toast.info .toast-icon {
-            color: var(--color-primary-blue);
-        }
-
-        .toast-content {
-            flex: 1;
-        }
-
-        .toast-title {
-            font-weight: 600;
-            font-size: 14px;
-            color: var(--color-text-dark);
-            margin-bottom: 2px;
-        }
-
-        .toast-message {
-            font-size: 13px;
-            color: var(--color-text-muted);
-        }
-
-        .toast-close {
-            background: none;
-            border: none;
-            font-size: 18px;
-            color: var(--color-text-muted);
-            cursor: pointer;
-            padding: 0;
-            flex-shrink: 0;
-        }
-
-        @keyframes slideIn {
-            from {
-                transform: translateX(400px);
-                opacity: 0;
-            }
-            to {
-                transform: translateX(0);
-                opacity: 1;
-            }
-        }
-
-        /* ========== Flash Messages (Legacy Bootstrap) ========== */
-        .alert {
-            border-radius: var(--radius-md);
-            border: 1px solid;
-            padding: 14px 16px;
-            margin-bottom: 16px;
-            animation: slideIn 0.3s ease-out;
-        }
-
-        .alert-success {
-            background: rgba(16, 185, 129, 0.08);
-            border-color: rgba(16, 185, 129, 0.3);
-            color: var(--color-success);
-        }
-
-        .alert-danger {
-            background: rgba(239, 68, 68, 0.08);
-            border-color: rgba(239, 68, 68, 0.3);
-            color: var(--color-danger);
-        }
-
-        .alert-warning {
-            background: rgba(245, 158, 11, 0.08);
-            border-color: rgba(245, 158, 11, 0.3);
-            color: var(--color-warning);
-        }
-
-        .alert-info {
-            background: rgba(59, 130, 246, 0.08);
-            border-color: rgba(59, 130, 246, 0.3);
-            color: var(--color-primary-blue);
-        }
-
-        .alert-close {
-            background: none;
-            border: none;
-            font-size: 16px;
-            cursor: pointer;
-            opacity: 0.7;
-            padding: 0;
-        }
-
-        .alert-close:hover {
-            opacity: 1;
-        }
-
-        /* ========== Typography ========== */
-        h1, h2, h3, h4, h5, h6 {
-            font-weight: 700;
-            color: var(--color-text-dark);
-            margin-bottom: 12px;
-        }
-
-        h1 {
-            font-size: 32px;
-            letter-spacing: -0.5px;
-        }
-
-        h2 {
-            font-size: 24px;
-            letter-spacing: -0.3px;
-        }
-
-        h3 {
-            font-size: 18px;
-            letter-spacing: -0.2px;
-        }
-
-        h4 {
-            font-size: 160x;
-        }
-
-        p {
-            margin-bottom: 12px;
-            line-height: 1.6;
-        }
-
-        a {
-            color: var(--color-primary-blue);
-            text-decoration: none;
-            transition: color var(--transition-fast);
-        }
-
-        a:hover {
-            color: var(--color-primary-blue-dark);
-            text-decoration: underline;
-        }
-
-        /* ========== Tables ========== */
-        .table {
-            background: var(--color-white);
-            border-collapse: collapse;
-            margin-bottom: 0;
-        }
-
-        .table thead {
-            background: linear-gradient(to right, #f8f9fa, #ffffff);
-            border-bottom: 2px solid var(--color-border);
-        }
-
-        .table th {
-            font-weight: 600;
-            font-size: 13px;
-            color: var(--color-text-dark);
-            padding: 14px 16px;
-            text-align: left;
-            text-transform: none;
-        }
-
-        .table td {
-            padding: 14px 16px;
-            border-bottom: 1px solid var(--color-border);
-            font-size: 14px;
-        }
-
-        .table tbody tr:hover {
-            background: #f8f9fa;
-        }
-
-        /* ========== User Info & Header========== */
-        .user-info {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .user-avatar {
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, var(--color-primary-blue) 0%, #0ea5e9 100%);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: 600;
-            font-size: 14px;
-        }
-
-        .user-details {
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
-        }
-
-        .user-name {
-            font-weight: 600;
-            font-size: 14px;
-            color: var(--color-text-dark);
-        }
-
-        .user-role {
-            font-size: 12px;
-            color: var(--color-text-muted);
-        }
-
-        /* ========== Footer ========== */
-        .footer {
-            margin-top: 48px;
-            padding-top: 24px;
-            border-top: 1px solid var(--color-border);
-            text-align: center;
-            color: var(--color-text-muted);
-            font-size: 13px;
-        }
-
-        /* ========== Responsive Design ========== */
-        @media (max-width: 768px) {
-            .sidebar {
-                width: 240px;
-            }
-
-            .header {
-                left: 240px;
-            }
-
-            .header.sidebar-collapsed {
-                left: 0;
-            }
-
-            .main-content {
-                margin-left: 240px;
-            }
-
-            .main-content.sidebar-collapsed {
-                margin-left: 0;
-            }
-
-            .sidebar-toggle {
-                display: block;
-            }
-
-            .sidebar-title {
-                display: none;
-            }
-
-            .sidebar-nav a span {
-                display: none;
-            }
-
-            .sidebar-nav a {
-                justify-content: center;
-            }
-
-            .main-content {
-                padding: 24px 16px;
-            }
-
-            h1 {
-                font-size: 24px;
-            }
-
-            h2 {
-                font-size: 20px;
-            }
-        }
-
-        @media (max-width: 576px) {
-            .sidebar {
-                width: 220px;
-            }
-
-            .sidebar-logo {
-                width: 36px;
-                height: 36px;
-                font-size: 18px;
-            }
-
-            .header {
-                padding: 0 16px;
-            }
-
-            .header-left {
-                gap: 12px;
-            }
-
-            .main-content {
-                padding: 16px 12px;
-            }
-
-            .card {
-                margin-bottom: 16px;
-            }
-
-            .card-body {
-                padding: 16px;
-            }
-
-            .user-info {
-                display: none;
-            }
-
-            .toast {
-                min-width: 280px;
-                max-width: 280px;
-            }
-        }
-    </style>
-
-    {% block extra_css %}{% endblock %}
-</head>
-<body>
-    <!-- Sidebar Navigation -->
-    <aside class="sidebar" id="sidebar">
-        <div class="sidebar-header">
-            <div class="sidebar-logo">⚡</div>
-            <h1 class="sidebar-title">積算</h1>
-        </div>
-
-        <!-- Regular User Navigation -->
-        <ul class="sidebar-nav">
-            <li>
-                <a href="{{ url_for('dashboard') if current_user.is_authenticated else '#' }}"
-                   class="{% if request.endpoint and 'dashboard' in request.endpoint %}active{% endif %}">
-                    <i class="bi bi-speedometer2"></i>
-                    <span>ダッシュボード</span>
-                </a>
-            </li>
-            <li>
-                <a href="{{ url_for('dashboard') if current_user.is_authenticated else '#' }}"
-                   class="{% if request.endpoint and 'dashboard' in request.endpoint %}active{% endif %}">
-                    <i class="bi bi-list-check"></i>
-                    <span>案件一覧</span>
-                </a>
-            </li>
-            <li>
-                <a href="{{ url_for('create_project') if current_user.is_authenticated else '#' }}"
-                   class="{% if request.endpoint and 'create_project' in request.endpoint %}active{% endif %}">
-                    <i class="bi bi-plus-circle"></i>
-                    <span>見積作成</span>
-                </a>
-            </li>
-            <li>
-                <a href="#"
-                   class="{% if request.endpoint and 'files' in request.endpoint %}active{% endif %}">
-                    <i class="bi bi-file-earmark"></i>
-                    <span>共有ファイル</span>
-                </a>
-            </li>
-        </ul>
-
-        <!-- Admin Navigation (shown only to admins) -->
-        {% if current_user.is_authenticated and current_user.role == 'admin' %}
-        <div class="sidebar-section">
-            <div class="sidebar-section-title">管理者</div>
-            <ul class="sidebar-nav">
-                <li>
-                    <a href="{{ url_for('admin_users') }}"
-                       class="{% if request.endpoint and request.endpoint == 'admin_users' %}active{% endif %}">
-                        <i class="bi bi-people"></i>
-                        <span>ユーザー管理</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="{{ url_for('admin_audit_log') }}"
-                       class="{% if request.endpoint and request.endpoint == 'admin_audit_log' %}active{% endif %}">
-                        <i class="bi bi-clock-history"></i>
-                        <span>監査�
-ӂ�</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="{{ url_for('admin_error_log') }}"
-                       class="{% if request.endpoint and request.endpoint == 'admin_error_log' %}active{% endif %}">
-                        <i class="bi bi-exclamation-triangle"></i>
-                        <span>エラーログ</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="{{ url_for('admin_learning') }}"
-                       class="{% if request.endpoint and request.endpoint == 'admin_learning' %}active{% endif %}">
-                        <i class="bi bi-book"></i>
-                        <span>学習辞書</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="{{ url_for('admin_master') }}"
-                       class="{% if request.endpoint and request.endpoint == 'admin_master' %}active{% endif %}">
-                        <i class="bi bi-table"></i>
-                        <span>マスタ管理</span>
-                    </a>
-                </li>
-                <li>
-                    <a href="{{ url_for('admin_settings') }}"
-                       class="{% if request.endpoint and request.endpoint == 'admin_settings' %}active{% endif %}">
-                        <i class="bi bi-gear"></i>
-                        <span>設定</span>
-                    </a>
-                </li>
-            </ul>
-        </div>
-        {% endif %}
-    </aside>
-
-    <!-- Top Header -->
-    <header class="header" id="header">
-        <div class="header-left">
-            <button class="sidebar-toggle" id="sidebarToggle">
-                <i class="bi bi-list"></i>
-            </button>
-        </div>
-
-        <div class="user-info" id="userInfo">
-            {% if current_user.is_authenticated %}
-            <div class="user-avatar">
-                {{ current_user.full_name[0] if current_user.full_name else 'U' }}
-            </div>
-            <div class="user-details">
-                <div class="user-name">{{ current_user.full_name }}</div>
-                <div class="user-role">
-                    {% if current_user.role == 'admin' %}管理者{% elif current_user.role == 'user' %}ユーザー{% else %}{{ current_user.role }}{% endif %}
-                </div>
-            </div>
-            {% endif %}
-            <a href="{{ url_for('logout') if current_user.is_authenticated else '#' }}" class="btn btn-secondary btn-sm">
-                <i class="bi bi-box-arrow-right"></i>
-                <span>ログアウト</span>
-            </a>
-        </div>
-    </header>
-
-    <!-- Loading Overlay -->
-    <div class="loading-overlay" id="loadingOverlay">
-        <div class="loading-spinner">
-            <div class="spinner"></div>
-            <div class="spinner-text">AI処�中...</div>
-            <div style="font-size: 12px; color: var(--color-text-muted);">お待たせしていま8���F�c���F�c���F�cࠢ���f�6��W76vW2���FW&�F�7B7G��R�����Rv�F��W76vW2�vWE�f�6�VE��W76vW2�v�F��6FVv�&�W3�G'VR�WТ�R�b�W76vW2WТ�F�b6�73�'F�7B�6��F��W"#��Rf�"6FVv�'���W76vR���W76vW2WТ�F�b6�73�'F�7B�R�b6FVv�'���vW'&�"rW�W'&�'�RVƖb6FVv�'���w7V66W72rW�7V66W77�RVƖb6FVv�'���wv&��rrW�v&��w�RV�6RW֖�f��RV�F�bW�#��F�b6�73�'F�7B֖6��#��R�b6FVv�'���vW'&�"rWТƒ6�73�&&�&��W�6��F����6�&6�R�f���#������RVƖb6FVv�'���w7V66W72rWТƒ6�73�&&�&��6�V6��6�&6�R�f���#������RVƖb6FVv�'���wv&��rrWТƒ6�73�&&�&��W�6��F����G&��v�R�f���#������RV�6RWТƒ6�73�&&�&�֖�f��6�&6�R�f���#������RV�F�bWТ��F�c��F�b6�73�'F�7B�6��FV�B#��F�b6�73�'F�7B�F�F�R#��R�b6FVv�'���vW'&�"rW�8*�8:�8;ǲRVƖb6FVv�'���w7V66W72rW�h�X���RVƖb6FVv�'���wv&��rrW�k:�hH��RV�6RW�h8^Z�RV�F�bWТ��F�c��F�b6�73�'F�7B��W76vR#緲�W76vR����F�c���F�c��'WGF��6�73�'F�7B�6��6R"��6Ɩ6��'F��2�&V�DV�V�V�B�7G��R�F�7���v���Rs�#�ƒ6�73�&&�&�ׂ#�������'WGF�����F�c��RV�Ff�"WТ��F�c��RV�F�bWТ�RV�Gv�F�WР�������6��FV�B�������6�73�&����6��FV�B"�C�&���6��FV�B#��F�b6�73�&6��FV�B�w&W"#��R&��6�6��FV�BWײRV�F&��6�WР����f��FW"����f��FW"6�73�&f��FW"#���f6���##B���k	~���X)�z��z�~8+~8+�88n8:���&�v�G2&W6W'fVB������f��FW#���F�c������ࠢ���&��G7G&�2����67&�B7&3�&�GG3���6F��6FVƗg"��WB����&��G7G&R�2��F�7B��2�&��G7G&�'V�F�R�֖��2#���67&�Cࠢ���&6R�f67&�B����67&�C���6�FV&"F�vv�P�6��7B6�FV&"�F�7V�V�B�vWDV�V�V�D'��B�w6�FV&"r���6��7B�VFW"�F�7V�V�B�vWDV�V�V�D'��B�v�VFW"r���6��7B���6��FV�B�F�7V�V�B�vWDV�V�V�D'��B�v���6��FV�Br���6��7B6�FV&%F�vv�R�F�7V�V�B�vWDV�V�V�D'��B�w6�FV&%F�vv�Rr�����b�6�FV&%F�vv�R���6�FV&%F�vv�R�FDWfV�DƗ7FV�W"�v6Ɩ6�r�������6�FV&"�6�74Ɨ7B�F�vv�R�v6���6VBr����VFW"�6�74Ɨ7B�F�vv�R�w6�FV&"�6���6VBr������6��FV�B�6�74Ɨ7B�F�vv�R�w6�FV&"�6���6VBr���ғ��Р�����F��r�fW&��gV�7F���0�gV�7F���6��t��F��t�fW&������F�7V�V�B�vWDV�V�V�D'��B�v��F��t�fW&��r��6�74Ɨ7B�FB�w6��rr���Р�gV�7F�����FT��F��t�fW&������F�7V�V�B�vWDV�V�V�D'��B�v��F��t�fW&��r��6�74Ɨ7B�&V��fR�w6��rr���Р���F�7B��F�f�6F���gV�7F���gV�7F���6��uF�7B��W76vR�F�F�R�~�	�y�Rr�G�R�v��f�r���6��7B6��F��W"�F�7V�V�B�VW'�6V�V7F�"�r�F�7B�6��F��W"r���7&VFUF�7D6��F��W"����6��7BF�7B�F�7V�V�B�7&VFTV�V�V�B�vF�br���F�7B�6�74��R�F�7BG�G�W����6��7B�6������w7V66W72s�v&��6�V6��6�&6�R�f���r��vW'&�"s�v&��W�6��F����6�&6�R�f���r��wv&��rs�v&��W�6��F����G&��v�R�f���r��v��f�s�v&�֖�f��6�&6�R�f���p�Ӱ��6��7BF�F�T����w7V66W72s�~h�X��r��vW'&�"s�~8*�8:�8;�r��wv&��rs�~k:�hH�r��v��f�s�~h8^Zp�Ӱ��F�7B���W$�D��� ��F�b6�73�'F�7B֖6��#�ƒ6�73�&&�G��6����G�U��#�������F�c��F�b6�73�'F�7B�6��FV�B#��F�b6�73�'F�7B�F�F�R#�G�F�F�T��G�U����F�c��F�b6�73�'F�7B��W76vR#�G��W76vW���F�c���F�c��'WGF��6�73�'F�7B�6��6R"��6Ɩ6��'F��2�&V�DV�V�V�B�7G��R�F�7���v���Rs�#�ƒ6�73�&&�&�ׂ#�������'WGF������6��F��W"�V�D6���B�F�7B������WF��&V��fRgFW"R6V6��G0�6WEF��V�WB�������F�7B�7G��R���F����w6ƖFT�WB�72V6R��WBs��6WEF��V�WB�����F�7B�&V��fR���3�����S���Р�gV�7F���7&VFUF�7D6��F��W"����6��7B6��F��W"�F�7V�V�B�7&VFTV�V�V�B�vF�br���6��F��W"�6�74��R�wF�7B�6��F��W"s��F�7V�V�B�&�G��V�D6���B�6��F��W"���&WGW&�6��F��W#��Р���6��6R�W'G2��6��6R'WGF��6Ɩ6��F�7V�V�B�VW'�6V�V7F�$�r��W'B�6��6Rr��f�$V6��'F�����'F��FDWfV�DƗ7FV�W"�v6Ɩ6�r�gV�7F��ₒ��F��2�6��6W7B�r��W'Br��&V��fR����ғ��ғ����67&�Cࠢ�R&��6�W�G&��2WײRV�F&��6�WУ��&�G�����F���&6�w&�V�C�&v&�#SR�#SR�#SR�����6���#�v��FS��Р��6�FV&"��b�7F�fR��&6�w&�V�C�&v&�S��3�#Cb��"���6���#�3cVf��f��B�vV�v�C�c��Р��6�FV&"��b�7F�fS��&Vf�&R��6��FV�C�rs���6�F���'6��WFS���VgC���F��SS��G&�6f�&ӢG&�6�FU���SR���v�GF��7����V�v�C�#G���&6�w&�V�C�3cVf��&�&FW"�&F�W3�7�7���Р��6�FV&"��b���f��B�6��S�����v�GF������FW�B�Ɩv�6V�FW#��Р��6�FV&"6V7F���2���6�FV&"�6V7F������&v���&�GF�Ӣ#G���Р��6�FV&"�6V7F����F�F�R��f��B�6��S����f��B�vV�v�C�s��6���#�&v&�#SR�#SR�#SR��R���FW�B�G&�6f�&ӢWW&66S���WGFW"�76��s����FF��s�'�G����&v���&�GF�Ӣ����Р��6�FV&"67&���&"���6�FV&#���vV&��B�67&���&"��v�GF��g���Р��6�FV&#���vV&��B�67&���&"�G&6���&6�w&�V�C�G&�7&V�C��Р��6�FV&#���vV&��B�67&���&"�F�V�"��&6�w&�V�C�&v&�#SR�#SR�#SR��"���&�&FW"�&F�W3�7���Р��6�FV&#���vV&��B�67&���&"�F�V�#���fW"��&6�w&�V�C�&v&�#SR�#SR�#SR��2���Р������������F��VFW"�������������VFW"���6�F���f��VC��F�����VgC�#c���&�v�C����V�v�C�s���&6�w&�V�C�f"���6���"�v��FR���&�&FW"�&�GF�Ӣ�6�ƖBf"���6���"�&�&FW"���FF��s�3'���F�7���f�W���Ɩv�֗FV�3�6V�FW#���W7F�g��6��FV�C�76R�&WGvVV㰢�֖�FW�������G&�6�F����VgBf"���G&�6�F������&���&���6�F�s�f"���6�F�r�6ғ��Р��VFW"�6�FV&"�6���6VB���VgC���Р��VFW"��VgB��F�7���f�W���Ɩv�֗FV�3�6V�FW#��v�#G���Р��6�FV&"�F�vv�R��&6�w&�V�C����S��&�&FW#����S��f��B�6��S�#���6���#�f"���6���"�FW�B�F&����7W'6�#����FW#��FF��s�����&�&FW"�&F�W3�f"���&F�W2��B���G&�6�F�����f"���G&�6�F����f7B���F�7������S��Р��6�FV&"�F�vv�S���fW"��&6�w&�V�C�f"���6���"�&r�Ɩv�B���Р���������������6��FV�B&V�����������������6��FV�B���&v����VgC�#c����&v���F��s���FF��s�3'���f�W����G&�6�F����&v����VgBf"���G&�6�F������&���&6�w&�V�C�f"���6���"�&r�Ɩv�B���֖�ֆV�v�C�6�2�f��s����Р������6��FV�B�6�FV&"�6���6VB���&v����VgC���Р������������6��FV�B6��F��W"�������������6��FV�B�w&W"�����v�GF��C����&v��WF��F�������F�b6�73�&6��F�F���2�6V7F���#�ƃ#�h�z��i�K�c���#��FW�F&V�C�&W7F��FU�6��F�F���2"6�73�&6��F�F���2�FW�F&V"�6V���FW#�.�h�z��i�K�n8).XZ^X�����#緲6WGF��w2�W7F��FU�6��F�F���2�"rr����FW�F&V���F�cࠢ���6��G&��'WGF��2����F�b6�73�&'WGF���w&�W#��'WGF��6�73�&'F�'F��&��'�"�C�'6fR�'F�#��7�6�73�&�6��#�	�+���7��K��Zـ���'WGF����'WGF��6�73�&'F�'F��6V6��F'�"�C�'6fR�FV��FR�'F�#��7�6�73�&�6��#�	�8���7��88n8;>89~8:ート保存
+  <!-- Conditions Section -->
+  <div class="conditions-section">
+    <h2>見積条件</h2>
+    <textarea id="estimate_conditions" class="conditions-textarea" placeholder="見積条件を入力...">{{ settings.estimate_conditions or '' }}</textarea>
+  </div>
+
+  <!-- Control Buttons -->
+  <div class="button-group">
+    <button class="btn btn-primary" id="save-btn">
+      <span class="icon">💾</span> 保存
+    </button>
+    <button class="btn btn-secondary" id="save-template-btn">
+      <span class="icon">📋</span> テンプレート保存
     </button>
     <button class="btn btn-secondary" id="export-excel-btn">
       <span class="icon">📊</span> Excel出力
@@ -1042,7 +195,50 @@
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    margin-bottom: 300px3��f�W��w&�w&��v�#���Р��VFW"��WF��F�7���f�W���v�3���f�W��w&�w&��Р���WF�f�V�B��F�7���f�W���f�W��F�&V7F���6��V�㰢v�����Р���WF�f�V�B�&V���f��B�vV�v�C�c��6���#�3333��f��B�6��S�7���FW�B�G&�6f�&ӢWW&66S���WGFW"�76��s��W���Р���WF֖�WB��FF��s���'���&�&FW#��6�ƖB6FFC��&�&FW"�&F�W3�G���f��B�6��S�G���&6�w&�V�C�v��FS��֖��v�GF��S���Р���WF֖�WC�f�7W2���WFƖ�S����S��&�&FW"�6���#�3S��SS��&���6�F�s�7�&v&�3�3b�##������Р��VFW"�FWF��2��F�7���w&�C��w&�B�FV��FR�6��V��3�g"g"g#��v�3�;
+    margin-bottom: 30px;
+    flex-wrap: wrap;
+    gap: 20px;
+  }
+
+  .header-meta {
+    display: flex;
+    gap: 30px;
+    flex-wrap: wrap;
+  }
+
+  .meta-field {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .meta-field label {
+    font-weight: 600;
+    color: #333;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .meta-input {
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+    background: white;
+    min-width: 150px;
+  }
+
+  .meta-input:focus {
+    outline: none;
+    border-color: #1e88e5;
+    box-shadow: 0 0 0 3px rgba(30, 136, 229, 0.1);
+  }
+
+  .header-details {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 30px;
     margin-bottom: 30px;
     padding-bottom: 30px;
     border-bottom: 1px solid #eee;
@@ -1193,244 +389,7 @@
     font-size: 18px;
     font-weight: 600;
     color: #1a1a1a;
-    text-transform: 
-        /* ========== Cards & Components ========== */
-        .card {
-            background: var(--color-white);
-            border: 1px solid var(--color-border);
-            border-radius: var(--radius-lg);
-            box-shadow: var(--shadow-md);
-            transition: all var(--transition-normal);
-            overflow: hidden;
-        }
-
-        .card:hover {
-            box-shadow: var(--shadow-lg);
-            border-color: #d1d5db;
-        }
-
-        .card-header {
-            background: linear-gradient(to right, #f8f9fa, #ffffff);
-            border-bottom: 1px solid var(--color-border);
-            padding: 20px 24px;
-        }
-
-        .card-body {
-            padding: 24px;
-        }
-
-        /* ========== Glass Morphism ========== */
-        .glass {
-            background: var(--color-glass-bg);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            border-radius: var(--radius-lg);
-        }
-
-        /* ========== Buttons ========== */
-        .btn {
-            font-weight: 500;
-            border-radius: var(--radius-md);
-            border: none;
-            transition: all var(--transition-fast);
-            padding: 10px 18px;
-            font-size: 14px;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            cursor: pointer;
-        }
-
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-md);
-        }
-
-        .btn-primary {
-            background: var(--color-primary-blue);
-            color: white;
-        }
-
-        .btn-primary:hover {
-            background: var(--color-primary-blue-dark);
-            color: white;
-        }
-
-        .btn-success {
-            background: var(--color-success);
-            color: white;
-        }
-
-        .btn-success:hover {
-            background: #059669;
-            color: white;
-        }
-
-        .btn-warning {
-            background: var(--color-warning);
-            color: white;
-        }
-
-        .btn-warning:hover {
-            background: #d97706;
-            color: white;
-        }
-
-        .btn-danger {
-            background: var(--color-danger);
-            color: white;
-        }
-
-        .btn-danger:hover {
-            background: #dc2626;
-            color: white;
-        }
-
-        .btn-secondary {
-            background: #e5e7eb;
-            color: var(--color-text-dark);
-        }
-
-        .btn-secondary:hover {
-            background: #d1d5db;
-            color: var(--color-text-dark);
-        }
-
-        .btn-lg {
-            padding: 12px 28px;
-            font-size: 15px;
-        }
-
-        .btn-sm {
-            padding: 6px 12px;
-            font-size: 13px;
-        }
-
-        /* ========== Forms ========== */
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        .form-label {
-            font-weight: 600;
-            font-size: 14px;
-            color: var(--color-text-dark);
-            margin-bottom: 8px;
-            display: block;
-        }
-
-        .form-control {
-            border: 1px solid var(--color-border);
-            border-radius: var(--radius-md);
-            padding: 10px 14px;
-            font-size: 14px;
-            font-family: var(--font-family);
-            transition: all var(--transition-fast);
-            background: white;
-            color: var(--color-text-dark);
-        }
-
-        .form-control:focus {
-            border-color: var(--color-primary-blue);
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-            outline: none;
-        }
-
-        .form-control::placeholder {
-            color: var(--color-text-muted);
-        }
-
-        .floating-label {
-            position: relative;
-        }
-
-        .floating-label .form-control {
-            padding-top: 20px;
-            padding-bottom: 6px;
-        }
-
-        .floating-label label {
-            position: absolute;
-            top: 10px;
-            left: 14px;
-            font-size: 12px;
-            font-weight: 500;
-            color: var(--color-text-muted);
-            pointer-events: none;
-            transition: all var(--transition-fast);
-        }
-
-        .floating-label .form-control:focus ~ label,
-        .floating-label .form-control:not(:placeholder-shown) ~ label {
-            top: 4px;
-            font-size: 11px;
-            color: var(--color-primary-blue);
-            font-weight: 600;
-        }
-
-        /* ========== Color-coded Status ========== */
-        .status-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 6px 12px;
-            border-radius: var(--radius-md);
-            font-size: 13px;
-            font-weight: 600;
-        }
-
-        .status-high {
-            background: rgba(16, 185, 129, 0.1);
-            color: var(--color-success);
-        }
-
-        .status-review {
-            background: rgba(245, 158, 11, 0.1);
-            color: var(--color-warning);
-        }
-
-        .status-low {
-            background: rgba(239, 68, 68, 0.1);
-            color: var(--color-danger);
-        }
-
-        /* ========== Loading Overlay ========== */
-        .loading-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.4);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            z-index: 2000;
-            backdrop-filter: blur(4px);
-        }
-
-        .loading-overlay.show {
-            display: flex;
-        }
-
-        .loading-spinner {
-            background: var(--color-white);
-            padding: 32px;
-            border-radius: var(--radius-lg);
-            text-align: center;
-            box-shadow: var(--shadow-lg);
-        }
-
-        .spinner {
-            display: inline-block;
-            width: 48px;
-            height: 48px;
-            border: 4px solid #e5e7eb;
-            border-top-color: var(--color-primary-blue);
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-            margin-bottom: 16px;
-        }uppercase;
+    text-transform: uppercase;
     letter-spacing: 1px;
   }
 
@@ -1717,153 +676,288 @@
     font-size: 18px;
     font-weight: 600;
     color: #1a1a1a;
-    text-transform: uppercase on project end {
-    padding-bottom: 30px;
-    margin-bottom: 30px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
   }
 
-  .snapsh���'V��FW"��&6�w&�V�C�v��FS��&�&FW"�&F�W3�����FF��s�3����&v��Wo;
+  .conditions-textarea {
+    width: 100%;
+    min-height: 120px;
+    padding: 15px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 13px;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    resize: vertical;
   }
 
-  .pbuilder-filter-section {
-    margin-bottom: 20px;
+  .conditions-textarea:focus {
+    outline: none;
+    border-color: #1e88e5;
+    box-shadow: 0 0 0 3px rgba(30, 136, 229, 0.1);
   }
 
-  .prealrod-input {
-    padding: 8px 12px3��&�&FW#��6�ƖB6FFC��&�&FW"�&F�W3�7���f��B�6��S�3     � 
-     �6�73�&VF�F&�R�6V��"6��FV�FVF�F&�S�'G'VR"FF�f�V�C�&6��7G'V7F�����WF��B#�G�F��2�W66T�F�FWF���6��7G'V7F�����WF��B��rr����7����FC��FC��7�6�73�&VF�F&�R�6V��"6��FV�FVF�F&�S�'G'VR"FF�f�V�C�'V�B#�G�F��2�W66T�F�FWF���V�B��rr����7����FC��FB6�73�'V�F�G��6V��#�Ɩ�WBG�S�&�V�&W""6�73�&VF�F&�R�6V���V�W&�2֖�WB"FF�f�V�C�'V�F�G�"f�VS�"G�FWF���V�F�G����"7FW�#�"����FC��FB6�73�'&�6R�6V��#�Ɩ�WBG�S�&�V�&W""6�73�&VF�F&�R�6V���V�W&�2֖�WB"FF�f�V�C�&6���6�FU�V�E�&�6R"f�VS�"G�FWF���6���6�FU�V�E�&�6R���"7FW�#�"����FC��FB6�73�&��V�B�6V��"FF���V�C�"G�FWF���G�#�*S��FC��FB6�73�'&�6R�6V��#�Ɩ�WBG�S�&�V�&W""6�73�&VF�F&�R�6V���V�W&�2֖�WB"FF�f�V�C�'&�GV7F�f�G�"f�VS�"G�FWF���&�GV7F�f�G����"7FW�#�"����FC��FB6�73�&��V�B�6V��"FF��&�#�"G�FWF���G�#�*S��FC��FC��F�b6�73�'&�r�7F���2#��'WGF��6�73�'&�r�FV�WFR�'F�"��6Ɩ6��&W7F��FT'V��FW"�FV�WFU&�r�F��2�#�X����C��'WGF�����F�c���FC���G#���ғ����F���� ���F&�G����F&�S��F�b6�73�'6V7F����f��FW"#��'WGF��6�73�&'F�'F��6V6��F'�"��6Ɩ6��&W7F��FT'V��FW"�FE&�uF�6V7F���rG�6FVv�'��r�#��7�6�73�&�6��#���7���΋��X� ���'WGF����'WGF��6�73�&'F�'F��6V6��F'�"��6Ɩ6��&W7F��FT'V��FW"�FE7V'F�F�&�r�rG�6FVv�'��r�#��7�6�73�&�6��#���7��[�������X� ���'WGF����'WGF��6�73�&'F�'F��6V6��F'�"��6Ɩ6��&W7F��FT'V��FW"�FD��FU&�r�rG�6FVv�'��r�#��7�6�73�&�6��#���7��X)��>���X� ���'WGF�����F�c���F�c����6V7F������W$�D����F�ð�&WGW&�6V7F��㰢Р�vWD6��f�FV�6T6�72�6��f�FV�6R����b�6��f�FV�6R��を&WGW&�vw&VV�s���b�6��f�FV�6R���R�&WGW&�w�V���rs��&WGW&�w&VBs��Р�GF6�WfV�DƗ7FV�W'2�������V�W&�2��WB6��vW0�F�7V�V�B�FDWfV�DƗ7FV�W"�v6��vRr��R������b�R�F&vWB�6�74Ɨ7B�6��F��2�v�V�W&�2֖�WBr����F��2�6�7V�FUF�F�2����Тғ�������WBWfV�G2f�"&V��F��R6�7V�F���F�7V�V�B�FDWfV�DƗ7FV�W"�v��WBr��R������b�R�F&vWB�6�74Ɨ7B�6��F��2�v�V�W&�2֖�WBr����F��2�6�7V�FU&�t��V�B�R�F&vWB���Тғ�����fVRW&6V�FvR6��vW0�F�7V�V�B�vWDV�V�V�D'��B�vvV�W&��F֖��W&6V�Br��FDWfV�DƗ7FV�W"�v6��vRr�����F��2�6�7V�FUF�F�2�����F�7V�V�B�vWDV�V�V�D'��B�w7FGWF�'��vV�f&U�W&6V�Br��FDWfV�DƗ7FV�W"�v6��vRr�����F��2�6�7V�FUF�F�2�����F�7V�V�B�vWDV�V�V�D'��B�v6��7V�F����F��W&6V�Br��FDWfV�DƗ7FV�W"�v6��vRr�����F��2�6�7V�FUF�F�2��������'WGF��WfV�G0�F�7V�V�B�vWDV�V�V�D'��B�w6fR�'F�r��FDWfV�DƗ7FV�W"�v6Ɩ6�r�����F��2�6fR�����F�7V�V�B�vWDV�V�V�D'��B�w6fR�FV��FR�'F�r��FDWfV�DƗ7FV�W"�v6Ɩ6�r�����F��2�6fUFV��FR�����F�7V�V�B�vWDV�V�V�D'��B�vW��'B�W�6V��'F�r��FDWfV�DƗ7FV�W"�v6Ɩ6�r�����F��2�W��'DW�6V����F�7V�V�B�vWDV�V�V�D'��B�w&��B�'F�r��FDWfV�DƗ7FV�W"�v6Ɩ6�r�����v��F�r�&��B�����F�7V�V�B�vWDV�V�V�D'��B�vFB�g&VR�&�r�'F�r��FDWfV�DƗ7FV�W"�v6Ɩ6�r�����F��2�FDg&VU&�r�����F�7V�V�B�vWDV�V�V�D'��B�vFB�6V7F����'F�r��FDWfV�DƗ7FV�W"�v6Ɩ6�r�����F��2�FE6V7F��ₒ���Р�6�7V�FU&�t��V�B���WB���6��7B&�r���WB�6��6W7B�wG"r����b�&�r�&WGW&㰠�6��7BV�F�G���WB�&�r�VW'�6V�V7F�"�u�FF�f�V�C�'V�F�G�%�r���6��7B&�6T��WB�&�r�VW'�6V�V7F�"�u�FF�f�V�C�&6���6�FU�V�E�&�6R%�r���6��7B��V�D6V���&�r�VW'�6V�V7F�"�u�FF���V�E�r���6��7B&�GV7F�f�G���WB�&�r�VW'�6V�V7F�"�u�FF�f�V�C�'&�GV7F�f�G�%�r���6��7B�&�$6V���&�r�VW'�6V�V7F�"�u�FF��&�%�r�����b�V�F�G���WBbb&�6T��WBbb��V�D6V���6��7BV�F�G��'6Tf��B�V�F�G���WB�f�VR�����6��7B&�6R�'6Tf��B�&�6T��WB�f�VR�����6��7B��V�B�V�F�G��&�6S����V�D6V���FW�D6��FV�B�F��2�f�&�E�V���V�B�����V�D6V���FF6WB�f�VR���V�C��Р��b�&�GV7F�f�G���WBbb�&�$6V���6��7B&�GV7F�f�G��'6Tf��B�&�GV7F�f�G���WB�f�VR�����6��7B�&�"�&�GV7F�f�G��F��2��&�%V�E&�6S���&�$6V���FW�D6��FV�B�F��2�f�&�E�V��&�"����&�$6V���FF6WB�f�VR��&�#��ТР�6�7V�FUF�F�2�����WBF�F��FW&��2����WBF�F��&�"������7V�����V�G2�B�&�"6�7G0�F�7V�V�B�VW'�6V�V7F�$�u�FF���V�E�r��f�$V6��6V������F�F��FW&��2��'6Tf��B�6V���FF6WB�f�VR�����ғ���F�7V�V�B���W�g&�W27����F��G&�6f�&Ӣ&�FFR�3cFVr��ТР��7���W"�FW�B��f��B�6��S�G���6���#�f"���6���"�FW�B��WFVB����&v���&�GF�Ӣ����Р������������F�7B��F�f�6F���2�������������F�7B�6��F��W"���6�F���f��VC��F��#G���&�v�C�#G����֖�FW��#�����FW"�WfV�G3����S��Р��F�7B��F�7���f�W���Ɩv�֗FV�3�6V�FW#��v�'���&6�w&�V�C�f"���6���"�v��FR���&�&FW#��6�ƖBf"���6���"�&�&FW"���&�&FW"�&F�W3�f"���&F�W2��B���FF��s�g�#����&v���&�GF�Ӣ'���&���6�F�s�f"���6�F�r��r�����F���6ƖFT���72V6R��WC�����FW"�WfV�G3�WF�֖��v�GF��3#������v�GF��C���Р��F�7B�7V66W72��&�&FW"��VgC�G�6�ƖBf"���6���"�7V66W72���Р��F�7B�W'&�"��&�&FW"��VgC�G�6�ƖBf"���6���"�F�vW"���Р��F�7B�v&��r��&�&FW"��VgC�G�6�ƖBf"���6���"�v&��r���Р��F�7B��f���&�&FW"��VgC�G�6�ƖBf"���6���"�&��'��&�VR���Р��F�7B֖6����f��B�6��S�����f�W��6�&�波��Р��F�7B�7V66W72�F�7B֖6����6���#�f"���6���"�7V66W72���Р��F�7B�W'&�"�F�7B֖6����6���#�f"���6���"�F�vW"���Р��F�7B�v&��r�F�7B֖6����6���#�f"���6���"�v&��r���Р��F�7B��f��F�7B֖6����6���#�f"���6���"�&��'��&�VR���Р��F�7B�6��FV�B��f�W����Р��F�7B�F�F�R��f��B�vV�v�C�c��f��B�6��S�G���6���#�f"���6���"�FW�B�F&�����&v���&�GF�Ӣ'���Р��F�7B��W76vR��f��B�6��S�7���6���#�f"���6���"�FW�B��WFVB���Р��F�7B�6��6R��&6�w&�V�C����S��&�&FW#����S��f��B�6��S�����6���#�f"���6���"�FW�B��WFVB���7W'6�#����FW#��FF��s���f�W��6�&�波��Р��W�g&�W26ƖFT����g&����G&�6f�&ӢG&�6�FU��C�����6�G����ТF���G&�6f�&ӢG&�6�FU������6�G����ТР������������f�6��W76vW2��Vv7�&��G7G&���������������W'B��&�&FW"�&F�W3�f"���&F�W2��B���&�&FW#��6�ƖC��FF��s�G�g����&v���&�GF�Ӣg�����F���6ƖFT���72V6R��WC��Р���W'B�7V66W72��&6�w&�V�C�&v&�b��R�#�������&�&FW"�6���#�&v&�b��R�#���2���6���#�f"���6���"�7V66W72���Р���W'B�F�vW"��&6�w&�V�C�&v&�#3��c��c�������&�&FW"�6���#�&v&�#3��c��c���2���6���#�f"���6���"�F�vW"���Р���W'B�v&��r��&6�w&�V�C�&v&�#CR�S��������&�&FW"�6���#�&v&�#CR�S����2���6���#�f"���6���"�v&��r���Р���W'B֖�f���&6�w&�V�C�&v&�S��3�#Cb������&�&FW"�6���#�&v&�S��3�#Cb��2���6���#�f"���6���"�&��'��&�VR���Р���W'B�6��6R��&6�w&�V�C����S��&�&FW#����S��f��B�6��S�g���7W'6�#����FW#���6�G���s��FF��s���Р���W'B�6��6S���fW"���6�G����Р������������G��w&�����������������"��2��B��R��b��f��B�vV�v�C�s��6���#�f"���6���"�FW�B�F&�����&v���&�GF�Ӣ'���Р����f��B�6��S�3'����WGFW"�76��s���W���Р��"��f��B�6��S�#G����WGFW"�76��s���7���Р��2��f��B�6��S�����WGFW"�76��s���'���Р��B��f��B�6��S�c���Р����&v���&�GF�Ӣ'���Ɩ�RֆV�v�C��c��Р���6���#�f"���6���"�&��'��&�VR���FW�B�FV6�&F������S��G&�6�F���6���"f"���G&�6�F����f7B���Р����fW"��6���#�f"���6���"�&��'��&�VR�F&����FW�B�FV6�&F���V�FW&Ɩ�S��Р������������F&�W2�������������F&�R��&6�w&�V�C�f"���6���"�v��FR���&�&FW"�6���6S�6���6S���&v���&�GF�Ӣ��Р��F&�RF�VB��&6�w&�V�C�Ɩ�V"�w&F�V�B�F�&�v�B�6c�c�f�6fffffb���&�&FW"�&�GF�Ӣ'�6�ƖBf"���6���"�&�&FW"���Р��F&�RF���f��B�vV�v�C�c��f��B�6��S�7���6���#�f"���6���"�FW�B�F&����FF��s�G�g���FW�B�Ɩv��VgC��FW�B�G&�6f�&Ӣ���S��Р��F&�RFB��FF��s�G�g���&�&FW"�&�GF�Ӣ�6�ƖBf"���6���"�&�&FW"���f��B�6��S�G���Р��F&�RF&�G�G#���fW"��&6�w&�V�C�6c�c�f��Р������������W6W"��f�b�VFW#�������������W6W"֖�f���F�7���f�W���Ɩv�֗FV�3�6V�FW#��v�'���Р��W6W"�fF"��v�GF��3g����V�v�C�3g���&�&FW"�&F�W3�SS��&6�w&�V�C�Ɩ�V"�w&F�V�B�3VFVr�f"���6���"�&��'��&�VR�R�3VVS�R���F�7���f�W���Ɩv�֗FV�3�6V�FW#���W7F�g��6��FV�C�6V�FW#��6���#�v��FS��f��B�vV�v�C�c��f��B�6��S�G���Р��W6W"�FWF��2��F�7���f�W���f�W��F�&V7F���6��V�㰢v�'���Р��W6W"���R��f��B�vV�v�C�c��f��B�6��S�G���6���#�f"���6���"�FW�B�F&����Р��W6W"�&��R��f��B�6��S�'���6���#�f"���6���"�FW�B��WFVB���Р������������f��FW"�������������f��FW"���&v���F��C����FF��r�F��#G���&�&FW"�F���6�ƖBf"���6���"�&�&FW"���FW�B�Ɩv�6V�FW#��6���#�f"���6���"�FW�B��WFVB���f��B�6��S�7���Р������������&W7��6�fRFW6�v��������������VF�����v�GF��sc������6�FV&"��v�GF��#C���Р��VFW"���VgC�#C���Р��VFW"�6�FV&"�6���6VB���VgC���Р������6��FV�B���&v����VgC�#C���Р������6��FV�B�6�FV&"�6���6VB���&v����VgC���Р��6�FV&"�F�vv�R��F�7���&��6���Р��6�FV&"�F�F�R��F�7������S��Р��6�FV&"��b7���F�7������S��Р��6�FV&"��b���W7F�g��6��FV�C�6V�FW#��Р������6��FV�B��FF��s�#G�g���Р����f��B�6��S�#G���Р��"��f��B�6��S�#���ТР��VF�����v�GF��Ssg�����6�FV&"��v�GF��##���Р��6�FV&"���v���v�GF��3g����V�v�C�3g���f��B�6��S�����Р��VFW"��FF��s�g���Р��VFW"��VgB��v�'���Р������6��FV�B��FF��s�g�'���Р��6&B���&v���&�GF�Ӣg���Р��6&B�&�G���FF��s�g���Р��W6W"֖�f���F�7������S��Р��F�7B��֖��v�GF��#�������v�GF��#����ТТ��7G��Sࠢ�R&��6�W�G&�772WײRV�F&��6�WУ���VC��&�G�����6�FV&"�f�vF�������6�FR6�73�'6�FV&""�C�'6�FV&"#��F�b6�73�'6�FV&"ֆVFW"#��F�b6�73�'6�FV&"���v�#�)���F�c�ƃ6�73�'6�FV&"�F�F�R#�z��z�s������F�cࠢ���&VwV�"W6W"�f�vF�������V�6�73�'6�FV&"��b#��Ɠ���&Vc�'��W&��f�"�vF6�&�&Br��b7W'&V�E�W6W"�5�WF�V�F�6FVBV�6Rr2r�� �6�73�'�R�b&WVW7B�V�G���B�BvF6�&�&Br��&WVW7B�V�G���BW�7F�fW�RV�F�bW�#�ƒ6�73�&&�&��7VVF��WFW#"#������7��8888>8+~8:^89�8;�88���7�������Ɠ��Ɠ���&Vc�'��W&��f�"�vF6�&�&Br��b7W'&V�E�W6W"�5�WF�V�F�6FVBV�6Rr2r�� �6�73�'�R�b&WVW7B�V�G���B�BvF6�&�&Br��&WVW7B�V�G���BW�7F�fW�RV�F�bW�#�ƒ6�73�&&�&��Ɨ7B�6�V6�#������7��j�K�nK��js��7�������Ɠ��Ɠ���&Vc�'��W&��f�"�v7&VFU�&��V7Br��b7W'&V�E�W6W"�5�WF�V�F�6FVBV�6Rr2r�� �6�73�'�R�b&WVW7B�V�G���B�Bv7&VFU�&��V7Br��&WVW7B�V�G���BW�7F�fW�RV�F�bW�#�ƒ6�73�&&�&���W2�6�&6�R#������7��h�z��K��h���7�������Ɠ��Ɠ���&Vc�"2 �6�73�'�R�b&WVW7B�V�G���B�Bvf��W2r��&WVW7B�V�G���BW�7F�fW�RV�F�bW�#�ƒ6�73�&&�&��f��R�V&�&�#������7��X[iȞ89^8*8*N8:���7�������Ɠ���V�ࠢ���F֖��f�vF����6��v���ǒF�F֖�2�����R�b7W'&V�E�W6W"�5�WF�V�F�6FVB�B7W'&V�E�W6W"�&��R��vF֖�rWТ�F�b6�73�'6�FV&"�6V7F���#��F�b6�73�'6�FV&"�6V7F����F�F�R#�z�yn�S��F�c��V�6�73�'6�FV&"��b#��Ɠ���&Vc�'��W&��f�"�vF֖��W6W'2r��� �6�73�'�R�b&WVW7B�V�G���B�B&WVW7B�V�G���B��vF֖��W6W'2rW�7F�fW�RV�F�bW�#�ƒ6�73�&&�&��V��R#������7��8:n8;�8+n8;�z�yc��7�������Ɠ��Ɠ���&Vc�'��W&��f�"�vF֖��VF�E���rr��� �6�73�'�R�b&WVW7B�V�G���B�B&WVW7B�V�G���B��vF֖��VF�E���rrW�7F�fW�RV�F�bW�#�ƒ6�73�&&�&��6��6�ֆ�7F�'�#������7��y�>i��8:�8+��7�������Ɠ��Ɠ���&Vc�'��W&��f�"�vF֖��W'&�%���rr��� �6�73�'�R�b&WVW7B�V�G���B�B&WVW7B�V�G���B��vF֖��W'&�%���rrW�7F�fW�RV�F�bW�#�ƒ6�73�&&�&��W�6��F����G&��v�R#������7��8*�8:�8;�8:�8+��7�������Ɠ��Ɠ���&Vc�'��W&��f�"�vF֖���V&��rr��� �6�73�'�R�b&WVW7B�V�G���B�B&WVW7B�V�G���B��vF֖���V&��rrW�7F�fW�RV�F�bW�#�ƒ6�73�&&�&��&���#������7��Z�n{�.���i����7�������Ɠ��Ɠ���&Vc�'��W&��f�"�vF֖���7FW"r��� �6�73�'�R�b&WVW7B�V�G���B�B&WVW7B�V�G���B��vF֖���7FW"rW�7F�fW�RV�F�bW�#�ƒ6�73�&&�&��F&�R#������7��89�8+�8+�z�yc��7�������Ɠ��Ɠ���&Vc�'��W&��f�"�vF֖��6WGF��w2r��� �6�73�'�R�b&WVW7B�V�G���B�B&WVW7B�V�G���B��vF֖��6WGF��w2rW�7F�fW�RV�F�bW�#�ƒ6�73�&&�&��vV"#������7��Z���7�������Ɠ���V����F�c��RV�F�bWТ��6�FSࠢ���F��VFW"���ƆVFW"6�73�&�VFW""�C�&�VFW"#��F�b6�73�&�VFW"��VgB#��'WGF��6�73�'6�FV&"�F�vv�R"�C�'6�FV&%F�vv�R#�ƒ6�73�&&�&��Ɨ7B#�������'WGF�����F�cࠢ�F�b6�73�'W6W"֖�f�"�C�'W6W$��f�#��R�b7W'&V�E�W6W"�5�WF�V�F�6FVBWТ�F�b6�73�'W6W"�fF"#���7W'&V�E�W6W"�gV�����U���b7W'&V�E�W6W"�gV�����RV�6RuRr�Т��F�c��F�b6�73�'W6W"�FWF��2#��F�b6�73�'W6W"���R#緲7W'&V�E�W6W"�gV�����R����F�c��F�b6�73�'W6W"�&��R#��R�b7W'&V�E�W6W"�&��R��vF֖�rW�z�yn�W�RVƖb7W'&V�E�W6W"�&��R��wW6W"rW�8:n8;�8+n8;ǲRV�6RW׷�7W'&V�E�W6W"�&��R�ײRV�F�bWТ��F�c���F�c��RV�F�bWТ��&Vc�'��W&��f�"�v��v�WBr��b7W'&V�E�W6W"�5�WF�V�F�6FVBV�6Rr2r��"6�73�&'F�'F��6V6��F'�'F��6�#�ƒ6�73�&&�&��&���'&�r�&�v�B#������7��8:�8+8*.8*n88���7�������F�c����VFW#ࠢ�����F��r�fW&������F�b6�73�&��F��r��fW&��"�C�&��F��t�fW&��#��F�b6�73�&��F��r�7���W"#��F�b6�73�'7���W"#���F�c��F�b6�73�'7���W"�FW�B#��Xzny@nK�������F�c��F�b7G��S�&f��B�6��S�'��6���#�f"���6���"�FW�B��WFVB��#�8�[�^8�8�8~8n8N8す</div>
-        </div>
-    </div>
+  /* Print Styles */
+  @media print {
+    body {
+      background: white;
+    }
 
-    <!-- Flash Messages (Modern Toast Style) -->
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-        <div class="toast-container">
-            {% for category, message in messages %}
-            <div class="toast {% if category == 'error' %}error{% elif category == 'success' %}success{% elif category == 'warning' %}warning{% else %}info{% endif %}">
-                <div class="toast-icon">
-                    {% if category == 'error' %}
-                        <i class="bi bi-exclamation-circle-fill"></i>
-                    {% elif category == 'success' %}
-                        <i class="bi bi-check-circle-fill"></i>
-                    {% elif category == 'warning' %}
-                        <i class="bi bi-exclamation-triangle-fill"></i>
-                    {% else %}
-                        <i class="bi bi-info-circle-fill"></i>
-                    {% endif %}
-                </div>
-                <div class="toast-content">
-                    <div class="toast-title">
-                        {% if category == 'error' %}エラー{% elif category == 'success' %}成功{% elif category == 'warning' %}注意{% else %}情報{% endif %}
-                    </div>
-                    <div class="toast-message">{{ message }}</div>
-                </div>
-                <button class="toast-close" onclick="this.parentElement.style.display='none';">
-                    <i class="bi bi-x"></i>
-                </button>
-            </div>
-            {% endfor %}
-        </div>
-        {% endif %}
-    {% endwith %}
+    .estimate-builder-container {
+      padding: 0;
+      margin: 0;
+      background: white;
+    }
 
-    <!-- Main Content -->
-    <main class="main-content" id="mainContent">
-        <div class="content-wrapper">
-            {% block content %}{% endblock %}
+    .estimate-header,
+    .estimate-summary,
+    .estimate-details,
+    .fees-section,
+    .conditions-section {
+      box-shadow: none;
+      page-break-inside: avoid;
+      border: 1px solid #ddd;
+    }
 
-            <!-- Footer -->
-            <footer class="footer">
-                <p>&copy; 2024 電気設備積算システム. All rights reserved.</p>
-            </footer>
-        </div>
-    </main>
+    .button-group,
+    .section-controls,
+    .row-actions {
+      display: none;
+    }
 
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    .row-actions {
+      opacity: 0;
+    }
 
-    <!-- Base JavaScript -->
-    <script>
-        // Sidebar Toggle
-        const sidebar = document.getElementById('sidebar');
-        const header = document.getElementById('header');
-        const mainContent = document.getElementById('mainContent');
-        const sidebarToggle = document.getElementById('sidebarToggle');
+    .section-table {
+      page-break-inside: avoid;
+    }
 
-        if (sidebarToggle) {
-            sidebarToggle.addEventListener('click', () => {
-                sidebar.classList.toggle('collapsed');
-                header.classList.toggle('sidebar-collapsed');
-                mainContent.classList.toggle('sidebar-collapsed');
-            });
+    .editable-cell {
+      border: none;
+      background: transparent;
+    }
+  }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    .summary-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    .header-details {
+      grid-template-columns: 1fr;
+    }
+
+    .section-header {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    .section-table {
+      font-size: 12px;
+    }
+
+    .section-table th,
+    .section-table td {
+      padding: 8px 6px;
+    }
+  }
+</style>
+
+<script>
+  // Initialize estimate builder
+  class EstimateBuilder {
+    constructor() {
+      this.projectId = "{{ project.id }}";
+      this.details = {{ details | tojson }};
+      this.settings = {{ settings | tojson }};
+      this.laborUnitPrice = {{ settings.get('labor_unit_price', 0) }};
+
+      this.initializeDate();
+      this.renderDetailSections();
+      this.attachEventListeners();
+      this.calculateTotals();
+    }
+
+    initializeDate() {
+      const today = new Date();
+      const thirtyDaysLater = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+      document.getElementById('estimate_expiry').valueAsDate = thirtyDaysLater;
+    }
+
+    groupDetailsByCategory() {
+      const grouped = {};
+      this.details.forEach(detail => {
+        const category = detail.field_category || '未分類';
+        if (!grouped[category]) {
+          grouped[category] = [];
         }
+        grouped[category].push(detail);
+      });
+      return grouped;
+    }
 
-        // Loading Overlay Functions
-        function showLoadingOverlay() {
-            document.getElementById('loadingOverlay').classList.add('show');
+    renderDetailSections() {
+      const container = document.getElementById('details-container');
+      container.innerHTML = '';
+
+      const grouped = this.groupDetailsByCategory();
+
+      Object.entries(grouped).forEach(([category, details]) => {
+        const section = this.createSectionHTML(category, details);
+        container.appendChild(section);
+      });
+    }
+
+    createSectionHTML(category, details) {
+      const section = document.createElement('div');
+      section.className = 'section-group';
+      section.dataset.category = category;
+
+      const header = document.createElement('div');
+      header.className = 'section-header';
+      header.innerHTML = `<h3>${category}</h3><div class="section-subtotal">小計: <span class="amount">¥0</span></div>`;
+      header.addEventListener('click', () => this.toggleSection(section));
+
+      const body = document.createElement('div');
+      body.className = 'section-body';
+      const table = this.createSectionTable(details);
+      body.appendChild(table);
+
+      section.appendChild(header);
+      section.appendChild(body);
+      return section;
+    }
+
+    createSectionTable(details) {
+      const table = document.createElement('table');
+      table.className = 'section-table';
+
+      const thead = table.createTHead();
+      const headerRow = thead.insertRow();
+      ['#', '品名', '摘要', '数量', '単位', '単価', '金額'].forEach(label => {
+        const th = document.createElement('th');
+        th.textContent = label;
+        headerRow.appendChild(th);
+      });
+
+      const tbody = table.createTBody();
+      details.forEach((detail, index) => {
+        const row = tbody.insertRow();
+        row.className = index % 2 === 1 ? 'alt-row' : '';
+        row.innerHTML = `
+          <td class="row-number">${index + 1}</td>
+          <td class="material-name">${detail.field_name || ''}</td>
+          <td>${detail.remarks || ''}</td>
+          <td class="quantity-cell"><input type="number" class="editable-cell quantity" value="${detail.quantity || 0}" /></td>
+          <td>${detail.unit || ''}</td>
+          <td class="price-cell"><input type="number" class="editable-cell price" value="${detail.unit_price || 0}" /></td>
+          <td class="amount-cell"><span class="amount">${this.formatCurrency(detail.quantity * detail.unit_price)}</span></td>
+        `;
+      });
+
+      return table;
+    }
+
+    toggleSection(section) {
+      section.classList.toggle('collapsed');
+    }
+
+    attachEventListeners() {
+      document.getElementById('add-free-row-btn')?.addEventListener('click', () => this.addFreeRow());
+      document.getElementById('add-section-btn')?.addEventListener('click', () => this.addSection());
+      document.getElementById('save-btn')?.addEventListener('click', () => this.save());
+      document.getElementById('save-template-btn')?.addEventListener('click', () => this.saveTemplate());
+      document.getElementById('export-excel-btn')?.addEventListener('click', () => this.exportExcel());
+      document.getElementById('print-btn')?.addEventListener('click', () => window.print());
+
+      // Fee calculation listeners
+      ['general_admin_percent', 'statutory_welfare_percent', 'consumption_tax_percent'].forEach(id => {
+        document.getElementById(id)?.addEventListener('change', () => this.calculateTotals());
+      });
+
+      // Detail change listeners
+      document.querySelectorAll('.editable-cell').forEach(cell => {
+        cell.addEventListener('change', () => this.calculateTotals());
+      });
+    }
+
+    addFreeRow() {
+      alert('自由行追加機能は開発中です');
+    }
+
+    addSection() {
+      alert('セクション追加機能は開発中です');
+    }
+
+    calculateTotals() {
+      let totalMaterials = 0, totalLabor = 0, totalExpenses = 0;
+
+      document.querySelectorAll('.section-group').forEach(section => {
+        const table = section.querySelector('table');
+        if (table) {
+          let sectionTotal = 0;
+          table.querySelectorAll('tbody tr').forEach(row => {
+            const quantity = parseFloat(row.querySelector('.quantity')?.value || 0);
+            const price = parseFloat(row.querySelector('.price')?.value || 0);
+            const amount = quantity * price;
+            sectionTotal += amount;
+            row.querySelector('.amount').textContent = this.formatCurrency(amount);
+          });
+          section.querySelector('.amount').textContent = this.formatCurrency(sectionTotal);
+          totalMaterials += sectionTotal;
         }
+      });
 
-        function hideLoadingOverlay() {
-            document.getElementById('loadingOverlay').classList.remove('show');
-        }
+      const subtotal = totalMaterials + totalLabor + totalExpenses;
+      const generalAdminPercent = parseFloat(document.getElementById('general_admin_percent')?.value || 0);
+      const statutoryWelfarePercent = parseFloat(document.getElementById('statutory_welfare_percent')?.value || 0);
+      const consumptionTaxPercent = parseFloat(document.getElementById('consumption_tax_percent')?.value || 10);
 
-        // Toast Notification Function
-        function showToast(message, title = '通知', type = 'info') {
-            const container = document.querySelector('.toast-container') || createToastContainer();
-            const toast = document.createElement('div');
-            toast.className = `toast ${type}`;
+      const generalAdminFee = subtotal * (generalAdminPercent / 100);
+      const statutoryWelfareFee = totalLabor * (statutoryWelfarePercent / 100);
+      const subtotalWithFees = subtotal + generalAdminFee + statutoryWelfareFee;
+      const consumptionTax = subtotalWithFees * (consumptionTaxPercent / 100);
+      const grandTotal = subtotalWithFees + consumptionTax;
 
-            const iconMap = {
-                'success': 'bi-check-circle-fill',
-                'error': 'bi-exclamation-circle-fill',
-                'warning': 'bi-exclamation-triangle-fill',
-                'info': 'bi-info-circle-fill'
-            };
+      document.getElementById('total_materials').textContent = this.formatCurrency(totalMaterials);
+      document.getElementById('total_labor').textContent = this.formatCurrency(totalLabor);
+      document.getElementById('total_expenses').textContent = this.formatCurrency(totalExpenses);
+      document.getElementById('subtotal').textContent = this.formatCurrency(subtotal);
+      document.getElementById('general_admin_fee').textContent = this.formatCurrency(generalAdminFee);
+      document.getElementById('statutory_welfare_fee').textContent = this.formatCurrency(statutoryWelfareFee);
+      document.getElementById('consumption_tax').textContent = this.formatCurrency(consumptionTax);
+      document.getElementById('grand_total').textContent = this.formatCurrency(grandTotal);
+    }
 
-            const titleMap = {
-                'success': '成功',
-                'error': 'エラー',
-                'warning': '注意',
-                'info': '情報'
-            };
+    formatCurrency(amount) {
+      return '¥' + Math.round(amount).toLocaleString('ja-JP');
+    }
 
-            toast.innerHTML = `
-                <div class="toast-icon">
-                    <i class="bi ${iconMap[type]}"></i>
-                </div>
-                <div class="toast-content">
-                    <div class="toast-title">${titleMap[type]}</div>
-                    <div class="toast-message">${message}</div>
-                </div>
-                <button class="toast-close" onclick="this.parentElement.style.display='none';">
-                    <i class="bi bi-x"></i>
-                </button>
-            `;
+    save() {
+      alert('保存機能は開発中です');
+    }
 
-            container.appendChild(toast);
+    saveTemplate() {
+      alert('テンプレート保存機能は開発中です');
+    }
 
-            // Auto-remove after 5 seconds
-            setTimeout(() => {
-                toast.style.animation = 'slideOut 0.3s ease-out';
-                setTimeout(() => toast.remove(), 300);
-            }, 5000);
-        }
+    exportExcel() {
+      alert('Excel出力機能は開発中です');
+    }
+  }
 
-        function createToastContainer() {
-            const container = document.createElement('div');
-            container.className = 'toast-container';
-            document.body.appendChild(container);
-            return container;
-        }
+  // Initialize on page load
+  document.addEventListener('DOMContentLoaded', () => {
+    new EstimateBuilder();
+  });
 
-        // Close alerts on close button click
-        document.querySelectorAll('.alert-close').forEach(btn => {
-            btn.addEventListener('click', function() {
-                this.closest('.alert').remove();
-            });
-        });
-    </script>
+  // Initialize immediately if DOM is ready
+  if (document.readyState !== 'loading') {
+    new EstimateBuilder();
+  }
+</script>
 
-    {% block extra_js %}{% endblock %}
-</body>
-</html>
+{% endblock %}
