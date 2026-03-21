@@ -1038,15 +1038,21 @@ def upload_file(project_id):
             return jsonify({'error': 'ファイルが選択されていません'}), 400
 
         if not allowed_file(file.filename):
-            return jsonify({'error': '許可されないファイル形式です（PDF, Excel, CSVのみ）'}), 400
+            return jsonify({'error': '許可されないファイル形式です（PDF, Excel, CSV, TSV, SHD, STR, TXT, MDB, RAK）'}), 400
 
         # Create project upload directory
         project_upload_dir = os.path.join(app.config['UPLOAD_FOLDER'], str(project_id))
         os.makedirs(project_upload_dir, exist_ok=True)
 
-        # Save file
-        filename = secure_filename(file.filename)
-        file_ext = filename.rsplit('.', 1)[1].lower()
+        # Save file — secure_filename strips non-ASCII chars (e.g. Japanese),
+        # so extract the extension from the original filename first
+        original_name = file.filename
+        file_ext = original_name.rsplit('.', 1)[1].lower() if '.' in original_name else ''
+        if not file_ext:
+            return jsonify({'error': 'ファイル拡張子を判別できません'}), 400
+        filename = secure_filename(file.filename) or f"upload_{uuid.uuid4().hex[:8]}.{file_ext}"
+        if '.' not in filename:
+            filename = f"{filename}.{file_ext}"
         unique_filename = f"{uuid.uuid4().hex}.{file_ext}"
         file_path = os.path.join(project_upload_dir, unique_filename)
         file.save(file_path)
@@ -1168,7 +1174,7 @@ def upload_file(project_id):
             '''INSERT INTO project_files
                (project_id, file_type, original_name, stored_path, file_size, uploaded_by, uploaded_at)
                VALUES (?, ?, ?, ?, ?, ?, ?)''',
-            (project_id, file_type, filename, stored_path, file_size, current_user.id, datetime.utcnow())
+            (project_id, file_type, original_name, stored_path, file_size, current_user.id, datetime.utcnow())
         )
         db.commit()
 
@@ -1178,7 +1184,7 @@ def upload_file(project_id):
             'project_file',
             cursor.lastrowid,
             'INFO',
-            f'ファイルアップロード: {filename} ({file_type})',
+            f'ファイルアップロード: {original_name} ({file_type})',
             get_user_ip()
         )
 

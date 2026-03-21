@@ -205,7 +205,7 @@
               type="file"
               id="fileInput"
               style="display: none;"
-              accept=".xls,.xlsx,.csv,.pdf,.txt"
+              accept=".xls,.xlsx,.csv,.tsv,.pdf,.txt,.shd,.str,.rak,.mdb"
               multiple
             >
           </div>
@@ -252,7 +252,7 @@
                     <span class="fw-500">{{ file.original_name or file.file_name }}</span>
                   </td>
                   <td class="px-5 py-3 text-secondary small">
-                    {{ file.created_at[:16] if file.created_at else '-' }}
+                    {{ file.uploaded_at[:16] if file.uploaded_at else '-' }}
                   </td>
                   <td class="px-5 py-3 text-center">
                     <a
