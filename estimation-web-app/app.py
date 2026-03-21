@@ -4007,12 +4007,71 @@ def debug_project(project_id):
 
 # ==================== VERSION & ERROR HANDLERS ====================
 
-APP_VERSION = 'bf57812-v4'
+APP_VERSION = 'test-excel-v5'
 
 @app.route('/debug/version')
 def debug_version():
     """Show app version for deploy verification"""
     return jsonify({'version': APP_VERSION, 'status': 'ok'}), 200
+
+
+@app.route('/debug/test-excel-parser')
+def debug_test_excel_parser():
+    """Test Excel parser with a generated test file containing full-width space headers"""
+    try:
+        import io
+        from openpyxl import Workbook
+
+        # Create test Excel with full-width space headers (like real files)
+        wb = Workbook()
+        ws = wb.active
+        ws.title = '内訳'
+        ws['A1'] = '名\u3000\u3000称'
+        ws['B1'] = '規\u3000\u3000格'
+        ws['C1'] = '数量'
+        ws['D1'] = '単位'
+        ws['E1'] = '単\u3000価'
+        ws['F1'] = '金\u3000額'
+        materials = [
+            ('高圧受電盤', 'VCB付 7.2kV', 1, '面', 2500000, 2500000),
+            ('LBS盤', '7.2kV 200A', 2, '面', 800000, 1600000),
+            ('変圧器', '500kVA 6.6kV/210V', 1, '台', 1200000, 1200000),
+            ('分電盤', 'MCCB 3P 225A', 3, '面', 350000, 1050000),
+            ('ケーブル', 'CV 38sq-3C', 200, 'm', 1500, 300000),
+        ]
+        for i, (name, spec, qty, unit, price, amount) in enumerate(materials, 2):
+            ws[f'A{i}'] = name
+            ws[f'B{i}'] = spec
+            ws[f'C{i}'] = qty
+            ws[f'D{i}'] = unit
+            ws[f'E{i}'] = price
+            ws[f'F{i}'] = amount
+
+        # Save to temp file
+        import tempfile
+        with tempfile.NamedTemporaryFile(suffix='.xlsx', delete=False) as f:
+            wb.save(f.name)
+            temp_path = f.name
+
+        # Test the parser
+        result = parse_material_list_excel(temp_path)
+
+        # Clean up
+        os.unlink(temp_path)
+
+        return jsonify({
+            'status': 'ok',
+            'version': APP_VERSION,
+            'material_count': len(result),
+            'first_3': result[:3] if result else [],
+            'headers_test': 'full-width spaces handled correctly'
+        }), 200
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'version': APP_VERSION,
+            'error': str(e)
+        }), 500
 
 
 @app.errorhandler(404)
