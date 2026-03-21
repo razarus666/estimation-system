@@ -1161,7 +1161,11 @@
               </div>
               <div class="candidates-list" data-item="${idx}">
                 ${item.candidates.map(c => `
-                  <div class="candidate-item">${escapeHtml(c)}</div>
+                  <div class="candidate-item">
+                    ${escapeHtml(c.master_name || c.material_name || String(c))}
+                    ${c.master_spec ? ' / ' + escapeHtml(c.master_spec) : ''}
+                    ${c.confidence ? ' (' + Math.round((c.confidence || 0) * 100) + '%)' : ''}
+                  </div>
                 `).join('')}
               </div>
             ` : ''}

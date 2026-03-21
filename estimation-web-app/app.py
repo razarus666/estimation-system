@@ -93,7 +93,7 @@ def admin_required(f):
                 f'Unauthorized admin access attempt: {request.path}',
                 request.remote_addr
             )
-            return render_template('error.html', error='管理者権限が必要です'), 403
+            return render_template('error.html', error_code=403, error_message='管理者権限が必要です'), 403
         return f(*args, **kwargs)
     return decorated_function
 
@@ -540,7 +540,7 @@ def user_profile():
             str(e),
             request.url
         )
-        return render_template('error.html', error='プロフィールの読み込みに失敗しました'), 500
+        return render_template('error.html', error_code=500, error_message='プロフィールの読み込みに失敗しました'), 500
 
 
 @app.route('/profile/avatar', methods=['POST'])
@@ -626,7 +626,7 @@ def pending_page():
             str(e),
             request.url
         )
-        return render_template('error.html', error='承認待ちページの読み込みに失敗しました'), 500
+        return render_template('error.html', error_code=500, error_message='承認待ちページの読み込みに失敗しました'), 500
 
 
 # ==================== DASHBOARD ROUTES ====================
@@ -744,7 +744,7 @@ def dashboard():
             str(e),
             request.url
         )
-        return render_template('error.html', error='ダッシュボード読み込みエラーが発生しました'), 500
+        return render_template('error.html', error_code=500, error_message='ダッシュボード読み込みエラーが発生しました'), 500
 
 
 # ==================== PROJECT ROUTES ====================
@@ -926,10 +926,10 @@ def project_detail(project_id):
         project = cursor.fetchone()
 
         if not project:
-            return render_template('error.html', error='プロジェクトが見つかりません'), 404
+            return render_template('error.html', error_code=404, error_message='プロジェクトが見つかりません'), 404
 
         if project[6] != current_user.id and not current_user.is_admin():
-            return render_template('error.html', error='アクセス権限がありません'), 403
+            return render_template('error.html', error_code=403, error_message='アクセス権限がありません'), 403
 
         # Get project files
         cursor.execute(
@@ -1016,7 +1016,7 @@ def project_detail(project_id):
             str(e),
             request.url
         )
-        return render_template('error.html', error='プロジェクト詳細読み込みエラーが発生しました'), 500
+        return render_template('error.html', error_code=500, error_message='プロジェクト詳細読み込みエラーが発生しました'), 500
 
 
 @app.route('/projects/<int:project_id>/upload', methods=['POST'])
@@ -1677,7 +1677,7 @@ def export_excel(project_id):
             str(e),
             request.url
         )
-        return render_template('error.html', error='Excel エクスポートエラーが発生しました'), 500
+        return render_template('error.html', error_code=500, error_message='Excel エクスポートエラーが発生しました'), 500
 
 
 @app.route('/projects/<int:project_id>/match-candidates/<int:material_id>')
@@ -1880,7 +1880,7 @@ def estimate_builder(project_id):
         cursor.execute('SELECT created_by, name FROM projects WHERE id = ?', (project_id,))
         project = cursor.fetchone()
         if not project or (project[0] != current_user.id and not current_user.is_admin()):
-            return render_template('error.html', error='アクセス権限がありません'), 403
+            return render_template('error.html', error_code=403, error_message='アクセス権限がありません'), 403
 
         # Get estimate details for the project
         cursor.execute(
@@ -1967,7 +1967,7 @@ def estimate_builder(project_id):
             str(e),
             request.url
         )
-        return render_template('error.html', error='見積作成画面の読み込みに失敗しました'), 500
+        return render_template('error.html', error_code=500, error_message='見積作成画面の読み込みに失敗しました'), 500
 
 
 @app.route('/projects/<int:project_id>/estimate-builder/save', methods=['POST'])
@@ -2142,7 +2142,7 @@ def download_file(project_id, file_id):
         cursor.execute('SELECT created_by FROM projects WHERE id = ?', (project_id,))
         project = cursor.fetchone()
         if not project or (project[0] != current_user.id and not current_user.is_admin()):
-            return render_template('error.html', error='アクセス権限がありません'), 403
+            return render_template('error.html', error_code=403, error_message='アクセス権限がありません'), 403
 
         # Get file info
         cursor.execute(
@@ -2151,12 +2151,12 @@ def download_file(project_id, file_id):
         )
         file_info = cursor.fetchone()
         if not file_info:
-            return render_template('error.html', error='ファイルが見つかりません'), 404
+            return render_template('error.html', error_code=404, error_message='ファイルが見つかりません'), 404
 
         stored_path, original_name = file_info
 
         if not os.path.exists(stored_path):
-            return render_template('error.html', error='ファイルが存在しません'), 404
+            return render_template('error.html', error_code=404, error_message='ファイルが存在しません'), 404
 
         add_audit_log(
             current_user.id,
@@ -2182,7 +2182,7 @@ def download_file(project_id, file_id):
             str(e),
             request.url
         )
-        return render_template('error.html', error='ファイルダウンロードエラーが発生しました'), 500
+        return render_template('error.html', error_code=500, error_message='ファイルダウンロードエラーが発生しました'), 500
 
 
 # ==================== LEARNING DICTIONARY ROUTES ====================
@@ -2301,7 +2301,7 @@ def admin_users():
             str(e),
             request.url
         )
-        return render_template('error.html', error='ユーザー管理読み込みエラーが発生しました'), 500
+        return render_template('error.html', error_code=500, error_message='ユーザー管理読み込みエラーが発生しました'), 500
 
 
 @app.route('/admin/users/<int:user_id>/approve', methods=['POST'])
@@ -2646,7 +2646,7 @@ def admin_audit_log():
             str(e),
             request.url
         )
-        return render_template('error.html', error='監査ログ読み込みエラーが発生しました'), 500
+        return render_template('error.html', error_code=500, error_message='監査ログ読み込みエラーが発生しました'), 500
 
 
 @app.route('/admin/error-log')
@@ -2698,7 +2698,7 @@ def admin_error_log():
             str(e),
             request.url
         )
-        return render_template('error.html', error='エラーログ読み込みエラーが発生しました'), 500
+        return render_template('error.html', error_code=500, error_message='エラーログ読み込みエラーが発生しました'), 500
 
 
 @app.route('/admin/learning')
@@ -2757,7 +2757,7 @@ def admin_learning():
             str(e),
             request.url
         )
-        return render_template('error.html', error='学習辞書読み込みエラーが発生しました'), 500
+        return render_template('error.html', error_code=500, error_message='学習辞書読み込みエラーが発生しました'), 500
 
 
 @app.route('/admin/learning/<int:entry_id>/confirm', methods=['POST'])
@@ -2901,7 +2901,7 @@ def admin_master():
             str(e),
             request.url
         )
-        return render_template('error.html', error='マスターデータ読み込みエラーが発生しました'), 500
+        return render_template('error.html', error_code=500, error_message='マスターデータ読み込みエラーが発生しました'), 500
 
 
 @app.route('/admin/master/upload', methods=['POST'])
@@ -3101,7 +3101,7 @@ def admin_settings():
             str(e),
             request.url
         )
-        return render_template('error.html', error='設定読み込みエラーが発生しました'), 500
+        return render_template('error.html', error_code=500, error_message='設定読み込みエラーが発生しました'), 500
 
 
 @app.route('/admin/settings', methods=['POST'])
@@ -3161,7 +3161,7 @@ def blueprint_viewer(project_id, file_id):
         cursor.execute('SELECT id, name, client_name, description, status FROM projects WHERE id = ?', (project_id,))
         project = cursor.fetchone()
         if not project:
-            return render_template('error.html', error='プロジェクトが見つかりません'), 404
+            return render_template('error.html', error_code=404, error_message='プロジェクトが見つかりません'), 404
 
         # Get file info
         cursor.execute(
@@ -3170,7 +3170,7 @@ def blueprint_viewer(project_id, file_id):
         )
         file_row = cursor.fetchone()
         if not file_row:
-            return render_template('error.html', error='ファイルが見つかりません'), 404
+            return render_template('error.html', error_code=404, error_message='ファイルが見つかりません'), 404
 
         # Get existing blueprint items
         cursor.execute(
@@ -3199,7 +3199,7 @@ def blueprint_viewer(project_id, file_id):
 
     except Exception as e:
         add_error_log(current_user.id, 'BLUEPRINT_VIEWER_ERROR', str(e), str(e), request.url)
-        return render_template('error.html', error='図面ビューア読み込みエラー'), 500
+        return render_template('error.html', error_code=500, error_message='図面ビューア読み込みエラー'), 500
 
 
 @app.route('/projects/<int:project_id>/file/<int:file_id>/serve')
@@ -3671,7 +3671,7 @@ def shared_files():
 
     except Exception as e:
         add_error_log(current_user.id, 'SHARED_FILES_ERROR', str(e), str(e), request.url)
-        return render_template('error.html', error='共有ファイル読み込みエラー'), 500
+        return render_template('error.html', error_code=500, error_message='共有ファイル読み込みエラー'), 500
 
 
 @app.route('/shared-files/upload', methods=['POST'])
