@@ -1,4 +1,4 @@
-himport os
+import os
 import uuid
 import csv
 import json
@@ -12,7 +12,7 @@ from io import BytesIO
 import bcrypt
 import pdfplumber
 from flask import (
-    Flask, render_template, request, redirect, url_for, session, jsonify, send_file
+    Flask, render_template, request, redirect, url_for, session, jsonhify, send_file
 )
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from openpyxl import Workbook
