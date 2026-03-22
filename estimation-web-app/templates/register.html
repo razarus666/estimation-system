@@ -357,11 +357,13 @@
             </div>
 
             <!-- Success Message -->
-            <div class="success-message" id="successMessage">
+            {% if success %}
+            <div class="success-message show" id="successMessage">
                 <span class="success-icon"><i class="bi bi-check-circle-fill"></i></span>
                 <div class="success-title">登録完了</div>
-                <div class="success-text">ご登録ありがとうございます。<br>管理者承認をお待ちください。</div>
+                <div class="success-text">{{ success }}</div>
             </div>
+            {% endif %}
 
             <!-- Error Messages -->
             {% if error %}
@@ -384,7 +386,7 @@
             {% endwith %}
 
             <!-- Registration Form -->
-            <form method="POST" class="register-form" id="registerForm">
+            <form method="POST" class="register-form{% if success %} hidden{% endif %}" id="registerForm">
                 <div class="floating-label-group">
                     <label class="form-label" for="full_name">
                         氏名（本名）<span class="required">*</span>

@@ -4007,12 +4007,24 @@ def debug_project(project_id):
 
 # ==================== VERSION & ERROR HANDLERS ====================
 
-APP_VERSION = 'v1.0.0'
+APP_VERSION = 'v1.1.0'
 
 @app.route('/debug/version')
 def debug_version():
     """Show app version for deploy verification"""
     return jsonify({'version': APP_VERSION, 'status': 'ok'}), 200
+
+
+@app.route('/health')
+def health_check():
+    """Health check endpoint for Render and monitoring"""
+    try:
+        db = get_db()
+        cursor = db.cursor()
+        cursor.execute('SELECT 1')
+        return jsonify({'status': 'healthy', 'version': APP_VERSION}), 200
+    except Exception as e:
+        return jsonify({'status': 'unhealthy', 'error': str(e)}), 503
 
 
 @app.errorhandler(404)

@@ -73,6 +73,10 @@
 
                     <!-- Action Buttons -->
                     <div class="error-actions">
+                        <button onclick="window.location.reload()" class="btn btn-success">
+                            <i class="bi bi-arrow-clockwise"></i>
+                            <span>再読み込み</span>
+                        </button>
                         <a href="{{ url_for('dashboard') if current_user.is_authenticated else url_for('login') }}" class="btn btn-primary">
                             <i class="bi bi-house"></i>
                             <span>ホームへ戻る</span>
@@ -226,6 +230,18 @@
         text-decoration: none;
         border: none;
         cursor: pointer;
+    }
+
+    .error-actions .btn-success {
+        background: #10b981;
+        color: white;
+    }
+
+    .error-actions .btn-success:hover {
+        background: #059669;
+        color: white;
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md);
     }
 
     .error-actions .btn-primary {
