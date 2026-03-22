@@ -20,7 +20,7 @@ from openpyxl.styles import Font, PatternFill, Alignment
 from openpyxl.utils import get_column_letter
 from werkzeug.utils import secure_filename
 
-from models import (
+from models import (h
     get_db, init_db, create_admin_user, add_audit_log, add_error_log
 )
 from matching_engine import run_project_matching, load_master_data
@@ -140,8 +140,8 @@ def send_notification_email(to_email, to_name, subject, html_body, email_type='g
         msg.attach(MIMEText(plain_text, 'plain', 'utf-8'))
         msg.attach(MIMEText(html_body, 'html', 'utf-8'))
 
-        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
-            server.starttls()
+        with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT, timeout=15) as server:
+            
             server.login(SMTP_USERNAME, SMTP_PASSWORD)
             server.send_message(msg)
 
