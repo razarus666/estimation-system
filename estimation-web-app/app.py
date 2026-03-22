@@ -2,9 +2,8 @@ import os
 import uuid
 import csv
 import json
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
+import threading
+import requests as http_requests
 from datetime import datetime
 from functools import wraps
 from io import BytesIO
@@ -30,18 +29,16 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY', os.getenv('SECRET_KEY', os.urandom(24).hex()))
 app.config['UPLOAD_FOLDER'] = os.getenv('UPLOAD_FOLDER', os.path.join(os.path.dirname(__file__), 'uploads'))
 app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100MB max file size
-ALLOWED_EXTENSIONS = {'pdf', 'xlsx', 'xls', 'csv', 'tsv', 'shd', 'str', 'txt', 'mdb', 'rak'}
+ALLOWED_EXTENSIONS = {'log', 'xlsx', 'xls', 'csv', 'tsv', 'shd', 'str', 'txt', 'mdb', 'rak'}
 
-# Email configuration
-SMTP_SERVER = os.getenv('SMTP_SERVER', 'smtp.gmail.com')
-SMTP_PORT = int(os.getenv('SMTP_PORT', '587'))
-SMTP_USERNAME = os.getenv('SMTP_USERNAME', '')
-SMTP_PASSWORD = os.getenv('SMTP_PASSWORD', '')
-SMTP_FROM_EMAIL = os.getenv('SMTP_FROM_EMAIL', os.getenv('SMTP_USERNAME', ''))
-SMTP_FROM_NAME = os.getenv('SMTP_FROM_NAME', '電気設備積算システム')
+# Email configuration (SendGrid API)
+SENDGRID_API_KEY = os.getenv('SENDGRID_API_KEY', '')
+EMAIL_FROM = os.getenv('EMAIL_FROM', os.getenv('SMTP_FROM_EMAIL', ''))
+EMAIL_FROM_NAME = os.getenv('EMAIL_FROM_NAME', '電気設備積算システム')
 APP_URL = os.getenv('APP_URL', 'https://estimation-system.onrender.com')
 ADMIN_EMAIL = os.getenv('ADMIN_EMAIL', '')
 ADMIN_CONTACT = os.getenv('ADMIN_CONTACT', '')
+EMAIL_TIMEOUT = int(os.getenv('EMAIL_TIMEOUT', '30'))
 
 
 # ==================== EMAIL SYSTEM ====================
@@ -122,38 +119,53 @@ def log_email(to_email, to_name, subject, email_type, status, error_message=None
 
 
 def send_notification_email(to_email, to_name, subject, html_body, email_type='general', triggered_by=None, related_user_id=None):
-    """Send email notification using SMTP with logging and duplicate prevention"""
-    if not SMTP_USERNAME or not SMTP_PASSWORD:
-        app.logger.warning(f'SMTP未設定のためメール送信スキップ: {to_email} [{email_type}]')
-        log_email(to_email, to_name, subject, email_type, 'skipped', 'SMTP未設定', triggered_by, related_user_id)
+    """Send email via SendGrid API (non-blocking background thread)"""
+    if not SENDGRID_API_KEY:
+        app.logger.warning(f'SENDGRID_API_KEY未設定のためメール送信スキップ: {to_email} [{email_type}]')
+        log_email(to_email, to_name, subject, email_type, 'skipped', 'SENDGRID_API_KEY未設定', triggered_by, related_user_id)
         return False
 
-    try:
-        msg = MIMEMultipart('alternative')
-        msg['Subject'] = subject
-        msg['From'] = f'{SMTP_FROM_NAME} <{SMTP_FROM_EMAIL}>'
-        msg['To'] = f'{to_name} <{to_email}>'
-        msg['X-Mailer'] = 'EstimationSystem/1.3'
+    def _send_in_background(app_ctx):
+        with app_ctx:
+            try:
+                plain_text = _strip_html(html_body)
+                payload = {
+                    "personalizations": [{"to": [{"email": to_email, "name": to_name}]}],
+                    "from": {"email": EMAIL_FROM, "name": EMAIL_FROM_NAME},
+                    "subject": subject,
+                    "content": [
+                        {"type": "text/plain", "value": plain_text},
+                        {"type": "text/html", "value": html_body}
+                    ]
+                }
+                resp = http_requests.post(
+                    "https://api.sendgrid.com/v3/mail/send",
+                    json=payload,
+                    headers={
+                        "Authorization": f"Bearer {SENDGRID_API_KEY}",
+                        "Content-Type": "application/json"
+                    },
+                    timeout=EMAIL_TIMEOUT
+                )
+                if resp.status_code in (200, 201, 202):
+                    app.logger.info(f'メール送信成功: {to_email} [{email_type}]')
+                    log_email(to_email, to_name, subject, email_type, 'sent', None, triggered_by, related_user_id)
+                else:
+                    error_msg = f'SendGrid API error: {resp.status_code} {resp.text[:200]}'
+                    app.logger.error(f'メール送信エラー: {to_email} [{email_type}] - {error_msg}')
+                    log_email(to_email, to_name, subject, email_type, 'failed', error_msg, triggered_by, related_user_id)
+            except Exception as e:
+                error_msg = str(e)
+                app.logger.error(f'メール送信エラー: {to_email} [{email_type}] - {error_msg}')
+                log_email(to_email, to_name, subject, email_type, 'failed', error_msg, triggered_by, related_user_id)
 
-        # Attach plain text version first, then HTML
-        plain_text = _strip_html(html_body)
-        msg.attach(MIMEText(plain_text, 'plain', 'utf-8'))
-        msg.attach(MIMEText(html_body, 'html', 'utf-8'))
-
-        with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT, timeout=15) as server:
-            
-            server.login(SMTP_USERNAME, SMTP_PASSWORD)
-            server.send_message(msg)
-
-        app.logger.info(f'メール送信成功: {to_email} [{email_type}]')
-        log_email(to_email, to_name, subject, email_type, 'sent', None, triggered_by, related_user_id)
-        return True
-
-    except Exception as e:
-        error_msg = str(e)
-        app.logger.error(f'メール送信エラー: {to_email} [{email_type}] - {error_msg}')
-        log_email(to_email, to_name, subject, email_type, 'failed', error_msg, triggered_by, related_user_id)
-        return False
+    thread = threading.Thread(
+        target=_send_in_background,
+        args=(app.app_context(),),
+        daemon=True
+    )
+    thread.start()
+    return True
 
 
 # --- Email Type 1: Registration → Admin Notification ---
@@ -2864,9 +2876,8 @@ def reset_user_password(user_id):
 
         return jsonify({
             'success': True,
-            'message': 'パスワードをリセットしました',
-            'temp_password': temp_password
-        }), 200
+            'message': 'パスワードをリセットぁ�',
+            'entry_idtemp_password': temp_password     'ent}), 200
 
     except Exception as e:
         add_error_log(
@@ -3472,10 +3483,8 @@ def upload_master_data():
 
         return jsonify({
             'success': True,
-            'message': 'マスターデータをアップロードしました',
-            'records_added': records_added,
-            'records_updated': records_updated
-        }), 200
+            'message': 'マスターデータをアップロードぁ�',
+            'entry_idrecords_added': records_added,     'entry_idrecords_updated': records_updated     'ent}), 200
 
     except Exception as e:
         add_error_log(
@@ -3605,8 +3614,7 @@ def blueprint_viewer(project_id, file_id):
         # Get existing blueprint items
         cursor.execute(
             '''SELECT id, page_number, material_name, spec, quantity, unit,
-                      construction_method, field_category, confidence, match_type, reason, is_adopted
-               FROM blueprint_items
+                      construction_method, field_category, confidence, match_type, reason, is_adopted     'enttttttttFROM blueprint_items
                WHERE project_id = ? AND file_id = ?
                ORDER BY id''',
             (project_id, file_id)
@@ -3655,8 +3663,8 @@ def serve_file(project_id, file_id):
             'pdf': 'application/pdf',
             'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             'xls': 'application/vnd.ms-excel',
-            'csv': 'text/csv',
-            'txt': 'text/plain',
+            'csv':idtext/csv',
+            'txt':idtext/plain',
         }
         mimetype = mime_types.get(ext, 'application/octet-stream')
 
@@ -3811,8 +3819,7 @@ def extract_electrical_equipment(page_texts):
                     # Build a unique key to avoid duplicates
                     key = f"{category}:{full_match}"
                     if key in seen:
-                        # Increment quantity instead
-                        for item in extracted:
+                        # Increment quantity instead     'entttttttttttttttttfor item in extracted:
                             if item.get('_key') == key:
                                 item['quantity'] = item.get('quantity', 1) + 1
                                 break
@@ -3913,9 +3920,8 @@ def save_blueprint_items(project_id):
 
         return jsonify({
             'success': True,
-            'message': f'{saved_count}件の拾い出しアイテムを保存しました',
-            'saved_count': saved_count
-        }), 200
+            'message': f'{saved_count}件の拾い出しアイテムを保存ぁ�',
+            'entry_idsaved_count': saved_count     'ent}), 200
 
     except Exception as e:
         add_error_log(current_user.id, 'SAVE_BLUEPRINT_ITEMS_ERROR', str(e), str(e), request.url)
@@ -3964,9 +3970,8 @@ def blueprint_items_to_material_list(project_id):
 
         return jsonify({
             'success': True,
-            'message': f'{count}件を材料リストに追加しました',
-            'count': count
-        }), 200
+            'message': f'{count}件を材料リストに追加ぁ�',
+            'entry_idcount': count     'ent}), 200
 
     except Exception as e:
         add_error_log(current_user.id, 'BLUEPRINT_TO_MATERIAL_ERROR', str(e), str(e), request.url)
@@ -4136,8 +4141,8 @@ def upload_shared_file():
         file_size = os.path.getsize(file_path)
 
         # Determine file type
-        type_map = {'pdf': 'PDF', 'xlsx': 'Excel', 'xls': 'Excel', 'csv': 'CSV',
-                     'tsv': 'TSV', 'txt': 'テキスト', 'shd': 'SHD', 'str': 'STR'}
+        type_map = {'pdf': 'PDF', 'xlsx': 'Excel', 'xls': 'Excel', 'csv':idCSV',
+                     'tsv':idTSV', 'txt':idテキスト', 'shd': 'SHD', 'str': 'STR'}
         file_type = type_map.get(file_ext, 'その他')
 
         db = get_db()
@@ -4152,7 +4157,8 @@ def upload_shared_file():
 
         return jsonify({
             'success': True,
-            'message': f'{original_name} をアップロードしました'
+            'message': f'{original_name} をアップロードぁ�',
+      
         }), 200
 
     except Exception as e:
@@ -4257,8 +4263,8 @@ def ai_estimate(project_id):
 
         return jsonify({
             'success': True,
-            'message': f'AI見積完了: {detail_count}件の明細を作成しました',
-            'results': results,
+            'message': f'AI見積完了: {detail_count}件の明細を作成ぁ�',
+            'entry_idresults': results,
             'totals': {
                 'material_cost': total_material,
                 'labor_cost': total_labor,
@@ -4384,7 +4390,7 @@ def debug_project(project_id):
 
 # ==================== VERSION & ERROR HANDLERS ====================
 
-APP_VERSION = 'v1.3.0'
+APP_VERSION = 'v2.0.0'
 
 @app.route('/debug/version')
 def debug_version():
@@ -4416,8 +4422,8 @@ def internal_error(error):
     import traceback
     tb_str = traceback.format_exc()
     return render_template('error.html', error_code=500,
-                           error_message=f'サーバーエラーが発生しました',
-                           error_details=f'{error}\n\n{tb_str}'), 500
+                           error_message=f'サーバーエラーが発生ぁ�',
+            'entry_i               error_details=f'{error}\n\n{tb_str}'), 500
 
 
 @app.errorhandler(403)
@@ -4426,8 +4432,8 @@ def forbidden(error):
     return render_template('error.html', error_code=403, error_message='アクセスが禁止されています'), 403
 
 
-# Enable DEBUG mode temporarily to show error details on error page
-app.config['DEBUG'] = True
+# Production: DEBUG off, use FLASK_DEBUG env var for development
+app.config['DEBUG'] = os.getenv('FLASK_DEBUG', 'false').lower() in ('true', '1', 'yes')
 
 
 if __name__ == '__main__':
