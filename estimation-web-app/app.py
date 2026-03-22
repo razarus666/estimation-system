@@ -8,7 +8,7 @@ from datetime import datetime
 from functools import wraps
 from io import BytesIO
 
-import bcrypt
+import bcrypth
 import pdfplumber
 from flask import (
     Flask, render_template, request, redirect, url_for, session, jsonify, send_file
@@ -29,7 +29,7 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY', os.getenv('SECRET_KEY', os.urandom(24).hex()))
 app.config['UPLOAD_FOLDER'] = os.getenv('UPLOAD_FOLDER', os.path.join(os.path.dirname(__file__), 'uploads'))
 app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100MB max file size
-ALLOWED_EXTENSIONS = {'log', 'xlsx', 'xls', 'csv', 'tsv', 'shd', 'str', 'txt', 'mdb', 'rak'}
+ALLOWED_EXTENSIONS = {'pdf', 'xlsx', 'xls', 'csv', 'tsv', 'shd', 'str', 'txt', 'mdb', 'rak'}
 
 # Email configuration (SendGrid API)
 SENDGRID_API_KEY = os.getenv('SENDGRID_API_KEY', '')
@@ -3617,7 +3617,8 @@ def blueprint_viewer(project_id, file_id):
         # Get existing blueprint items
         cursor.execute(
             '''SELECT id, page_number, material_name, spec, quantity, unit,
-                      construction_method, field_category, confidence, match_type, reason, is_adopted     'enttttttttFROM blueprint_items
+                      construction_method, field_category, confidence, match_type, reason, is_adopted
+               FROM blueprint_items
                WHERE project_id = ? AND file_id = ?
                ORDER BY id''',
             (project_id, file_id)
@@ -3666,8 +3667,8 @@ def serve_file(project_id, file_id):
             'pdf': 'application/pdf',
             'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             'xls': 'application/vnd.ms-excel',
-            'csv':idtext/csv',
-            'txt':idtext/plain',
+            'csv': 'text/csv',
+            'txt': 'text/plain',
         }
         mimetype = mime_types.get(ext, 'application/octet-stream')
 
@@ -3822,7 +3823,8 @@ def extract_electrical_equipment(page_texts):
                     # Build a unique key to avoid duplicates
                     key = f"{category}:{full_match}"
                     if key in seen:
-                        # Increment quantity instead     'entttttttttttttttttfor item in extracted:
+                        # Increment quantity instead
+                        for item in extracted:
                             if item.get('_key') == key:
                                 item['quantity'] = item.get('quantity', 1) + 1
                                 break
@@ -4146,8 +4148,8 @@ def upload_shared_file():
         file_size = os.path.getsize(file_path)
 
         # Determine file type
-        type_map = {'pdf': 'PDF', 'xlsx': 'Excel', 'xls': 'Excel', 'csv':idCSV',
-                     'tsv':idTSV', 'txt':idテキスト', 'shd': 'SHD', 'str': 'STR'}
+        type_map = {'pdf': 'PDF', 'xlsx': 'Excel', 'xls': 'Excel', 'csv': 'CSV',
+                     'tsv': 'TSV', 'txt': 'テキスト', 'shd': 'SHD', 'str': 'STR'}
         file_type = type_map.get(file_ext, 'その他')
 
         db = get_db()
