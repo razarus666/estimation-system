@@ -40,12 +40,92 @@ SMTP_PASSWORD = os.getenv('SMTP_PASSWORD', '')
 SMTP_FROM_EMAIL = os.getenv('SMTP_FROM_EMAIL', os.getenv('SMTP_USERNAME', ''))
 SMTP_FROM_NAME = os.getenv('SMTP_FROM_NAME', '電気設備積算システム')
 APP_URL = os.getenv('APP_URL', 'https://estimation-system.onrender.com')
+ADMIN_EMAIL = os.getenv('ADMIN_EMAIL', '')
+ADMIN_CONTACT = os.getenv('ADMIN_CONTACT', '')
 
 
-def send_notification_email(to_email, to_name, subject, html_body):
-    """Send email notification using SMTP"""
+# ==================== EMAIL SYSTEM ====================
+
+def _email_header_html():
+    """Common email header"""
+    return '''<div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 12px 12px 0 0; text-align: center;">
+        <h1 style="color: white; margin: 0; font-size: 22px;">&#9889; 電気設備積算システム</h1>
+        <p style="color: rgba(255,255,255,0.8); margin: 5px 0 0; font-size: 13px;">Japanese Electrical Equipment Estimation System</p>
+    </div>'''
+
+
+def _email_footer_html():
+    """Common email footer"""
+    contact_line = ''
+    if ADMIN_CONTACT:
+        contact_line = f'<br>※ お問い合わせ: {ADMIN_CONTACT}'
+    return f'''<p style="color: #6b7280; font-size: 12px; margin-top: 24px; padding-top: 16px; border-top: 1px solid #e5e7eb;">
+        ※ このメールは「電気設備積算システム」から自動送信されています。{contact_line}
+        <br>※ 心当たりがない場合は、このメールを無視してください。
+    </p>'''
+
+
+def _email_wrapper(content):
+    """Wrap content in email layout"""
+    return f'''<div style="font-family: 'Helvetica Neue', Arial, 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', Meiryo, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #f3f4f6;">
+    {_email_header_html()}
+    <div style="background: #ffffff; padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 12px 12px;">
+        {content}
+        {_email_footer_html()}
+    </div>
+</div>'''
+
+
+def _email_button(url, label, color_from='#10b981', color_to='#059669'):
+    """Styled CTA button"""
+    return f'''<div style="text-align: center; margin: 28px 0;">
+        <a href="{url}" style="background: linear-gradient(135deg, {color_from} 0%, {color_to} 100%); color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 15px; display: inline-block;">
+            {label}
+        </a>
+    </div>'''
+
+
+def _email_info_box(items):
+    """Info box with key-value pairs"""
+    rows = ''
+    for key, val in items:
+        rows += f'''<tr>
+            <td style="padding: 8px 12px; color: #6b7280; font-size: 13px; white-space: nowrap; vertical-align: top;">{key}</td>
+            <td style="padding: 8px 12px; color: #1f2937; font-size: 13px; font-weight: 500;">{val}</td>
+        </tr>'''
+    return f'''<div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 4px; margin: 20px 0;">
+        <table style="width: 100%; border-collapse: collapse;">{rows}</table>
+    </div>'''
+
+
+def _strip_html(html_body):
+    """Simple HTML to plain text for multipart email"""
+    import re
+    text = re.sub(r'<br\s*/?>', '\n', html_body)
+    text = re.sub(r'<[^>]+>', '', text)
+    text = re.sub(r'\n\s*\n', '\n\n', text)
+    return text.strip()
+
+
+def log_email(to_email, to_name, subject, email_type, status, error_message=None, triggered_by=None, related_user_id=None):
+    """Log email send attempt to database"""
+    try:
+        db = get_db()
+        db.execute(
+            '''INSERT INTO email_log (to_email, to_name, subject, email_type, status, error_message, triggered_by, related_user_id)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)''',
+            (to_email, to_name, subject, email_type, status, error_message, triggered_by, related_user_id)
+        )
+        db.commit()
+    except Exception as e:
+        app.logger.error(f'メール送信ログ記録エラー: {str(e)}')
+
+
+def send_notification_email(to_email, to_name, subject, html_body, email_type='general', triggered_by=None, related_user_id=None):
+    """Send email notification using SMTP with logging and duplicate prevention"""
     if not SMTP_USERNAME or not SMTP_PASSWORD:
-        app.logger.warning(f'SMTP未設定のためメール送信スキップ: {to_email}')
+        app.logger.warning(f'SMTP未設定のためメール送信スキップ: {to_email} [{email_type}]')
+        log_email(to_email, to_name, subject, email_type, 'skipped', 'SMTP未設定', triggered_by, related_user_id)
         return False
 
     try:
@@ -53,7 +133,11 @@ def send_notification_email(to_email, to_name, subject, html_body):
         msg['Subject'] = subject
         msg['From'] = f'{SMTP_FROM_NAME} <{SMTP_FROM_EMAIL}>'
         msg['To'] = f'{to_name} <{to_email}>'
+        msg['X-Mailer'] = 'EstimationSystem/1.3'
 
+        # Attach plain text version first, then HTML
+        plain_text = _strip_html(html_body)
+        msg.attach(MIMEText(plain_text, 'plain', 'utf-8'))
         msg.attach(MIMEText(html_body, 'html', 'utf-8'))
 
         with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
@@ -61,43 +145,134 @@ def send_notification_email(to_email, to_name, subject, html_body):
             server.login(SMTP_USERNAME, SMTP_PASSWORD)
             server.send_message(msg)
 
-        app.logger.info(f'メール送信成功: {to_email}')
+        app.logger.info(f'メール送信成功: {to_email} [{email_type}]')
+        log_email(to_email, to_name, subject, email_type, 'sent', None, triggered_by, related_user_id)
         return True
 
     except Exception as e:
-        app.logger.error(f'メール送信エラー: {to_email} - {str(e)}')
+        error_msg = str(e)
+        app.logger.error(f'メール送信エラー: {to_email} [{email_type}] - {error_msg}')
+        log_email(to_email, to_name, subject, email_type, 'failed', error_msg, triggered_by, related_user_id)
         return False
 
 
-def send_approval_email(to_email, to_name):
-    """Send approval notification email to user"""
+# --- Email Type 1: Registration → Admin Notification ---
+def send_registration_admin_notify(user_name, user_email, registered_at, triggered_by=None, related_user_id=None):
+    """Notify admin that a new user has registered and is awaiting approval"""
+    if not ADMIN_EMAIL:
+        app.logger.warning('ADMIN_EMAIL未設定のため管理者通知スキップ')
+        return False
+
+    subject = '【電気設備積算システム】新規ユーザー登録通知（承認待ち）'
+    content = f'''
+        <h2 style="color: #1a1f36; margin-top: 0; font-size: 18px;">新規ユーザー登録通知</h2>
+        <p style="color: #4b5563; line-height: 1.6;">
+            新しいユーザーが登録しました。<br>承認待ちのため、管理画面から承認または却下をお願いいたします。
+        </p>
+        {_email_info_box([
+            ('登録者氏名', user_name),
+            ('メールアドレス', user_email),
+            ('登録日時', registered_at),
+            ('ステータス', '<span style="color: #d97706; font-weight: 700;">&#9203; 承認待ち</span>'),
+        ])}
+        {_email_button(APP_URL + '/admin/users', '管理画面で承認する', '#6366f1', '#4f46e5')}
+        <p style="color: #6b7280; font-size: 13px;">承認すると、登録者にログイン可能の通知メールが自動送信されます。</p>
+    '''
+    html_body = _email_wrapper(content)
+    return send_notification_email(ADMIN_EMAIL, '管理者', subject, html_body, 'registration_admin_notify', triggered_by, related_user_id)
+
+
+# --- Email Type 2: Registration → User Confirmation ---
+def send_registration_user_confirm(user_email, user_name, triggered_by=None, related_user_id=None):
+    """Send registration confirmation to the user"""
+    subject = '【電気設備積算システム】ユーザー登録を受け付けました'
+    content = f'''
+        <h2 style="color: #1a1f36; margin-top: 0; font-size: 18px;">ユーザー登録を受け付けました</h2>
+        <p style="color: #4b5563; line-height: 1.6;">
+            {user_name} 様<br><br>
+            電気設備積算システムへの登録ありがとうございます。<br>
+            ご登録を受け付けいたしました。
+        </p>
+        <div style="background: #fffbeb; border: 1px solid #fcd34d; border-radius: 8px; padding: 16px; margin: 20px 0;">
+            <p style="color: #92400e; margin: 0; font-size: 14px;">
+                <strong>&#9888;&#65039; 現在、管理者による承認待ちです</strong><br>
+                承認が完了次第、ログイン可能になります。<br>
+                承認完了時にメールでお知らせいたしますので、今しばらくお待ちください。
+            </p>
+        </div>
+        {_email_info_box([
+            ('登録メールアドレス', user_email),
+            ('登録者氏名', user_name),
+            ('ログインURL', f'<a href="{APP_URL}/login" style="color: #6366f1;">{APP_URL}/login</a>'),
+        ])}
+        <p style="color: #6b7280; font-size: 13px;">
+            ※ 承認には通常1営業日程度いただいております。<br>
+            ※ ご不明な点がございましたら管理者にお問い合わせください。
+        </p>
+    '''
+    html_body = _email_wrapper(content)
+    return send_notification_email(user_email, user_name, subject, html_body, 'registration_user_confirm', triggered_by, related_user_id)
+
+
+# --- Email Type 3: Approval → User Notification ---
+def send_approval_email(user_email, user_name, triggered_by=None, related_user_id=None):
+    """Send approval notification to the user"""
     subject = '【電気設備積算システム】アカウントが承認されました'
-    html_body = f"""
-    <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 12px 12px 0 0; text-align: center;">
-            <h1 style="color: white; margin: 0; font-size: 24px;">⚡ 電気設備積算システム</h1>
-        </div>
-        <div style="background: #ffffff; padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 12px 12px;">
-            <h2 style="color: #1a1f36; margin-top: 0;">アカウントが承認されました</h2>
-            <p style="color: #4b5563; line-height: 1.6;">
-                {to_name} 様<br><br>
-                管理者によりアカウントが承認されました。<br>
-                以下のリンクからログインしてシステムをご利用いただけます。
-            </p>
-            <div style="text-align: center; margin: 30px 0;">
-                <a href="{APP_URL}/login"
-                   style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px; display: inline-block;">
-                    ログインする
-                </a>
-            </div>
-            <p style="color: #6b7280; font-size: 13px; margin-top: 20px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
-                ※ このメールはシステムから自動送信されています。<br>
-                ※ ご不明な点がございましたら管理者にお問い合わせください。
+    content = f'''
+        <h2 style="color: #1a1f36; margin-top: 0; font-size: 18px;">
+            <span style="color: #10b981;">&#10004;</span> アカウントが承認されました
+        </h2>
+        <p style="color: #4b5563; line-height: 1.6;">
+            {user_name} 様<br><br>
+            管理者によりアカウントが承認されました。<br>
+            以下のボタンからログインして、電気設備積算システムをご利用いただけます。
+        </p>
+        {_email_button(APP_URL + '/login', 'ログインする')}
+        <div style="background: #f0fdf4; border: 1px solid #86efac; border-radius: 8px; padding: 16px; margin: 20px 0;">
+            <p style="color: #166534; margin: 0; font-size: 14px;">
+                <strong>&#128274; 初回ログイン時のご案内</strong><br>
+                ・ 登録時に設定したメールアドレスとパスワードでログインしてください<br>
+                ・ セキュリティのため、初回ログイン後にパスワードの変更を推奨します<br>
+                ・ ログイン後、ダッシュボードからプロジェクトの作成・見積作成が可能です
             </p>
         </div>
-    </div>
-    """
-    return send_notification_email(to_email, to_name, subject, html_body)
+        {_email_info_box([
+            ('ログインURL', f'<a href="{APP_URL}/login" style="color: #6366f1;">{APP_URL}/login</a>'),
+            ('ログインID', user_email),
+        ])}
+    '''
+    html_body = _email_wrapper(content)
+    return send_notification_email(user_email, user_name, subject, html_body, 'approval_notify', triggered_by, related_user_id)
+
+
+# --- Email Type 4: Rejection → User Notification ---
+def send_rejection_email(user_email, user_name, reason='', triggered_by=None, related_user_id=None):
+    """Send rejection notification to the user"""
+    subject = '【電気設備積算システム】ユーザー登録について'
+    reason_html = ''
+    if reason:
+        reason_html = f'''
+        <div style="background: #fef2f2; border: 1px solid #fca5a5; border-radius: 8px; padding: 16px; margin: 20px 0;">
+            <p style="color: #991b1b; margin: 0; font-size: 14px;">
+                <strong>管理者からのメッセージ:</strong><br>{reason}
+            </p>
+        </div>'''
+
+    content = f'''
+        <h2 style="color: #1a1f36; margin-top: 0; font-size: 18px;">ユーザー登録について</h2>
+        <p style="color: #4b5563; line-height: 1.6;">
+            {user_name} 様<br><br>
+            この度は電気設備積算システムへの登録申請をいただき、誠にありがとうございました。<br>
+            大変恐れ入りますが、審査の結果、今回のご登録を承認することができませんでした。
+        </p>
+        {reason_html}
+        <p style="color: #4b5563; line-height: 1.6;">
+            ご不明な点やご質問がございましたら、管理者までお気軽にお問い合わせください。<br>
+            今後ともよろしくお願いいたします。
+        </p>
+    '''
+    html_body = _email_wrapper(content)
+    return send_notification_email(user_email, user_name, subject, html_body, 'rejection_notify', triggered_by, related_user_id)
 
 
 # Initialize Flask-Login
@@ -556,6 +731,8 @@ def register():
             db.commit()
 
             new_user_id = cursor.lastrowid
+            registered_at = datetime.utcnow().strftime('%Y-%m-%d %H:%M')
+
             add_audit_log(
                 new_user_id,
                 'REGISTER',
@@ -566,9 +743,25 @@ def register():
                 get_user_ip()
             )
 
+            # Send registration confirmation email to user
+            email_user_ok = send_registration_user_confirm(email, full_name, triggered_by=None, related_user_id=new_user_id)
+
+            # Send notification email to admin
+            email_admin_ok = send_registration_admin_notify(full_name, email, registered_at, triggered_by=None, related_user_id=new_user_id)
+
+            add_audit_log(
+                new_user_id,
+                'REGISTRATION_EMAIL',
+                'email',
+                email,
+                'INFO',
+                f'登録メール送信 (ユーザー: {"成功" if email_user_ok else "未送信"}, 管理者: {"成功" if email_admin_ok else "未送信"})',
+                get_user_ip()
+            )
+
             return render_template(
                 'register.html',
-                success='登録完了しました。管理者の承認をお待ちください。'
+                success='登録完了しました。管理者の承認をお待ちください。確認メールをお送りしましたのでご確認ください。'
             )
 
         except Exception as e:
@@ -2452,7 +2645,7 @@ def approve_user(user_id):
         db.commit()
 
         # Send approval notification email
-        email_sent = send_approval_email(user_email, user_name)
+        email_sent = send_approval_email(user_email, user_name, triggered_by=current_user.id, related_user_id=user_id)
 
         add_audit_log(
             current_user.id,
@@ -2486,10 +2679,26 @@ def approve_user(user_id):
 @app.route('/admin/users/<int:user_id>/reject', methods=['POST'])
 @admin_required
 def reject_user(user_id):
-    """Reject pending user"""
+    """Reject pending user and send notification email"""
     try:
         db = get_db()
         cursor = db.cursor()
+
+        # Get user info before deletion
+        cursor.execute('SELECT email, full_name FROM users WHERE id = ? AND role = ?', (user_id, 'pending'))
+        user_row = cursor.fetchone()
+        if not user_row:
+            return jsonify({'error': 'ユーザーが見つからないか、既に処理済みです'}), 404
+
+        user_email = user_row[0]
+        user_name = user_row[1]
+
+        # Get rejection reason from request body
+        data = request.get_json(silent=True) or {}
+        reason = data.get('reason', '')
+
+        # Send rejection notification email BEFORE deleting the user
+        email_sent = send_rejection_email(user_email, user_name, reason, triggered_by=current_user.id, related_user_id=user_id)
 
         cursor.execute(
             'DELETE FROM users WHERE id = ? AND role = ?',
@@ -2503,11 +2712,17 @@ def reject_user(user_id):
             'user',
             user_id,
             'INFO',
-            'ユーザー拒否',
+            f'ユーザー却下: {user_name} ({user_email}) 理由: {reason or "なし"} メール: {"送信" if email_sent else "未送信"}',
             get_user_ip()
         )
 
-        return jsonify({'success': True, 'message': 'ユーザーを拒否しました'}), 200
+        message = f'{user_name} さんを却下しました'
+        if email_sent:
+            message += f'。{user_email} に通知メールを送信しました'
+        else:
+            message += '。（メール通知は未設定のため送信されていません）'
+
+        return jsonify({'success': True, 'message': message, 'email_sent': email_sent}), 200
 
     except Exception as e:
         add_error_log(
@@ -2517,7 +2732,7 @@ def reject_user(user_id):
             str(e),
             request.url
         )
-        return jsonify({'error': f'拒否エラー: {str(e)}'}), 500
+        return jsonify({'error': f'却下エラー: {str(e)}'}), 500
 
 
 @app.route('/admin/users/<int:user_id>/toggle-active', methods=['POST'])
@@ -2706,6 +2921,79 @@ def delete_user(user_id):
             request.url
         )
         return jsonify({'error': f'ユーザー削除エラー: {str(e)}'}), 500
+
+
+@app.route('/admin/email-log')
+@admin_required
+def admin_email_log():
+    """Email send log viewer for admin"""
+    try:
+        db = get_db()
+        cursor = db.cursor()
+
+        cursor.execute(
+            '''SELECT e.id, e.to_email, e.to_name, e.subject, e.email_type, e.status,
+                      e.error_message, e.created_at,
+                      COALESCE(u.full_name, 'システム') as triggered_by_name
+               FROM email_log e
+               LEFT JOIN users u ON e.triggered_by = u.id
+               ORDER BY e.created_at DESC
+               LIMIT 100''',
+            ()
+        )
+
+        logs = []
+        for row in cursor.fetchall():
+            logs.append({
+                'id': row[0],
+                'to_email': row[1],
+                'to_name': row[2],
+                'subject': row[3],
+                'email_type': row[4],
+                'status': row[5],
+                'error_message': row[6],
+                'created_at': row[7],
+                'triggered_by_name': row[8],
+            })
+
+        # Email type labels
+        type_labels = {
+            'registration_admin_notify': '登録通知（管理者宛）',
+            'registration_user_confirm': '登録確認（ユーザー宛）',
+            'approval_notify': '承認通知',
+            'rejection_notify': '却下通知',
+            'general': 'その他',
+        }
+
+        # Status labels
+        status_labels = {
+            'sent': '送信成功',
+            'failed': '送信失敗',
+            'skipped': 'スキップ',
+            'pending': '保留中',
+        }
+
+        add_audit_log(
+            current_user.id,
+            'VIEW_EMAIL_LOG',
+            'admin',
+            None,
+            'INFO',
+            'メール送信ログ表示',
+            get_user_ip()
+        )
+
+        return render_template('admin_email_log.html', logs=logs, type_labels=type_labels, status_labels=status_labels)
+
+    except Exception as e:
+        add_error_log(
+            current_user.id,
+            'EMAIL_LOG_ERROR',
+            str(e),
+            str(e),
+            request.url
+        )
+        return render_template('error.html', error_code=500, error_message='メール送信ログ読み込みエラーが発生しました'), 500
 
 
 @app.route('/admin/audit-log')
@@ -4096,7 +4384,7 @@ def debug_project(project_id):
 
 # ==================== VERSION & ERROR HANDLERS ====================
 
-APP_VERSION = 'v1.2.0'
+APP_VERSION = 'v1.3.0'
 
 @app.route('/debug/version')
 def debug_version():

@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1 class="h3 mb-1">メール送信ログ</h1>
+            <p class="text-muted mb-0">送信済み・失敗したメール通知の履歴</p>
+        </div>
+        <div class="col-md-4 text-end">
+            <a href="{{ url_for('admin_users') }}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-arrow-left"></i> ユーザー管理に戻る
+            </a>
+        </div>
+    </div>
+
+    <div class="card shadow-sm border-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-4">送信日時</th>
+                        <th>種別</th>
+                        <th>宛先</th>
+                        <th>件名</th>
+                        <th>ステータス</th>
+                        <th>操作者</th>
+                        <th class="pe-4">エラー詳細</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if logs %}
+                        {% for log in logs %}
+                        <tr>
+                            <td class="ps-4">
+                                <small class="text-muted">{{ log.created_at[:16] if log.created_at else '-' }}</small>
+                            </td>
+                            <td>
+                                {% set type_label = type_labels.get(log.email_type, log.email_type) %}
+                                {% if log.email_type == 'registration_admin_notify' %}
+                                    <span class="badge bg-info">{{ type_label }}</span>
+                                {% elif log.email_type == 'registration_user_confirm' %}
+                                    <span class="badge bg-primary">{{ type_label }}</span>
+                                {% elif log.email_type == 'approval_notify' %}
+                                    <span class="badge bg-success">{{ type_label }}</span>
+                                {% elif log.email_type == 'rejection_notify' %}
+                                    <span class="badge bg-danger">{{ type_label }}</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">{{ type_label }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <strong>{{ log.to_name or '-' }}</strong>
+                                <br><small class="text-muted">{{ log.to_email }}</small>
+                            </td>
+                            <td>
+                                <small>{{ log.subject }}</small>
+                            </td>
+                            <td>
+                                {% set status_label = status_labels.get(log.status, log.status) %}
+                                {% if log.status == 'sent' %}
+                                    <span class="badge bg-success"><i class="bi bi-check-circle"></i> {{ status_label }}</span>
+                                {% elif log.status == 'failed' %}
+                                    <span class="badge bg-danger"><i class="bi bi-x-circle"></i> {{ status_label }}</span>
+                                {% elif log.status == 'skipped' %}
+                                    <span class="badge bg-warning text-dark"><i class="bi bi-skip-forward"></i> {{ status_label }}</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">{{ status_label }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <small class="text-muted">{{ log.triggered_by_name }}</small>
+                            </td>
+                            <td class="pe-4">
+                                {% if log.error_message %}
+                                    <small class="text-danger" title="{{ log.error_message }}">
+                                        {{ log.error_message[:50] }}{% if log.error_message|length > 50 %}...{% endif %}
+                                    </small>
+                                {% else %}
+                                    <small class="text-muted">-</small>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="7" class="text-center py-5 text-muted">
+                                <i class="bi bi-envelope" style="font-size: 3rem; opacity: 0.3;"></i>
+                                <p class="mt-2">メール送信ログはありません</p>
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<style>
+    .card { border-radius: 0.75rem; }
+    .table-hover tbody tr:hover { background-color: rgba(0, 123, 255, 0.04); }
+</style>
+{% endblock %}

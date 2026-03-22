@@ -330,6 +330,22 @@ def init_db():
         FOREIGN KEY (file_id) REFERENCES project_files(id)
     )""")
 
+    # === メール送信ログ ===
+    c.execute("""CREATE TABLE IF NOT EXISTS email_log (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        to_email TEXT NOT NULL,
+        to_name TEXT,
+        subject TEXT NOT NULL,
+        email_type TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'pending',
+        error_message TEXT,
+        triggered_by INTEGER,
+        related_user_id INTEGER,
+        created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+        FOREIGN KEY (triggered_by) REFERENCES users(id),
+        FOREIGN KEY (related_user_id) REFERENCES users(id)
+    )""")
+
     # === 初期設定データ ===
     settings_defaults = [
         ("company_name", "", "自社名"),

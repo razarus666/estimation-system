@@ -950,6 +950,13 @@
                     </a>
                 </li>
                 <li>
+                    <a href="{{ url_for('admin_email_log') }}"
+                       class="{% if request.endpoint and request.endpoint == 'admin_email_log' %}active{% endif %}">
+                        <i class="bi bi-envelope"></i>
+                        <span>メール送信ログ</span>
+                    </a>
+                </li>
+                <li>
                     <a href="{{ url_for('admin_learning') }}"
                        class="{% if request.endpoint and request.endpoint == 'admin_learning' %}active{% endif %}">
                         <i class="bi bi-book"></i>

@@ -9,7 +9,10 @@
             <p class="text-muted mb-0">登録ユーザーの管理・権限設定・承認</p>
         </div>
         <div class="col-md-4 text-end">
-            <div class="d-flex gap-2 justify-content-end">
+            <div class="d-flex gap-2 justify-content-end align-items-center">
+                <a href="{{ url_for('admin_email_log') }}" class="btn btn-outline-secondary btn-sm">
+                    <i class="bi bi-envelope"></i> メールログ
+                </a>
                 <div class="stat-badge stat-total">
                     <i class="bi bi-people"></i>
                     <span>{{ users|length }} 名</span>
@@ -232,6 +235,37 @@
     </div>
 </div>
 
+<!-- Rejection Reason Modal -->
+<div class="modal fade" id="rejectModal" tabindex="-1" aria-labelledby="rejectModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="rejectModalLabel">
+                    <i class="bi bi-x-circle"></i> ユーザー却下
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p id="rejectModalText" class="mb-3"></p>
+                <div class="mb-3">
+                    <label for="rejectReason" class="form-label fw-bold">却下理由（任意）</label>
+                    <textarea class="form-control" id="rejectReason" rows="3"
+                              placeholder="却下理由を入力してください（ユーザーへのメールに含まれます）"></textarea>
+                    <div class="form-text">
+                        <i class="bi bi-info-circle"></i> 理由を入力すると、却下メールに記載されます。空欄でも送信可能です。
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+                <button type="button" class="btn btn-danger" id="confirmRejectBtn">
+                    <i class="bi bi-x-circle"></i> 却下する
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Toast Container -->
 <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1050;">
     <div id="notificationToast" class="toast" role="alert">
@@ -421,21 +455,41 @@
         }
     }
 
+    let pendingRejectUserId = null;
+
     function rejectUser(userId, userName) {
-        if (confirm(`${userName} さんを却下しますか？\n\nこの操作でアカウントが削除されます。`)) {
-            fetch(`/admin/users/${userId}/reject`, { method: 'POST' })
-                .then(r => r.json())
-                .then(data => {
-                    if (data.success) {
-                        showNotification('却下完了', `${userName} さんを却下しました`, 'success');
-                        setTimeout(() => location.reload(), 1500);
-                    } else {
-                        showNotification('エラー', data.message || 'エラーが発生しました', 'error');
-                    }
-                })
-                .catch(err => showNotification('エラー', err.message, 'error'));
-        }
+        pendingRejectUserId = userId;
+        document.getElementById('rejectModalText').textContent = `${userName} さんの登録を却下しますか？この操作でアカウントが削除され、却下通知メールが送信されます。`;
+        document.getElementById('rejectReason').value = '';
+        const modal = new bootstrap.Modal(document.getElementById('rejectModal'));
+        modal.show();
     }
+
+    document.getElementById('confirmRejectBtn').addEventListener('click', function() {
+        if (!pendingRejectUserId) return;
+        const reason = document.getElementById('rejectReason').value.trim();
+        const modal = bootstrap.Modal.getInstance(document.getElementById('rejectModal'));
+
+        fetch(`/admin/users/${pendingRejectUserId}/reject`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ reason: reason })
+        })
+            .then(r => r.json())
+            .then(data => {
+                modal.hide();
+                if (data.success) {
+                    showNotification('却下完了', data.message, 'success');
+                    setTimeout(() => location.reload(), 2000);
+                } else {
+                    showNotification('エラー', data.error || 'エラーが発生しました', 'error');
+                }
+            })
+            .catch(err => {
+                modal.hide();
+                showNotification('エラー', err.message, 'error');
+            });
+    });
 
     function changeRole(userId, newRole, userName) {
         const roleDisplay = newRole === 'admin' ? '管理者' : '一般ユーザー';
