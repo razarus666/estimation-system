@@ -2876,8 +2876,9 @@ def reset_user_password(user_id):
 
         return jsonify({
             'success': True,
-            'message': 'パスワードをリセットぁ�',
-            'entry_idtemp_password': temp_password     'ent}), 200
+            'message': 'パスワードをリセットしました',
+            'temp_password': temp_password
+        }), 200
 
     except Exception as e:
         add_error_log(
@@ -3483,8 +3484,10 @@ def upload_master_data():
 
         return jsonify({
             'success': True,
-            'message': 'マスターデータをアップロードぁ�',
-            'entry_idrecords_added': records_added,     'entry_idrecords_updated': records_updated     'ent}), 200
+            'message': 'マスターデータをアップロードしました',
+            'records_added': records_added,
+            'records_updated': records_updated
+        }), 200
 
     except Exception as e:
         add_error_log(
@@ -3920,8 +3923,9 @@ def save_blueprint_items(project_id):
 
         return jsonify({
             'success': True,
-            'message': f'{saved_count}件の拾い出しアイテムを保存ぁ�',
-            'entry_idsaved_count': saved_count     'ent}), 200
+            'message': f'{saved_count}件の拾い出しアイテムを保存しました',
+            'saved_count': saved_count
+        }), 200
 
     except Exception as e:
         add_error_log(current_user.id, 'SAVE_BLUEPRINT_ITEMS_ERROR', str(e), str(e), request.url)
@@ -3970,8 +3974,9 @@ def blueprint_items_to_material_list(project_id):
 
         return jsonify({
             'success': True,
-            'message': f'{count}件を材料リストに追加ぁ�',
-            'entry_idcount': count     'ent}), 200
+            'message': f'{count}件を材料リストに追加しました',
+            'count': count
+        }), 200
 
     except Exception as e:
         add_error_log(current_user.id, 'BLUEPRINT_TO_MATERIAL_ERROR', str(e), str(e), request.url)
@@ -4157,8 +4162,7 @@ def upload_shared_file():
 
         return jsonify({
             'success': True,
-            'message': f'{original_name} をアップロードぁ�',
-      
+            'message': f'{original_name} をアップロードしました'
         }), 200
 
     except Exception as e:
@@ -4263,8 +4267,8 @@ def ai_estimate(project_id):
 
         return jsonify({
             'success': True,
-            'message': f'AI見積完了: {detail_count}件の明細を作成ぁ�',
-            'entry_idresults': results,
+            'message': f'AI見積完了: {detail_count}件の明細を作成しました',
+            'results': results,
             'totals': {
                 'material_cost': total_material,
                 'labor_cost': total_labor,
@@ -4422,8 +4426,8 @@ def internal_error(error):
     import traceback
     tb_str = traceback.format_exc()
     return render_template('error.html', error_code=500,
-                           error_message=f'サーバーエラーが発生ぁ�',
-            'entry_i               error_details=f'{error}\n\n{tb_str}'), 500
+                           error_message=f'サーバーエラーが発生しました',
+                           error_details=f'{error}\n\n{tb_str}'), 500
 
 
 @app.errorhandler(403)
