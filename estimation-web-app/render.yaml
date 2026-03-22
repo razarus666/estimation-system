@@ -3,7 +3,7 @@ services:
     name: estimation-system
     runtime: python
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120
+    startCommand: python startup.py && gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120
     envVars:
       - key: FLASK_SECRET_KEY
         generateValue: true
@@ -11,6 +11,20 @@ services:
         value: /opt/render/project/data/estimation.db
       - key: UPLOAD_FOLDER
         value: /opt/render/project/data/uploads
+      - key: SENDGRID_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+      - key: EMAIL_FROM_NAME
+        value: 電気設備積算システム
+      - key: APP_URL
+        value: https://estimation-system.onrender.com
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_INIT_EMAIL
+        sync: false
+      - key: ADMIN_INIT_PASSWORD
+        sync: false
     disk:
       name: estimation-data
       mountPath: /opt/render/project/data
