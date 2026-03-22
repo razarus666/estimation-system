@@ -1,22 +1,31 @@
 """
 DB設計: 全テーブル定義
 電気設備積算・見積Webサービス
+SQLite / PostgreSQL 両対応（db_compat経由）
 """
-import sqlite3
 import os
 import bcrypt
 from datetime import datetime
+from db_compat import get_connection, USE_PG, get_db_type
 
-DB_PATH = os.environ.get("DB_PATH", "data/estimation.db")
+# 後方互換: sqlite3.IntegrityErrorの代わりに汎用Exceptionを使用
+try:
+    import sqlite3
+    _INTEGRITY_ERRORS = (sqlite3.IntegrityError,)
+except ImportError:
+    _INTEGRITY_ERRORS = (Exception,)
+
+if USE_PG:
+    try:
+        import psycopg2
+        _INTEGRITY_ERRORS = _INTEGRITY_ERRORS + (psycopg2.IntegrityError,)
+    except ImportError:
+        pass
 
 
 def get_db():
-    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA journal_mode=WAL")
-    conn.execute("PRAGMA foreign_keys=ON")
-    return conn
+    """DB接続を返す（SQLite/PostgreSQL自動判定）"""
+    return get_connection()
 
 
 def init_db():
@@ -42,22 +51,10 @@ def init_db():
     )""")
 
     # Migration: add new columns if missing from existing DB
-    try:
-        c.execute("ALTER TABLE users ADD COLUMN avatar_path TEXT")
-    except Exception:
-        pass
-    try:
-        c.execute("ALTER TABLE users ADD COLUMN phone TEXT")
-    except Exception:
-        pass
-    try:
-        c.execute("ALTER TABLE users ADD COLUMN department TEXT")
-    except Exception:
-        pass
-    try:
-        c.execute("ALTER TABLE users ADD COLUMN last_login_at TEXT")
-    except Exception:
-        pass
+    _safe_add_column(c, conn, "users", "avatar_path", "TEXT")
+    _safe_add_column(c, conn, "users", "phone", "TEXT")
+    _safe_add_column(c, conn, "users", "department", "TEXT")
+    _safe_add_column(c, conn, "users", "last_login_at", "TEXT")
 
     # === 案件 ===
     c.execute("""CREATE TABLE IF NOT EXISTS projects (
@@ -72,11 +69,7 @@ def init_db():
         status TEXT NOT NULL DEFAULT 'active',
         FOREIGN KEY (created_by) REFERENCES users(id)
     )""")
-    # Migration: add location column if missing from existing DB
-    try:
-        c.execute("ALTER TABLE projects ADD COLUMN location TEXT")
-    except Exception:
-        pass
+    _safe_add_column(c, conn, "projects", "location", "TEXT")
 
     # === アップロードファイル ===
     c.execute("""CREATE TABLE IF NOT EXISTS project_files (
@@ -368,6 +361,25 @@ def init_db():
     conn.close()
 
 
+def _safe_add_column(cursor, conn, table, column, col_type):
+    """既存テーブルにカラムを安全に追加（存在済みなら無視）"""
+    try:
+        if USE_PG:
+            # PostgreSQL: information_schemaで存在チェック
+            cursor.execute(
+                """SELECT 1 FROM information_schema.columns
+                   WHERE table_name = %s AND column_name = %s""",
+                (table, column)
+            )
+            if not cursor.fetchone():
+                cursor.execute(f"ALTER TABLE {table} ADD COLUMN {column} {col_type}")
+                conn.commit()
+        else:
+            cursor.execute(f"ALTER TABLE {table} ADD COLUMN {column} {col_type}")
+    except Exception:
+        pass
+
+
 def create_admin_user(email, password, full_name):
     conn = get_db()
     pw_hash = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
@@ -377,7 +389,9 @@ def create_admin_user(email, password, full_name):
             (email, pw_hash, full_name))
         conn.commit()
         return True
-    except sqlite3.IntegrityError:
+    except _INTEGRITY_ERRORS:
+        return False
+    except Exception:
         return False
     finally:
         conn.close()
