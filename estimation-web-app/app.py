@@ -2,6 +2,9 @@ import os
 import uuid
 import csv
 import json
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 from datetime import datetime
 from functools import wraps
 from io import BytesIO
@@ -28,6 +31,74 @@ app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY', os.getenv('SECRET_KEY',
 app.config['UPLOAD_FOLDER'] = os.getenv('UPLOAD_FOLDER', os.path.join(os.path.dirname(__file__), 'uploads'))
 app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100MB max file size
 ALLOWED_EXTENSIONS = {'pdf', 'xlsx', 'xls', 'csv', 'tsv', 'shd', 'str', 'txt', 'mdb', 'rak'}
+
+# Email configuration
+SMTP_SERVER = os.getenv('SMTP_SERVER', 'smtp.gmail.com')
+SMTP_PORT = int(os.getenv('SMTP_PORT', '587'))
+SMTP_USERNAME = os.getenv('SMTP_USERNAME', '')
+SMTP_PASSWORD = os.getenv('SMTP_PASSWORD', '')
+SMTP_FROM_EMAIL = os.getenv('SMTP_FROM_EMAIL', os.getenv('SMTP_USERNAME', ''))
+SMTP_FROM_NAME = os.getenv('SMTP_FROM_NAME', '電気設備積算システム')
+APP_URL = os.getenv('APP_URL', 'https://estimation-system.onrender.com')
+
+
+def send_notification_email(to_email, to_name, subject, html_body):
+    """Send email notification using SMTP"""
+    if not SMTP_USERNAME or not SMTP_PASSWORD:
+        app.logger.warning(f'SMTP未設定のためメール送信スキップ: {to_email}')
+        return False
+
+    try:
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = subject
+        msg['From'] = f'{SMTP_FROM_NAME} <{SMTP_FROM_EMAIL}>'
+        msg['To'] = f'{to_name} <{to_email}>'
+
+        msg.attach(MIMEText(html_body, 'html', 'utf-8'))
+
+        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+            server.starttls()
+            server.login(SMTP_USERNAME, SMTP_PASSWORD)
+            server.send_message(msg)
+
+        app.logger.info(f'メール送信成功: {to_email}')
+        return True
+
+    except Exception as e:
+        app.logger.error(f'メール送信エラー: {to_email} - {str(e)}')
+        return False
+
+
+def send_approval_email(to_email, to_name):
+    """Send approval notification email to user"""
+    subject = '【電気設備積算システム】アカウントが承認されました'
+    html_body = f"""
+    <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 12px 12px 0 0; text-align: center;">
+            <h1 style="color: white; margin: 0; font-size: 24px;">⚡ 電気設備積算システム</h1>
+        </div>
+        <div style="background: #ffffff; padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 12px 12px;">
+            <h2 style="color: #1a1f36; margin-top: 0;">アカウントが承認されました</h2>
+            <p style="color: #4b5563; line-height: 1.6;">
+                {to_name} 様<br><br>
+                管理者によりアカウントが承認されました。<br>
+                以下のリンクからログインしてシステムをご利用いただけます。
+            </p>
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="{APP_URL}/login"
+                   style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px; display: inline-block;">
+                    ログインする
+                </a>
+            </div>
+            <p style="color: #6b7280; font-size: 13px; margin-top: 20px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+                ※ このメールはシステムから自動送信されています。<br>
+                ※ ご不明な点がございましたら管理者にお問い合わせください。
+            </p>
+        </div>
+    </div>
+    """
+    return send_notification_email(to_email, to_name, subject, html_body)
+
 
 # Initialize Flask-Login
 login_manager = LoginManager()
@@ -2360,10 +2431,19 @@ def admin_users():
 @app.route('/admin/users/<int:user_id>/approve', methods=['POST'])
 @admin_required
 def approve_user(user_id):
-    """Approve pending user"""
+    """Approve pending user and send notification email"""
     try:
         db = get_db()
         cursor = db.cursor()
+
+        # Get user info before update
+        cursor.execute('SELECT email, full_name FROM users WHERE id = ? AND role = ?', (user_id, 'pending'))
+        user_row = cursor.fetchone()
+        if not user_row:
+            return jsonify({'error': 'ユーザーが見つからないか、既に承認済みです'}), 404
+
+        user_email = user_row[0]
+        user_name = user_row[1]
 
         cursor.execute(
             'UPDATE users SET role = ?, approved_at = ?, approved_by = ? WHERE id = ? AND role = ?',
@@ -2371,17 +2451,26 @@ def approve_user(user_id):
         )
         db.commit()
 
+        # Send approval notification email
+        email_sent = send_approval_email(user_email, user_name)
+
         add_audit_log(
             current_user.id,
             'APPROVE_USER',
             'user',
             user_id,
             'INFO',
-            'ユーザー承認',
+            f'ユーザー承認 (メール通知: {"成功" if email_sent else "未送信/失敗"})',
             get_user_ip()
         )
 
-        return jsonify({'success': True, 'message': 'ユーザーを承認しました'}), 200
+        message = 'ユーザーを承認しました'
+        if email_sent:
+            message += f'。{user_email} に通知メールを送信しました'
+        else:
+            message += '。（メール通知は未設定のため送信されていません）'
+
+        return jsonify({'success': True, 'message': message, 'email_sent': email_sent}), 200
 
     except Exception as e:
         add_error_log(
@@ -4007,7 +4096,7 @@ def debug_project(project_id):
 
 # ==================== VERSION & ERROR HANDLERS ====================
 
-APP_VERSION = 'v1.1.0'
+APP_VERSION = 'v1.2.0'
 
 @app.route('/debug/version')
 def debug_version():

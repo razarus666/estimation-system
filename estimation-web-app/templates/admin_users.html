@@ -2,102 +2,216 @@
 
 {% block content %}
 <div class="container-fluid py-4">
+    <!-- Header with stats -->
     <div class="row mb-4">
         <div class="col-md-8">
-            <h1 class="h3 mb-0">ユーザー管理</h1>
+            <h1 class="h3 mb-1">ユーザー管理</h1>
+            <p class="text-muted mb-0">登録ユーザーの管理・権限設定・承認</p>
+        </div>
+        <div class="col-md-4 text-end">
+            <div class="d-flex gap-2 justify-content-end">
+                <div class="stat-badge stat-total">
+                    <i class="bi bi-people"></i>
+                    <span>{{ users|length }} 名</span>
+                </div>
+                <div class="stat-badge stat-pending">
+                    <i class="bi bi-hourglass-split"></i>
+                    <span>{{ users|selectattr('role', 'equalto', 'pending')|list|length }} 承認待ち</span>
+                </div>
+            </div>
         </div>
     </div>
+
+    <!-- Pending users alert -->
+    {% set pending_count = users|selectattr('role', 'equalto', 'pending')|list|length %}
+    {% if pending_count > 0 %}
+    <div class="alert alert-warning d-flex align-items-center mb-4" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+        <div><strong>{{ pending_count }}名</strong>のユーザーが承認待ちです。承認するとログイン可能になり、通知メールが送信されます。</div>
+    </div>
+    {% endif %}
 
     <div class="card shadow-sm border-0">
         <div class="table-responsive">
             <table class="table table-hover mb-0">
                 <thead class="table-light">
                     <tr>
-                        <th class="ps-4">氏名</th>
-                        <th>メール</th>
-                        <th>権限</th>
-                        <th>状態</th>
-                        <th>登録日</th>
-                        <th>最終ログイン</th>
+                        <th class="ps-4">ユーザー情報</th>
+                        <th>権限・ロール</th>
+                        <th>会員ステータス</th>
+                        <th>承認情報</th>
+                        <th>アクティビティ</th>
                         <th class="pe-4">操作</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% if users %}
                         {% for user in users %}
-                        <tr {% if user.role == 'pending' %}class="table-warning"{% endif %}>
+                        <tr {% if user.role == 'pending' %}class="table-warning-light"{% endif %}>
+                            <!-- ユーザー情報 -->
                             <td class="ps-4">
-                                <strong>{{ user.full_name }}</strong>
+                                <div class="d-flex align-items-center">
+                                    <div class="user-avatar me-3 {% if user.role == 'admin' %}avatar-admin{% elif user.role == 'pending' %}avatar-pending{% else %}avatar-user{% endif %}">
+                                        {% if user.role == 'admin' %}
+                                            <i class="bi bi-shield-check"></i>
+                                        {% elif user.role == 'pending' %}
+                                            <i class="bi bi-hourglass-split"></i>
+                                        {% else %}
+                                            <i class="bi bi-person"></i>
+                                        {% endif %}
+                                    </div>
+                                    <div>
+                                        <strong>{{ user.full_name }}</strong>
+                                        <div class="text-muted small">{{ user.email }}</div>
+                                    </div>
+                                </div>
                             </td>
-                            <td>
-                                <small class="text-muted">{{ user.email }}</small>
-                            </td>
+
+                            <!-- 権限・ロール -->
                             <td>
                                 {% if user.role == 'admin' %}
-                                    <span class="badge bg-purple">管理者</span>
+                                    <span class="badge role-badge role-admin">
+                                        <i class="bi bi-shield-lock-fill me-1"></i>管理者
+                                    </span>
+                                    <div class="permission-list">
+                                        <small class="text-muted">
+                                            <i class="bi bi-check-circle text-success"></i> ユーザー管理<br>
+                                            <i class="bi bi-check-circle text-success"></i> システム設定<br>
+                                            <i class="bi bi-check-circle text-success"></i> 全プロジェクト閲覧<br>
+                                            <i class="bi bi-check-circle text-success"></i> マスタデータ管理
+                                        </small>
+                                    </div>
                                 {% elif user.role == 'pending' %}
-                                    <span class="badge bg-warning text-dark">保留中</span>
+                                    <span class="badge role-badge role-pending">
+                                        <i class="bi bi-clock-history me-1"></i>承認待ち
+                                    </span>
+                                    <div class="permission-list">
+                                        <small class="text-muted">
+                                            <i class="bi bi-x-circle text-danger"></i> アクセス不可<br>
+                                            <i class="bi bi-info-circle text-warning"></i> 承認が必要
+                                        </small>
+                                    </div>
                                 {% else %}
-                                    <span class="badge bg-info">ユーザー</span>
+                                    <span class="badge role-badge role-user">
+                                        <i class="bi bi-person-fill me-1"></i>一般ユーザー
+                                    </span>
+                                    <div class="permission-list">
+                                        <small class="text-muted">
+                                            <i class="bi bi-check-circle text-success"></i> プロジェクト作成<br>
+                                            <i class="bi bi-check-circle text-success"></i> 見積作成<br>
+                                            <i class="bi bi-check-circle text-success"></i> ファイルアップロード<br>
+                                            <i class="bi bi-x-circle text-danger"></i> ユーザー管理
+                                        </small>
+                                    </div>
                                 {% endif %}
                             </td>
+
+                            <!-- 会員ステータス -->
                             <td>
-                                {% if user.is_active %}
-                                    <span class="badge bg-success">
-                                        <span class="dot me-2"></span>有効
-                                    </span>
+                                {% if user.role == 'pending' %}
+                                    <div class="status-chip status-pending">
+                                        <i class="bi bi-hourglass-split"></i>
+                                        <span>承認待ち</span>
+                                    </div>
+                                    <small class="text-muted d-block mt-1">ログイン不可</small>
+                                {% elif user.is_active %}
+                                    <div class="status-chip status-active">
+                                        <i class="bi bi-check-circle-fill"></i>
+                                        <span>アクティブ</span>
+                                    </div>
+                                    <small class="text-success d-block mt-1">ログイン可</small>
                                 {% else %}
-                                    <span class="badge bg-danger">
-                                        <span class="dot me-2"></span>無効
-                                    </span>
+                                    <div class="status-chip status-inactive">
+                                        <i class="bi bi-pause-circle-fill"></i>
+                                        <span>停止中</span>
+                                    </div>
+                                    <small class="text-danger d-block mt-1">ログイン不可</small>
                                 {% endif %}
                             </td>
+
+                            <!-- 承認情報 -->
                             <td>
-                                <small class="text-muted">{{ user.created_at[:10] if user.created_at else '-' }}</small>
+                                {% if user.approved_at %}
+                                    <small class="text-muted">
+                                        <i class="bi bi-calendar-check"></i>
+                                        {{ user.approved_at[:10] if user.approved_at else '-' }}
+                                    </small>
+                                    {% if user.approved_by %}
+                                    <br><small class="text-muted">
+                                        <i class="bi bi-person-check"></i>
+                                        承認者ID: {{ user.approved_by }}
+                                    </small>
+                                    {% endif %}
+                                {% elif user.role == 'pending' %}
+                                    <span class="badge bg-warning text-dark">
+                                        <i class="bi bi-clock"></i> 未承認
+                                    </span>
+                                {% else %}
+                                    <small class="text-muted">-</small>
+                                {% endif %}
                             </td>
+
+                            <!-- アクティビティ -->
                             <td>
-                                <small class="text-muted">{{ user.last_login_at[:10] if user.last_login_at else '-' }}</small>
+                                <div class="small">
+                                    <div class="text-muted">
+                                        <i class="bi bi-calendar-plus"></i>
+                                        登録: {{ user.created_at[:10] if user.created_at else '-' }}
+                                    </div>
+                                    <div class="text-muted mt-1">
+                                        <i class="bi bi-box-arrow-in-right"></i>
+                                        最終ログイン: {{ user.last_login_at[:16] if user.last_login_at else '未ログイン' }}
+                                    </div>
+                                </div>
                             </td>
+
+                            <!-- 操作 -->
                             <td class="pe-4">
                                 <div class="btn-group btn-group-sm" role="group">
                                     {% if user.role == 'pending' %}
                                         <button type="button" class="btn btn-sm btn-success"
-                                                onclick="approveUser({{ user.id }}, '{{ user.full_name }}')">
-                                            <i class="fas fa-check"></i> 承認
+                                                onclick="approveUser({{ user.id }}, '{{ user.full_name }}', '{{ user.email }}')"
+                                                title="承認してメール通知を送信">
+                                            <i class="bi bi-check-lg"></i> 承認
                                         </button>
                                         <button type="button" class="btn btn-sm btn-danger"
                                                 onclick="rejectUser({{ user.id }}, '{{ user.full_name }}')">
-                                            <i class="fas fa-times"></i> 却下
+                                            <i class="bi bi-x-lg"></i> 却下
                                         </button>
                                     {% else %}
                                         <div class="dropdown d-inline">
                                             <button class="btn btn-sm btn-secondary dropdown-toggle"
                                                     type="button" data-bs-toggle="dropdown">
-                                                <i class="fas fa-user-cog"></i> 権限変更
+                                                <i class="bi bi-person-gear"></i> 権限変更
                                             </button>
                                             <ul class="dropdown-menu dropdown-menu-end">
-                                                <li><a class="dropdown-item" href="#"
+                                                <li><a class="dropdown-item {% if user.role == 'user' %}active{% endif %}" href="#"
                                                        onclick="changeRole({{ user.id }}, 'user', '{{ user.full_name }}'); return false;">
-                                                    ユーザー
+                                                    <i class="bi bi-person"></i> 一般ユーザー
+                                                    {% if user.role == 'user' %}<i class="bi bi-check2 ms-2"></i>{% endif %}
                                                 </a></li>
-                                                <li><a class="dropdown-item" href="#"
+                                                <li><a class="dropdown-item {% if user.role == 'admin' %}active{% endif %}" href="#"
                                                        onclick="changeRole({{ user.id }}, 'admin', '{{ user.full_name }}'); return false;">
-                                                    管理者
+                                                    <i class="bi bi-shield-lock"></i> 管理者
+                                                    {% if user.role == 'admin' %}<i class="bi bi-check2 ms-2"></i>{% endif %}
                                                 </a></li>
                                             </ul>
                                         </div>
-                                        <button type="button" class="btn btn-sm {% if user.is_active %}btn-warning{% else %}btn-secondary{% endif %}"
-                                                onclick="toggleUserStatus({{ user.id }}, {{ 'false' if user.is_active else 'true' }}, '{{ user.full_name }}')">
-                                            <i class="fas {% if user.is_active %}fa-lock{% else %}fa-lock-open{% endif %}"></i>
-                                            {% if user.is_active %}無効化{% else %}有効化{% endif %}
+                                        <button type="button" class="btn btn-sm {% if user.is_active %}btn-warning{% else %}btn-outline-success{% endif %}"
+                                                onclick="toggleUserStatus({{ user.id }}, {{ 'false' if user.is_active else 'true' }}, '{{ user.full_name }}')"
+                                                title="{% if user.is_active %}アカウントを停止{% else %}アカウントを有効化{% endif %}">
+                                            <i class="bi {% if user.is_active %}bi-pause-circle{% else %}bi-play-circle{% endif %}"></i>
+                                            {% if user.is_active %}停止{% else %}有効化{% endif %}
                                         </button>
                                         <button type="button" class="btn btn-sm btn-info"
-                                                onclick="resetPassword({{ user.id }}, '{{ user.full_name }}')">
-                                            <i class="fas fa-key"></i> PW
+                                                onclick="resetPassword({{ user.id }}, '{{ user.full_name }}')"
+                                                title="パスワードリセット">
+                                            <i class="bi bi-key"></i> PW
                                         </button>
-                                        <button type="button" class="btn btn-sm btn-danger"
-                                                onclick="deleteUserAccount({{ user.id }}, '{{ user.full_name }}')">
-                                            <i class="fas fa-trash"></i>
+                                        <button type="button" class="btn btn-sm btn-outline-danger"
+                                                onclick="deleteUserAccount({{ user.id }}, '{{ user.full_name }}')"
+                                                title="アカウント削除">
+                                            <i class="bi bi-trash"></i>
                                         </button>
                                     {% endif %}
                                 </div>
@@ -107,8 +221,8 @@
                     {% else %}
                         <tr>
                             <td colspan="6" class="text-center py-5 text-muted">
-                                <i class="fas fa-inbox fa-3x mb-3" style="opacity: 0.3;"></i>
-                                <p>ユーザーがありません</p>
+                                <i class="bi bi-inbox" style="font-size: 3rem; opacity: 0.3;"></i>
+                                <p class="mt-2">ユーザーがありません</p>
                             </td>
                         </tr>
                     {% endif %}
@@ -130,20 +244,122 @@
 </div>
 
 <style>
-    .bg-purple {
-        background-color: #6f42c1 !important;
+    .stat-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 14px;
+        border-radius: 20px;
+        font-size: 13px;
+        font-weight: 600;
     }
 
-    .dot {
-        display: inline-block;
-        width: 6px;
-        height: 6px;
+    .stat-total {
+        background: #e0e7ff;
+        color: #3730a3;
+    }
+
+    .stat-pending {
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    /* User avatar */
+    .user-avatar {
+        width: 40px;
+        height: 40px;
         border-radius: 50%;
-        background: currentColor;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        flex-shrink: 0;
+    }
+
+    .avatar-admin {
+        background: linear-gradient(135deg, #e0e7ff, #c7d2fe);
+        color: #4338ca;
+    }
+
+    .avatar-pending {
+        background: linear-gradient(135deg, #fef3c7, #fde68a);
+        color: #92400e;
+    }
+
+    .avatar-user {
+        background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+        color: #065f46;
+    }
+
+    /* Role badges */
+    .role-badge {
+        padding: 5px 10px;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+    }
+
+    .role-admin {
+        background: linear-gradient(135deg, #6366f1, #4f46e5);
+        color: white;
+    }
+
+    .role-pending {
+        background: linear-gradient(135deg, #f59e0b, #d97706);
+        color: white;
+    }
+
+    .role-user {
+        background: linear-gradient(135deg, #10b981, #059669);
+        color: white;
+    }
+
+    /* Permission list */
+    .permission-list {
+        margin-top: 6px;
+        line-height: 1.7;
+    }
+
+    .permission-list i {
+        font-size: 11px;
+        margin-right: 2px;
+    }
+
+    /* Status chips */
+    .status-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 13px;
+        font-weight: 600;
+    }
+
+    .status-active {
+        background: #d1fae5;
+        color: #065f46;
+    }
+
+    .status-inactive {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    .status-pending {
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    /* Table styling */
+    .table-warning-light {
+        background-color: rgba(254, 243, 199, 0.3) !important;
     }
 
     .card {
-        border-radius: 0.5rem;
+        border-radius: 0.75rem;
     }
 
     .table-hover tbody tr:hover {
@@ -154,11 +370,15 @@
         padding: 0.25rem 0.5rem;
         font-size: 0.8125rem;
     }
+
+    .alert {
+        border-radius: 0.5rem;
+    }
 </style>
 
 <script>
     const toastElement = document.getElementById('notificationToast');
-    const toast = new bootstrap.Toast(toastElement, { delay: 4000 });
+    const toast = new bootstrap.Toast(toastElement, { delay: 5000 });
 
     function showNotification(title, message, type = 'info') {
         document.getElementById('toastTitle').textContent = title;
@@ -185,16 +405,16 @@
         toast.show();
     }
 
-    function approveUser(userId, userName) {
-        if (confirm(`${userName} さんを承認しますか？`)) {
+    function approveUser(userId, userName, userEmail) {
+        if (confirm(`${userName} さん (${userEmail}) を承認しますか？\n\n承認すると通知メールが送信されます。`)) {
             fetch(`/admin/users/${userId}/approve`, { method: 'POST' })
                 .then(r => r.json())
                 .then(data => {
                     if (data.success) {
-                        showNotification('成功', `${userName} さんを承認しました`, 'success');
-                        setTimeout(() => location.reload(), 1500);
+                        showNotification('承認完了', data.message, 'success');
+                        setTimeout(() => location.reload(), 2000);
                     } else {
-                        showNotification('エラー', data.message || 'エラーが発生しました', 'error');
+                        showNotification('エラー', data.error || 'エラーが発生しました', 'error');
                     }
                 })
                 .catch(err => showNotification('エラー', err.message, 'error'));
@@ -202,12 +422,12 @@
     }
 
     function rejectUser(userId, userName) {
-        if (confirm(`${userName} さんを却下しますか？`)) {
+        if (confirm(`${userName} さんを却下しますか？\n\nこの操作でアカウントが削除されます。`)) {
             fetch(`/admin/users/${userId}/reject`, { method: 'POST' })
                 .then(r => r.json())
                 .then(data => {
                     if (data.success) {
-                        showNotification('成功', `${userName} さんを却下しました`, 'success');
+                        showNotification('却下完了', `${userName} さんを却下しました`, 'success');
                         setTimeout(() => location.reload(), 1500);
                     } else {
                         showNotification('エラー', data.message || 'エラーが発生しました', 'error');
@@ -218,9 +438,9 @@
     }
 
     function changeRole(userId, newRole, userName) {
-        const roleDisplay = newRole === 'admin' ? '管理者' : 'ユーザー';
+        const roleDisplay = newRole === 'admin' ? '管理者' : '一般ユーザー';
         if (confirm(`${userName} さんの権限を「${roleDisplay}」に変更しますか？`)) {
-            fetch(`/admin/users/${userId}/role`, {
+            fetch(`/admin/users/${userId}/change-role`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ role: newRole })
@@ -228,10 +448,10 @@
                 .then(r => r.json())
                 .then(data => {
                     if (data.success) {
-                        showNotification('成功', `権限を変更しました`, 'success');
+                        showNotification('成功', `権限を「${roleDisplay}」に変更しました`, 'success');
                         setTimeout(() => location.reload(), 1500);
                     } else {
-                        showNotification('エラー', data.message || 'エラーが発生しました', 'error');
+                        showNotification('エラー', data.error || 'エラーが発生しました', 'error');
                     }
                 })
                 .catch(err => showNotification('エラー', err.message, 'error'));
@@ -239,9 +459,9 @@
     }
 
     function toggleUserStatus(userId, newStatus, userName) {
-        const statusDisplay = newStatus ? '有効' : '無効';
-        if (confirm(`${userName} さんを${statusDisplay}にしますか？`)) {
-            fetch(`/admin/users/${userId}/status`, {
+        const statusDisplay = newStatus ? '有効化' : '停止';
+        if (confirm(`${userName} さんを${statusDisplay}しますか？`)) {
+            fetch(`/admin/users/${userId}/toggle-active`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ is_active: newStatus })
@@ -249,10 +469,10 @@
                 .then(r => r.json())
                 .then(data => {
                     if (data.success) {
-                        showNotification('成功', `ステータスを変更しました`, 'success');
+                        showNotification('成功', `${userName} さんを${statusDisplay}しました`, 'success');
                         setTimeout(() => location.reload(), 1500);
                     } else {
-                        showNotification('エラー', data.message || 'エラーが発生しました', 'error');
+                        showNotification('エラー', data.error || 'エラーが発生しました', 'error');
                     }
                 })
                 .catch(err => showNotification('エラー', err.message, 'error'));
